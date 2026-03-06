@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "skills": {
+    "code-review": {
+      "source": "jwynia/agent-skills",
+      "sourceType": "github",
+      "computedHash": "0a8d7277d0aafbd3d1b5a9f57c9e1e14b086ebbbcaf9c8c1ad889a7c807e687a"
+    },
+    "dependency-scan": {
+      "source": "jwynia/agent-skills",
+      "sourceType": "github",
+      "computedHash": "cae420d45069e6700c2c48d9206b897f6cb47c759659b620303ea0322e4c8ce5"
+    },
+    "electron-best-practices": {
+      "source": "jwynia/agent-skills",
+      "sourceType": "github",
+      "computedHash": "744549070132b3bc0602fd7121d42278ba74694b9d0943358093bde3543cbe97"
+    },
+    "frontend-design": {
+      "source": "jwynia/agent-skills",
+      "sourceType": "github",
+      "computedHash": "df017e8504626f06e14b093dcf668ada5b40a6fe9eaf565d2cc54b0997d7927a"
+    },
+    "shadcn-layouts": {
+      "source": "jwynia/agent-skills",
+      "sourceType": "github",
+      "computedHash": "71b0ae040d33716e16e035024b59320c50e7f155ae6751ba62fc4e314dbfc652"
+    }
+  }
+}
