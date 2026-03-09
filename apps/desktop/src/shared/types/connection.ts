@@ -57,9 +57,15 @@ export interface SSHConfig {
 export type ConnectionInput = Omit<ConnectionConfig, 'id'>;
 
 /** Schema node for sidebar tree view. */
+export interface TableStats {
+  estimatedRowCount: number | null;
+  sizeOnDisk: string | null;
+}
+
 export interface DatabaseSchema {
   name: string;
   tables: string[];
+  tableStats?: Record<string, TableStats>;
 }
 
 export interface SchemaTreeOptions {

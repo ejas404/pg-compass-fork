@@ -10,6 +10,7 @@ Once a connection is established, it can be expanded (it works like an accordion
 
 - Added a new IPC channel `connections:get-schema-tree` to fetch schema and table metadata for a selected connection.
 - Implemented main-process query logic with the existing `pg` client using `pg_tables`, excluding system schemas (`pg_catalog`, `information_schema`, `pg_toast%`).
+- Extended schema metadata to include per-table estimated row counts and on-disk sizes for workspace table listings.
 - Extended preload + renderer API (`window.connectionApi.getSchemaTree`) and shared TypeScript types to keep the contract type-safe.
 - Replaced sidebar placeholder state with real nested rendering:
   - Connection row expands after successful connect.

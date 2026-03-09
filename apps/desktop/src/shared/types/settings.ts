@@ -9,6 +9,7 @@ export interface GeneralSettings {
 
 export interface AppearanceSettings {
   theme: ThemePreference;
+  sidebarWidth: number;
 }
 
 export interface PrivacySettings {
@@ -36,6 +37,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   },
   appearance: {
     theme: 'dark',
+    sidebarWidth: 256,
   },
   privacy: {
     automaticUpdates: true,

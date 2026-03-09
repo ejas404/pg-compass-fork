@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   ChevronRight,
   Database,
@@ -6,6 +6,7 @@ import {
   Folder,
   Loader2,
   Plug,
+  RefreshCw,
   Star,
   Table2,
   Trash2,
@@ -27,71 +28,97 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useConnections } from '@/hooks/use-connections';
-import { useSettings } from '@/hooks/use-settings';
-import type {
-  ConnectionConfig,
-  DatabaseSchema,
-} from '@/shared/types/connection';
+import { useWorkspace } from '@/hooks/use-workspace';
+import type { ConnectionConfig, DatabaseSchema } from '@/shared/types/connection';
 
 interface ConnectionItemProps {
   connection: ConnectionConfig;
   onEdit: (connection: ConnectionConfig) => void;
 }
 
+interface SchemaTreeNodeProps {
+  schema: DatabaseSchema;
+  schemaExpanded: boolean;
+  onToggleSchema: (schemaName: string) => void;
+  onOpenSchema: (schemaName: string) => void;
+  onOpenTable: (schemaName: string, tableName: string) => void;
+}
+
+function SchemaTreeNode({
+  schema,
+  schemaExpanded,
+  onToggleSchema,
+  onOpenSchema,
+  onOpenTable,
+}: Readonly<SchemaTreeNodeProps>) {
+  const schemaCountText = String(schema.tables.length);
+
+  return (
+    <div className="min-w-0 flex flex-col gap-0.5">
+      <button
+        type="button"
+        className="grid w-full min-w-0 grid-cols-[auto_auto_minmax(0,1fr)_minmax(4ch,auto)] items-center gap-1 rounded-sm px-1 py-0.5 text-left text-xs hover:bg-sidebar-accent"
+        onClick={() => {
+          onOpenSchema(schema.name);
+          onToggleSchema(schema.name);
+        }}
+        aria-label={schemaExpanded ? `Collapse schema ${schema.name}` : `Expand schema ${schema.name}`}
+      >
+        <ChevronRight
+          className={cn(
+            'size-3 text-muted-foreground transition-transform duration-200',
+            schemaExpanded && 'rotate-90',
+          )}
+        />
+        <Folder className="size-3 shrink-0 text-muted-foreground" />
+        <span className="min-w-0 truncate" title={schema.name}>
+          {schema.name}
+        </span>
+        <span
+          className="min-w-[4ch] shrink-0 pl-1 pr-1.5 text-right text-[10px] tabular-nums text-muted-foreground"
+          title={`${schemaCountText} tables`}
+        >
+          {schemaCountText}
+        </span>
+      </button>
+
+      {schemaExpanded && (
+        <div className="ml-3 flex flex-col gap-0.5 border-l border-sidebar-border pl-2">
+          {schema.tables.map((tableName) => (
+            <button
+              key={`${schema.name}.${tableName}`}
+              type="button"
+              className="flex min-w-0 items-center gap-1 rounded-sm px-1 py-0.5 text-left text-xs text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+              onClick={() => onOpenTable(schema.name, tableName)}
+              aria-label={`Table ${tableName}`}
+            >
+              <Table2 className="size-3 shrink-0" />
+              <span className="min-w-0 flex-1 truncate" title={tableName}>{tableName}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemProps>) {
-  const { remove, toggleFavourite, testConnection, getSchemaTree } = useConnections();
-  const { settings } = useSettings();
+  const { remove, toggleFavourite, testConnection } = useConnections();
+  const {
+    schemaCache,
+    refreshSchemaTree,
+    openSchemaListViewer,
+    openSchemaViewer,
+    openTableDetailsViewer,
+  } = useWorkspace();
   const [connecting, setConnecting] = useState(false);
   const [connected, setConnected] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [schemasLoading, setSchemasLoading] = useState(false);
-  const [schemas, setSchemas] = useState<DatabaseSchema[]>([]);
   const [expandedSchemas, setExpandedSchemas] = useState<Record<string, boolean>>({});
-  const [hovered, setHovered] = useState(false);
-  const includeInternalSchemas = !settings.general.hideInternalSchemas;
+  const schemas: DatabaseSchema[] = schemaCache[connection.id] ?? [];
 
-  useEffect(() => {
-    if (!connected || !expanded) {
-      return;
-    }
-
-    let disposed = false;
-
-    async function reloadSchemaTree() {
-      setSchemasLoading(true);
-      const result = await getSchemaTree(connection.id, { includeInternalSchemas });
-
-      if (disposed) {
-        return;
-      }
-
-      setSchemasLoading(false);
-
-      if (result.ok && result.data) {
-        setSchemas(result.data);
-        setExpandedSchemas({});
-      } else {
-        toast.error(`Failed to load schemas for "${connection.label}"`, {
-          description: result.error,
-        });
-      }
-    }
-
-    void reloadSchemaTree();
-
-    return () => {
-      disposed = true;
-    };
-  }, [
-    includeInternalSchemas,
-    connected,
-    expanded,
-    connection.id,
-    connection.label,
-    getSchemaTree,
-  ]);
-
-  async function handleConnect() {
+  async function handleConnect(): Promise<boolean> {
     setConnecting(true);
     // Verify we can reach the server before marking this item as connected.
     const result = await testConnection(connection.id);
@@ -100,10 +127,12 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
     if (result.ok) {
       setConnected(true);
       toast.success(`Connected to "${connection.label}"`);
+      return true;
     } else {
       toast.error(`Failed to connect to "${connection.label}"`, {
         description: result.error,
       });
+      return false;
     }
   }
 
@@ -115,15 +144,11 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
 
     if (willExpand && !schemasLoading && schemas.length === 0) {
       setSchemasLoading(true);
-      const result = await getSchemaTree(connection.id, { includeInternalSchemas });
+      const result = await refreshSchemaTree(connection.id);
       setSchemasLoading(false);
 
-      if (result.ok && result.data) {
-        setSchemas(result.data);
-      } else {
-        toast.error(`Failed to load schemas for "${connection.label}"`, {
-          description: result.error,
-        });
+      if (result.length > 0) {
+        setExpandedSchemas({});
       }
     }
   }
@@ -133,6 +158,35 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
       ...prev,
       [schemaName]: !prev[schemaName],
     }));
+  }
+
+  function getDatabaseName(): string {
+    return connection.label;
+  }
+
+  function handleOpenSchemaViewer(schemaName: string) {
+    const connectionLabel = getDatabaseName();
+    openSchemaViewer(
+      {
+        connectionId: connection.id,
+        connectionLabel,
+        schemaName,
+      },
+      connection.color,
+    ).catch(() => undefined);
+  }
+
+  function handleOpenTableViewer(schemaName: string, tableName: string) {
+    const connectionLabel = getDatabaseName();
+    openTableDetailsViewer(
+      {
+        connectionId: connection.id,
+        connectionLabel,
+        schemaName,
+        tableName,
+      },
+      connection.color,
+    ).catch(() => undefined);
   }
 
   function renderSchemaTree() {
@@ -154,48 +208,16 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
       );
     }
 
-    return schemas.map((schema) => {
-      const schemaExpanded = expandedSchemas[schema.name] ?? false;
-
-      return (
-        <div key={schema.name} className="flex flex-col gap-0.5">
-          <button
-            type="button"
-            className="flex items-center gap-1 rounded-sm px-1 py-0.5 text-left text-xs hover:bg-sidebar-accent"
-            onClick={() => toggleSchema(schema.name)}
-            aria-label={schemaExpanded ? `Collapse schema ${schema.name}` : `Expand schema ${schema.name}`}
-          >
-            <ChevronRight
-              className={cn(
-                'size-3 text-muted-foreground transition-transform duration-200',
-                schemaExpanded && 'rotate-90',
-              )}
-            />
-            <Folder className="size-3 text-muted-foreground" />
-            <span className="truncate">{schema.name}</span>
-            <span className="ml-auto text-[10px] text-muted-foreground">
-              {schema.tables.length}
-            </span>
-          </button>
-
-          {schemaExpanded && (
-            <div className="ml-3 flex flex-col gap-0.5 border-l border-sidebar-border pl-2">
-              {schema.tables.map((tableName) => (
-                <button
-                  key={`${schema.name}.${tableName}`}
-                  type="button"
-                  className="flex items-center gap-1 rounded-sm px-1 py-0.5 text-left text-xs text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-                  aria-label={`Table ${tableName}`}
-                >
-                  <Table2 className="size-3" />
-                  <span className="truncate">{tableName}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      );
-    });
+    return schemas.map((schema) => (
+      <SchemaTreeNode
+        key={schema.name}
+        schema={schema}
+        schemaExpanded={expandedSchemas[schema.name] ?? false}
+        onToggleSchema={toggleSchema}
+        onOpenSchema={handleOpenSchemaViewer}
+        onOpenTable={handleOpenTableViewer}
+      />
+    ));
   }
 
   async function handleDelete() {
@@ -205,14 +227,49 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
     }
   }
 
+  async function handleDatabaseClick() {
+    const isConnected = connected || await handleConnect();
+    if (!isConnected) {
+      return;
+    }
+
+    if (schemas.length === 0) {
+      setSchemasLoading(true);
+      await refreshSchemaTree(connection.id);
+      setSchemasLoading(false);
+    }
+
+    if (!expanded) {
+      setExpanded(true);
+    }
+
+    openSchemaListViewer(
+      {
+        connectionId: connection.id,
+        connectionLabel: connection.label,
+      },
+      connection.color,
+    ).catch(() => undefined);
+  }
+
+  async function handleRefresh() {
+    const isConnected = connected || await handleConnect();
+    if (!isConnected) {
+      return;
+    }
+
+    setSchemasLoading(true);
+    await refreshSchemaTree(connection.id, true);
+    setSchemasLoading(false);
+    setExpanded(true);
+    setExpandedSchemas({});
+  }
+
   return (
     <div className="group/connection flex flex-col">
       {/* Connection row */}
-      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
-      <div
-        className="relative flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-sidebar-accent"
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
+      <section
+        className="relative flex items-center gap-2 rounded-md pl-2 pr-1 py-1.5 hover:bg-sidebar-accent"
       >
         {/* Color indicator */}
         {connection.color && (
@@ -231,7 +288,10 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
               ? 'cursor-pointer text-muted-foreground hover:text-foreground'
               : 'invisible',
           )}
-          onClick={handleExpand}
+          onClick={(event) => {
+            event.stopPropagation();
+            handleExpand().catch(() => undefined);
+          }}
           aria-label={expanded ? 'Collapse' : 'Expand'}
         >
           <ChevronRight
@@ -242,23 +302,29 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
           />
         </button>
 
-        {/* Icon + label */}
-        <Database className="size-4 shrink-0 text-muted-foreground" />
-        <span
-          className="flex-1 truncate text-sm"
-          style={connection.color ? { color: connection.color } : undefined}
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 cursor-pointer select-none items-center gap-2 text-left"
+          onClick={() => {
+            handleDatabaseClick().catch(() => undefined);
+          }}
+          aria-label={`Open ${connection.label}`}
         >
-          {connection.label}
-        </span>
+          <Database className="size-4 shrink-0 text-muted-foreground" />
+          <span
+            className="flex-1 truncate text-sm"
+            style={connection.color ? { color: connection.color } : undefined}
+          >
+            {connection.label}
+          </span>
+        </button>
 
-        {/* Favourite indicator */}
-        {connection.favourite && !hovered && (
-          <Star className="size-3 shrink-0 fill-yellow-500 text-yellow-500" />
-        )}
+        <div className="relative flex h-6 w-14 shrink-0 items-center justify-end gap-0.5">
+          {connection.favourite && (
+            <Star className="size-3 shrink-0 fill-yellow-500 text-yellow-500 opacity-100 transition-opacity group-hover/connection:opacity-0" />
+          )}
 
-        {/* Actions on hover */}
-        {hovered && (
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center justify-end gap-0.5 opacity-0 pointer-events-none transition-opacity group-hover/connection:opacity-100 group-hover/connection:pointer-events-auto">
             {!connected && !connecting && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -266,7 +332,10 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
                     variant="ghost"
                     size="icon"
                     className="size-6"
-                    onClick={handleConnect}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleConnect().catch(() => undefined);
+                    }}
                     aria-label="Connect"
                   >
                     <Plug className="size-3" />
@@ -285,6 +354,7 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
                   size="icon"
                   className="size-6"
                   aria-label="More actions"
+                  onClick={(event) => event.stopPropagation()}
                 >
                   <span className="text-xs leading-none">⋯</span>
                 </Button>
@@ -298,6 +368,15 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
                   <Star className="mr-2 size-3" />
                   {connection.favourite ? 'Unfavourite' : 'Favourite'}
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    handleRefresh().catch(() => undefined);
+                  }}
+                  disabled={connecting || schemasLoading}
+                >
+                  <RefreshCw className="mr-2 size-3" />
+                  Refresh
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"
@@ -309,12 +388,12 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        )}
-      </div>
+        </div>
+      </section>
 
       {/* Expandable schema/table tree */}
       {connected && expanded && (
-        <div className="ml-6 flex flex-col gap-1 py-1 pl-4">
+        <div className="ml-6 flex min-w-0 flex-col gap-1 py-1 pl-4 pr-2.5">
           {renderSchemaTree()}
         </div>
       )}

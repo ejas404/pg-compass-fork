@@ -91,7 +91,8 @@ The app uses a **fixed two-panel layout**:
 └─────────────┴────────────────────────────────────┘
 ```
 
-- **Sidebar width**: `w-64` (256px), non-collapsible in v1.
+- **Sidebar width**: Default `256px`, horizontally resizable in-app.
+- **Sidebar bounds**: Minimum `240px`, maximum `45vw` (kept under half of viewport width).
 - **Tab bar height**: `h-10` (40px).
 - **Content padding**: `p-4` for content areas, `p-3` for sidebar sections.
 - **Gap between elements**: `gap-2` (8px) default, `gap-4` (16px) between sections.

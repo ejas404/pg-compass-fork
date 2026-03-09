@@ -6,6 +6,7 @@ import type {
   ConnectionInput,
   DatabaseSchema,
   SchemaTreeOptions,
+  TableStats,
 } from '../shared/types/connection';
 import {
   getAllConnections,
@@ -48,6 +49,26 @@ function buildPgConfig(connection: ConnectionConfig) {
 interface PgTableRow {
   schema_name: string;
   table_name: string;
+}
+
+interface PgTableStatsRow {
+  schema_name: string;
+  table_name: string;
+  estimated_row_count: number | string | null;
+  size_on_disk: string | null;
+}
+
+function parseEstimatedRowCount(value: number | string | null): number | null {
+  if (value == null) {
+    return null;
+  }
+
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+
+  return Math.max(0, Math.round(parsed));
 }
 
 interface PgSchemaRow {
@@ -107,9 +128,35 @@ async function getSchemaTree(
       ORDER BY schemaname, tablename
     `);
 
+    const statsResult = await client.query<PgTableStatsRow>(`
+      SELECT
+        n.nspname AS schema_name,
+        c.relname AS table_name,
+        CASE
+          WHEN c.reltuples < 0 THEN NULL
+          ELSE c.reltuples::bigint
+        END AS estimated_row_count,
+        pg_size_pretty(pg_total_relation_size(c.oid)) AS size_on_disk
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE c.relkind IN ('r', 'p')
+      ${getSchemaFilterSql(includeInternalSchemas, 'n.nspname')}
+      ORDER BY n.nspname, c.relname
+    `);
+
     const schemaMap = new Map<string, string[]>(
       schemaResult.rows.map((row) => [row.schema_name, []]),
     );
+    const statsMap = new Map<string, Record<string, TableStats>>();
+
+    for (const row of statsResult.rows) {
+      const schemaStats = statsMap.get(row.schema_name) ?? {};
+      schemaStats[row.table_name] = {
+        estimatedRowCount: parseEstimatedRowCount(row.estimated_row_count),
+        sizeOnDisk: row.size_on_disk,
+      };
+      statsMap.set(row.schema_name, schemaStats);
+    }
 
     for (const row of result.rows) {
       const tables = schemaMap.get(row.schema_name);
@@ -123,6 +170,7 @@ async function getSchemaTree(
     return Array.from(schemaMap.entries()).map(([name, tables]) => ({
       name,
       tables,
+      tableStats: statsMap.get(name) ?? {},
     }));
   } finally {
     try {
