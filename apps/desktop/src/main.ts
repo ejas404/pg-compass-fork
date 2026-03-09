@@ -1,7 +1,9 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, type Input } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import { registerConnectionHandlers } from './main/connection-ipc';
+import { registerSettingsHandlers } from './main/settings-ipc';
+import { getSettings } from './main/settings-store';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -10,6 +12,25 @@ if (started) {
 
 // Register IPC handlers before window creation.
 registerConnectionHandlers();
+registerSettingsHandlers((settings) => {
+  if (!settings.general.enableDevTools) {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (window.webContents.isDevToolsOpened()) {
+        window.webContents.closeDevTools();
+      }
+    }
+  }
+});
+
+function isDevToolsShortcut(input: Input): boolean {
+  const key = input.key.toLowerCase();
+
+  if (process.platform === 'darwin') {
+    return input.meta && input.alt && key === 'i';
+  }
+
+  return input.control && input.shift && key === 'i';
+}
 
 const createWindow = () => {
   // Create the browser window.
@@ -30,8 +51,24 @@ const createWindow = () => {
     );
   }
 
-  // Open the DevTools.
-  mainWindow.webContents.openDevTools();
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (!isDevToolsShortcut(input)) {
+      return;
+    }
+
+    event.preventDefault();
+    const devToolsEnabled = getSettings().general.enableDevTools;
+
+    if (!devToolsEnabled) {
+      return;
+    }
+
+    if (mainWindow.webContents.isDevToolsOpened()) {
+      mainWindow.webContents.closeDevTools();
+    } else {
+      mainWindow.webContents.openDevTools({ mode: 'detach' });
+    }
+  });
 };
 
 // This method will be called when Electron has finished

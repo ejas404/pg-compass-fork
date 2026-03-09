@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ChevronRight,
   Database,
@@ -27,6 +27,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useConnections } from '@/hooks/use-connections';
+import { useSettings } from '@/hooks/use-settings';
 import type {
   ConnectionConfig,
   DatabaseSchema,
@@ -39,6 +40,7 @@ interface ConnectionItemProps {
 
 export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemProps>) {
   const { remove, toggleFavourite, testConnection, getSchemaTree } = useConnections();
+  const { settings } = useSettings();
   const [connecting, setConnecting] = useState(false);
   const [connected, setConnected] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -46,6 +48,48 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
   const [schemas, setSchemas] = useState<DatabaseSchema[]>([]);
   const [expandedSchemas, setExpandedSchemas] = useState<Record<string, boolean>>({});
   const [hovered, setHovered] = useState(false);
+  const includeInternalSchemas = !settings.general.hideInternalSchemas;
+
+  useEffect(() => {
+    if (!connected || !expanded) {
+      return;
+    }
+
+    let disposed = false;
+
+    async function reloadSchemaTree() {
+      setSchemasLoading(true);
+      const result = await getSchemaTree(connection.id, { includeInternalSchemas });
+
+      if (disposed) {
+        return;
+      }
+
+      setSchemasLoading(false);
+
+      if (result.ok && result.data) {
+        setSchemas(result.data);
+        setExpandedSchemas({});
+      } else {
+        toast.error(`Failed to load schemas for "${connection.label}"`, {
+          description: result.error,
+        });
+      }
+    }
+
+    void reloadSchemaTree();
+
+    return () => {
+      disposed = true;
+    };
+  }, [
+    includeInternalSchemas,
+    connected,
+    expanded,
+    connection.id,
+    connection.label,
+    getSchemaTree,
+  ]);
 
   async function handleConnect() {
     setConnecting(true);
@@ -71,7 +115,7 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
 
     if (willExpand && !schemasLoading && schemas.length === 0) {
       setSchemasLoading(true);
-      const result = await getSchemaTree(connection.id);
+      const result = await getSchemaTree(connection.id, { includeInternalSchemas });
       setSchemasLoading(false);
 
       if (result.ok && result.data) {

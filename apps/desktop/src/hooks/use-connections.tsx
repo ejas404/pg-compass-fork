@@ -11,6 +11,7 @@ import type {
   ConnectionConfig,
   ConnectionInput,
   DatabaseSchema,
+  SchemaTreeOptions,
 } from '@/shared/types/connection';
 
 interface ConnectionContextValue {
@@ -29,7 +30,10 @@ interface ConnectionContextValue {
   /** Test a connection. Returns true if successful, or an error string. */
   testConnection: (id: string) => Promise<{ ok: boolean; error?: string }>;
   /** Fetch schemas and tables for a connected database. */
-  getSchemaTree: (id: string) => Promise<{ ok: boolean; data?: DatabaseSchema[]; error?: string }>;
+  getSchemaTree: (
+    id: string,
+    options?: SchemaTreeOptions,
+  ) => Promise<{ ok: boolean; data?: DatabaseSchema[]; error?: string }>;
 }
 
 const ConnectionContext = createContext<ConnectionContextValue | null>(null);
@@ -106,8 +110,12 @@ export function ConnectionProvider({ children }: Readonly<{ children: ReactNode 
   const getSchemaTree = useCallback(
     async (
       id: string,
+      options?: SchemaTreeOptions,
     ): Promise<{ ok: boolean; data?: DatabaseSchema[]; error?: string }> => {
-      const result = await globalThis.window.connectionApi.getSchemaTree(id);
+      const result = await globalThis.window.connectionApi.getSchemaTree(
+        id,
+        options,
+      );
       if (result.success && result.data) return { ok: true, data: result.data };
       return { ok: false, error: result.error };
     },

@@ -62,6 +62,10 @@ export interface DatabaseSchema {
   tables: string[];
 }
 
+export interface SchemaTreeOptions {
+  includeInternalSchemas?: boolean;
+}
+
 /** IPC channel names for connection management. */
 export const ConnectionChannels = {
   GET_ALL: 'connections:get-all',

@@ -2,7 +2,12 @@ import type {
   ConnectionConfig,
   ConnectionInput,
   DatabaseSchema,
+  SchemaTreeOptions,
 } from './shared/types/connection';
+import type {
+  AppSettings,
+  AppSettingsPatch,
+} from './shared/types/settings';
 
 export interface IpcResult<T> {
   success: boolean;
@@ -18,11 +23,20 @@ interface ConnectionApi {
   delete(id: string): Promise<IpcResult<boolean>>;
   toggleFavourite(id: string): Promise<IpcResult<ConnectionConfig>>;
   test(id: string): Promise<IpcResult<boolean>>;
-  getSchemaTree(id: string): Promise<IpcResult<DatabaseSchema[]>>;
+  getSchemaTree(
+    id: string,
+    options?: SchemaTreeOptions,
+  ): Promise<IpcResult<DatabaseSchema[]>>;
+}
+
+interface SettingsApi {
+  get(): Promise<IpcResult<AppSettings>>;
+  update(patch: AppSettingsPatch): Promise<IpcResult<AppSettings>>;
 }
 
 declare global {
   interface Window {
     connectionApi: ConnectionApi;
+    settingsApi: SettingsApi;
   }
 }

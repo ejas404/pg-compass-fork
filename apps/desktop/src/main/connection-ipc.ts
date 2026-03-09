@@ -5,6 +5,7 @@ import type {
   ConnectionConfig,
   ConnectionInput,
   DatabaseSchema,
+  SchemaTreeOptions,
 } from '../shared/types/connection';
 import {
   getAllConnections,
@@ -53,18 +54,46 @@ interface PgSchemaRow {
   schema_name: string;
 }
 
-async function getSchemaTree(connection: ConnectionConfig): Promise<DatabaseSchema[]> {
+function getSchemaFilterSql(
+  includeInternalSchemas: boolean,
+  column: string,
+): string {
+  if (includeInternalSchemas) {
+    return '';
+  }
+
+  return `
+      AND ${column} NOT IN ('pg_catalog', 'information_schema')
+      AND ${column} NOT LIKE 'pg_toast%'
+      AND ${column} NOT LIKE 'pg_temp%'
+    `;
+}
+
+async function getSchemaTree(
+  connection: ConnectionConfig,
+  options?: SchemaTreeOptions,
+): Promise<DatabaseSchema[]> {
   const pgConfig = buildPgConfig(connection);
   const client = new Client(pgConfig);
+  const includeInternalSchemas = options?.includeInternalSchemas ?? false;
 
   try {
     await client.connect();
 
+    const schemaFilterSql = getSchemaFilterSql(
+      includeInternalSchemas,
+      'schema_name',
+    );
+    const tableFilterSql = getSchemaFilterSql(
+      includeInternalSchemas,
+      'schemaname',
+    );
+
     const schemaResult = await client.query<PgSchemaRow>(`
       SELECT schema_name
       FROM information_schema.schemata
-      WHERE schema_name NOT IN ('pg_catalog', 'information_schema')
-        AND schema_name NOT LIKE 'pg_toast%'
+      WHERE 1 = 1
+      ${schemaFilterSql}
       ORDER BY schema_name
     `);
 
@@ -73,8 +102,8 @@ async function getSchemaTree(connection: ConnectionConfig): Promise<DatabaseSche
         schemaname AS schema_name,
         tablename AS table_name
       FROM pg_tables
-      WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
-        AND schemaname NOT LIKE 'pg_toast%'
+      WHERE 1 = 1
+      ${tableFilterSql}
       ORDER BY schemaname, tablename
     `);
 
@@ -181,15 +210,18 @@ export function registerConnectionHandlers(): void {
     }
   });
 
-  ipcMain.handle(ConnectionChannels.GET_SCHEMA_TREE, async (_event, id: string) => {
+  ipcMain.handle(
+    ConnectionChannels.GET_SCHEMA_TREE,
+    async (_event, id: string, options?: SchemaTreeOptions) => {
     try {
       const connection = getConnectionById(id);
       if (!connection) return { success: false, error: 'Connection not found.' };
 
-      const schemas = await getSchemaTree(connection);
+      const schemas = await getSchemaTree(connection, options);
       return { success: true, data: schemas };
     } catch (err) {
       return { success: false, error: (err as Error).message };
     }
-  });
+    },
+  );
 }

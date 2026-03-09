@@ -3,11 +3,17 @@
 
 import { contextBridge, ipcRenderer } from 'electron';
 import { ConnectionChannels } from './shared/types/connection';
+import { SettingsChannels } from './shared/types/settings';
 import type {
   ConnectionConfig,
   ConnectionInput,
   DatabaseSchema,
+  SchemaTreeOptions,
 } from './shared/types/connection';
+import type {
+  AppSettings,
+  AppSettingsPatch,
+} from './shared/types/settings';
 
 /** IPC result wrapper. */
 export interface IpcResult<T> {
@@ -38,8 +44,20 @@ const connectionApi = {
   test: (id: string): Promise<IpcResult<boolean>> =>
     ipcRenderer.invoke(ConnectionChannels.TEST, id),
 
-  getSchemaTree: (id: string): Promise<IpcResult<DatabaseSchema[]>> =>
-    ipcRenderer.invoke(ConnectionChannels.GET_SCHEMA_TREE, id),
+  getSchemaTree: (
+    id: string,
+    options?: SchemaTreeOptions,
+  ): Promise<IpcResult<DatabaseSchema[]>> =>
+    ipcRenderer.invoke(ConnectionChannels.GET_SCHEMA_TREE, id, options),
+};
+
+const settingsApi = {
+  get: (): Promise<IpcResult<AppSettings>> =>
+    ipcRenderer.invoke(SettingsChannels.GET),
+
+  update: (patch: AppSettingsPatch): Promise<IpcResult<AppSettings>> =>
+    ipcRenderer.invoke(SettingsChannels.UPDATE, patch),
 };
 
 contextBridge.exposeInMainWorld('connectionApi', connectionApi);
+contextBridge.exposeInMainWorld('settingsApi', settingsApi);

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Database, Plus } from 'lucide-react';
+import { Database, Plus, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -11,10 +11,12 @@ import {
 import { useConnections } from '@/hooks/use-connections';
 import { ConnectionItem } from '@/components/connections/ConnectionItem';
 import { ConnectionFormDialog } from '@/components/connections/ConnectionFormDialog';
+import { SettingsDialog } from '@/components/settings/SettingsDialog';
 import type { ConnectionConfig } from '@/shared/types/connection';
 
 export function Sidebar() {
   const [formOpen, setFormOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [editingConnection, setEditingConnection] = useState<
     ConnectionConfig | undefined
   >(undefined);
@@ -32,7 +34,7 @@ export function Sidebar() {
   return (
     <>
       <aside className="flex h-full min-h-0 w-64 min-w-64 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
-        <SidebarHeader />
+        <SidebarHeader onOpenSettings={() => setSettingsOpen(true)} />
         <Separator className="bg-sidebar-border" />
         <SidebarContent onEdit={handleEdit} />
         <Separator className="bg-sidebar-border" />
@@ -44,15 +46,38 @@ export function Sidebar() {
         onOpenChange={setFormOpen}
         editConnection={editingConnection}
       />
+
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </>
   );
 }
 
-function SidebarHeader() {
+function SidebarHeader({
+  onOpenSettings,
+}: Readonly<{
+  onOpenSettings: () => void;
+}>) {
   return (
     <div className="flex items-center gap-2 px-4 py-3">
       <Database className="size-4 text-sidebar-primary" />
-      <h1 className="text-sm font-semibold tracking-tight">PG Compass</h1>
+      <h1 className="flex-1 text-sm font-semibold tracking-tight">PG Compass</h1>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Open settings"
+            onClick={onOpenSettings}
+          >
+            <Settings className="size-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          <p>Settings</p>
+        </TooltipContent>
+      </Tooltip>
     </div>
   );
 }
