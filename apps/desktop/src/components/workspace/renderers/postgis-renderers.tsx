@@ -1,5 +1,6 @@
 import { stringify } from "@/lib/utils";
 import { typeRegistry, type TypeRenderer } from "./type-registry";
+import { JSX } from "react";
 
 function buildMapUrl(lat: number, lon: number): string {
   return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}&zoom=15`;
