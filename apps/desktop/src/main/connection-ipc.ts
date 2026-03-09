@@ -2,7 +2,6 @@ import { ipcMain } from 'electron';
 import { Client } from 'pg';
 import { ConnectionChannels } from '../shared/types/connection';
 import type {
-  ConnectionConfig,
   ConnectionInput,
   DatabaseSchema,
   SchemaTreeOptions,
@@ -16,35 +15,7 @@ import {
   deleteConnection,
   toggleFavourite,
 } from './connection-store';
-
-/** Build a pg Client config from a ConnectionConfig. */
-function buildPgConfig(connection: ConnectionConfig) {
-  if (connection.mode === 'uri' && connection.uri) {
-    return { connectionString: connection.uri };
-  }
-
-  const fields = connection.fields;
-  if (!fields) throw new Error('Connection fields are required when mode is "fields".');
-
-  const config: Record<string, unknown> = {
-    host: fields.host,
-    port: fields.port,
-    database: fields.database,
-    user: fields.user,
-    password: fields.password,
-  };
-
-  if (connection.ssl?.enabled) {
-    config.ssl = {
-      rejectUnauthorized: connection.ssl.rejectUnauthorized ?? true,
-      ...(connection.ssl.ca ? { ca: connection.ssl.ca } : {}),
-      ...(connection.ssl.cert ? { cert: connection.ssl.cert } : {}),
-      ...(connection.ssl.key ? { key: connection.ssl.key } : {}),
-    };
-  }
-
-  return config;
-}
+import { buildPgConfig, withPoolClient, destroyPool } from './pg-utils';
 
 interface PgTableRow {
   schema_name: string;
@@ -91,16 +62,12 @@ function getSchemaFilterSql(
 }
 
 async function getSchemaTree(
-  connection: ConnectionConfig,
+  connectionId: string,
   options?: SchemaTreeOptions,
 ): Promise<DatabaseSchema[]> {
-  const pgConfig = buildPgConfig(connection);
-  const client = new Client(pgConfig);
   const includeInternalSchemas = options?.includeInternalSchemas ?? false;
 
-  try {
-    await client.connect();
-
+  return withPoolClient(connectionId, async (client) => {
     const schemaFilterSql = getSchemaFilterSql(
       includeInternalSchemas,
       'schema_name',
@@ -172,13 +139,7 @@ async function getSchemaTree(
       tables,
       tableStats: statsMap.get(name) ?? {},
     }));
-  } finally {
-    try {
-      await client.end();
-    } catch {
-      // Ignore client shutdown errors so the original query error is preserved.
-    }
-  }
+  });
 }
 
 /** Register all connection-related IPC handlers. */
@@ -210,8 +171,9 @@ export function registerConnectionHandlers(): void {
     }
   });
 
-  ipcMain.handle(ConnectionChannels.UPDATE, (_event, id: string, input: ConnectionInput) => {
+  ipcMain.handle(ConnectionChannels.UPDATE, async (_event, id: string, input: ConnectionInput) => {
     try {
+      await destroyPool(id);
       const connection = updateConnection(id, input);
       if (!connection) return { success: false, error: 'Connection not found.' };
       return { success: true, data: connection };
@@ -220,8 +182,9 @@ export function registerConnectionHandlers(): void {
     }
   });
 
-  ipcMain.handle(ConnectionChannels.DELETE, (_event, id: string) => {
+  ipcMain.handle(ConnectionChannels.DELETE, async (_event, id: string) => {
     try {
+      await destroyPool(id);
       const deleted = deleteConnection(id);
       if (!deleted) return { success: false, error: 'Connection not found.' };
       return { success: true, data: true };
@@ -262,10 +225,7 @@ export function registerConnectionHandlers(): void {
     ConnectionChannels.GET_SCHEMA_TREE,
     async (_event, id: string, options?: SchemaTreeOptions) => {
     try {
-      const connection = getConnectionById(id);
-      if (!connection) return { success: false, error: 'Connection not found.' };
-
-      const schemas = await getSchemaTree(connection, options);
+      const schemas = await getSchemaTree(id, options);
       return { success: true, data: schemas };
     } catch (err) {
       return { success: false, error: (err as Error).message };

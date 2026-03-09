@@ -6,6 +6,7 @@ import {
   Folder,
   Loader2,
   Plug,
+  PlugZap,
   RefreshCw,
   Star,
   Table2,
@@ -265,6 +266,13 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
     setExpandedSchemas({});
   }
 
+  function handleDisconnect() {
+    setConnected(false);
+    setExpanded(false);
+    setExpandedSchemas({});
+    toast.info(`Disconnected from "${connection.label}"`);
+  }
+
   return (
     <div className="group/connection flex flex-col">
       {/* Connection row */}
@@ -377,6 +385,12 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
                   <RefreshCw className="mr-2 size-3" />
                   Refresh
                 </DropdownMenuItem>
+                {connected && (
+                  <DropdownMenuItem onClick={handleDisconnect}>
+                    <PlugZap className="mr-2 size-3" />
+                    Disconnect
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"

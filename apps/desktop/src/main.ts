@@ -4,6 +4,7 @@ import started from 'electron-squirrel-startup';
 import { registerConnectionHandlers } from './main/connection-ipc';
 import { registerSettingsHandlers } from './main/settings-ipc';
 import { registerTableDataHandlers } from './main/table-data-ipc';
+import { destroyAllPools } from './main/pg-utils';
 import { getSettings } from './main/settings-store';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -77,6 +78,10 @@ const createWindow = () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', createWindow);
+
+app.on('will-quit', () => {
+  destroyAllPools();
+});
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits

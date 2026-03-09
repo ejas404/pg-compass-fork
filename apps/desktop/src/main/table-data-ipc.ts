@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import { Client } from 'pg';
+import type { PoolClient } from 'pg';
 import { TableDataChannels } from '../shared/types/table-data';
 import type {
   ColumnInfo,
@@ -11,8 +11,7 @@ import type {
   TableMetaParams,
   TableRowsResult,
 } from '../shared/types/table-data';
-import type { ConnectionConfig } from '../shared/types/connection';
-import { getConnectionById } from './connection-store';
+import { quoteIdent, withPoolClient } from './pg-utils';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -32,67 +31,9 @@ function ensureArray(value: unknown): string[] {
   return [];
 }
 
-function buildPgConfig(connection: ConnectionConfig) {
-  if (connection.mode === 'uri' && connection.uri) {
-    return { connectionString: connection.uri };
-  }
-
-  const fields = connection.fields;
-  if (!fields) throw new Error('Connection fields are required when mode is "fields".');
-
-  const config: Record<string, unknown> = {
-    host: fields.host,
-    port: fields.port,
-    database: fields.database,
-    user: fields.user,
-    password: fields.password,
-  };
-
-  if (connection.ssl?.enabled) {
-    config.ssl = {
-      rejectUnauthorized: connection.ssl.rejectUnauthorized ?? true,
-      ...(connection.ssl.ca ? { ca: connection.ssl.ca } : {}),
-      ...(connection.ssl.cert ? { cert: connection.ssl.cert } : {}),
-      ...(connection.ssl.key ? { key: connection.ssl.key } : {}),
-    };
-  }
-
-  return config;
-}
-
-function resolveConnection(connectionId: string): ConnectionConfig {
-  const connection = getConnectionById(connectionId);
-  if (!connection) throw new Error('Connection not found.');
-  return connection;
-}
-
-/** Quote a PostgreSQL identifier to prevent SQL injection in identifiers. */
-function quoteIdent(name: string): string {
-  return `"${name.replaceAll('"', '""')}"`;
-}
-
-async function withClient<T>(
-  connectionId: string,
-  fn: (client: Client) => Promise<T>,
-): Promise<T> {
-  const connection = resolveConnection(connectionId);
-  const client = new Client(buildPgConfig(connection));
-
-  try {
-    await client.connect();
-    return await fn(client);
-  } finally {
-    try {
-      await client.end();
-    } catch {
-      // Ignore shutdown errors so the original error propagates.
-    }
-  }
-}
-
 /** Build a type-name lookup from pg_type for a set of OIDs. */
 async function buildTypeMap(
-  client: Client,
+  client: PoolClient,
   oids: number[],
 ): Promise<Map<number, string>> {
   if (oids.length === 0) return new Map();
@@ -115,7 +56,7 @@ async function buildTypeMap(
 // ---------------------------------------------------------------------------
 
 async function getRows(params: GetRowsParams): Promise<TableRowsResult> {
-  return withClient(params.connectionId, async (client) => {
+  return withPoolClient(params.connectionId, async (client) => {
     const qualifiedTable = `${quoteIdent(params.schema)}.${quoteIdent(params.table)}`;
     const whereFragment = params.whereClause?.trim()
       ? `WHERE ${params.whereClause}`
@@ -167,7 +108,7 @@ interface PgColumnRow {
 }
 
 async function getStructure(params: TableMetaParams): Promise<ColumnStructure[]> {
-  return withClient(params.connectionId, async (client) => {
+  return withPoolClient(params.connectionId, async (client) => {
     const colResult = await client.query<PgColumnRow>(
       `SELECT
         column_name,
@@ -229,7 +170,7 @@ interface PgIndexRow {
 }
 
 async function getIndexes(params: TableMetaParams): Promise<IndexInfo[]> {
-  return withClient(params.connectionId, async (client) => {
+  return withPoolClient(params.connectionId, async (client) => {
     const result = await client.query<PgIndexRow>(
       `SELECT
         i.indexname AS index_name,
@@ -283,7 +224,7 @@ interface PgConstraintRow {
 }
 
 async function getConstraints(params: TableMetaParams): Promise<ConstraintInfo[]> {
-  return withClient(params.connectionId, async (client) => {
+  return withPoolClient(params.connectionId, async (client) => {
     const result = await client.query<PgConstraintRow>(
       `SELECT
         tc.conname AS constraint_name,
@@ -370,7 +311,7 @@ async function executeQuery(params: ExecuteQueryParams): Promise<TableRowsResult
     throw new Error('Only SELECT statements (including CTEs with WITH) are allowed.');
   }
 
-  return withClient(params.connectionId, async (client) => {
+  return withPoolClient(params.connectionId, async (client) => {
     // Set the transaction to read-only for extra safety
     await client.query('BEGIN READ ONLY');
 

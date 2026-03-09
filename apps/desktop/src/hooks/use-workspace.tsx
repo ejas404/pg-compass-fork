@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -118,10 +119,16 @@ export function WorkspaceProvider({ children }: Readonly<{ children: ReactNode }
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [schemaCache, setSchemaCache] = useState<Record<string, DatabaseSchema[]>>({});
 
+  const activeTabIdRef = useRef(activeTabId);
+  activeTabIdRef.current = activeTabId;
+
+  const schemaCacheRef = useRef(schemaCache);
+  schemaCacheRef.current = schemaCache;
+
   const refreshSchemaTree = useCallback(
     async (connectionId: string, force = false): Promise<DatabaseSchema[]> => {
-      if (!force && schemaCache[connectionId]) {
-        return schemaCache[connectionId];
+      if (!force && schemaCacheRef.current[connectionId]) {
+        return schemaCacheRef.current[connectionId];
       }
 
       const result = await getSchemaTree(connectionId, {
@@ -141,7 +148,7 @@ export function WorkspaceProvider({ children }: Readonly<{ children: ReactNode }
       }));
       return result.data;
     },
-    [getSchemaTree, schemaCache, settings.general.hideInternalSchemas],
+    [getSchemaTree, settings.general.hideInternalSchemas],
   );
 
   const setActiveTab = useCallback((id: string) => {
@@ -152,14 +159,14 @@ export function WorkspaceProvider({ children }: Readonly<{ children: ReactNode }
     (id: string) => {
       setTabs((prevTabs) => {
         const nextTabs = prevTabs.filter((tab) => tab.id !== id);
-        if (activeTabId === id) {
+        if (activeTabIdRef.current === id) {
           const fallback = nextTabs.at(-1);
           setActiveTabId(fallback?.id ?? null);
         }
         return nextTabs;
       });
     },
-    [activeTabId],
+    [],
   );
 
   const openSchemaViewer = useCallback(
@@ -311,8 +318,9 @@ export function WorkspaceProvider({ children }: Readonly<{ children: ReactNode }
           return prevTabs;
         }
 
-        const activeIndex = activeTabId
-          ? prevTabs.findIndex((tab) => tab.id === activeTabId)
+        const currentActiveId = activeTabIdRef.current;
+        const activeIndex = currentActiveId
+          ? prevTabs.findIndex((tab) => tab.id === currentActiveId)
           : -1;
         const fallbackColor = activeIndex >= 0 ? prevTabs[activeIndex]?.color : undefined;
         const nextTab = buildWorkspaceTab(view, fallbackColor);
@@ -326,7 +334,7 @@ export function WorkspaceProvider({ children }: Readonly<{ children: ReactNode }
 
       setActiveTabId(targetTabId);
     },
-    [activeTabId, refreshSchemaTree],
+    [refreshSchemaTree],
   );
 
   const value = useMemo(
