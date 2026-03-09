@@ -18,6 +18,20 @@ import { getConnectionById } from './connection-store';
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * PostgreSQL ARRAY subqueries may arrive as a string like "{a,b}" rather than
+ * a JS array, depending on the `pg` type-parser configuration.  This helper
+ * normalises the value to a proper string array.
+ */
+function ensureArray(value: unknown): string[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    const inner = value.replace(/^\{|\}$/g, '');
+    return inner === '' ? [] : inner.split(',').map((s) => s.replace(/^"|"$/g, ''));
+  }
+  return [];
+}
+
 function buildPgConfig(connection: ConnectionConfig) {
   if (connection.mode === 'uri' && connection.uri) {
     return { connectionString: connection.uri };
@@ -329,12 +343,12 @@ async function getConstraints(params: TableMetaParams): Promise<ConstraintInfo[]
     return result.rows.map((row) => ({
       name: row.constraint_name,
       type: row.constraint_type as ConstraintInfo['type'],
-      columns: row.column_names,
+      columns: ensureArray(row.column_names),
       definition: row.definition,
       foreignTable: row.foreign_table_name
         ? `${row.foreign_table_schema}.${row.foreign_table_name}`
         : null,
-      foreignColumns: row.foreign_column_names,
+      foreignColumns: ensureArray(row.foreign_column_names),
       checkClause: row.check_clause,
     }));
   });
