@@ -1,11 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { typeRegistry, type TypeRenderer } from './type-registry';
+import { stringify } from '@/lib/utils';
 
-/** Safely convert a value to a display string. */
-function stringify(value: unknown): string {
-  if (typeof value === 'object' && value !== null) return JSON.stringify(value);
-  return String(value as string | number | boolean);
-}
 
 // ---------------------------------------------------------------------------
 // Null renderer
