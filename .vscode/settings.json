@@ -3,5 +3,13 @@
     {
       "mode": "auto"
     }
-  ]
+  ],
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/bower_components": true,
+    "**/*.code-search": true,
+    "**/.agent/**": true,
+    "**/.agents/**": true,
+    "**/.claude/**": true
+  }
 }
