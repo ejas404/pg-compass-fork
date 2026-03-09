@@ -1,0 +1,866 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const features = [
+  {
+    title: 'Zero Configuration',
+    description: 'Paste a connection string and start exploring immediately. No setup files, no plugin installs, no configuration ceremony.',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>`,
+  },
+  {
+    title: 'Schema-First Navigation',
+    description: 'Schemas are first-class citizens. Browse connections, expand schemas, and drill into tables from a clean, collapsible sidebar tree.',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h6v6H3zM15 3h6v6h-6zM15 15h6v6h-6zM3 15h6v6H3z"/><path d="M9 6h6M6 9v6M18 9v6M9 18h6"/></svg>`,
+  },
+  {
+    title: 'Five-Tab Table Viewer',
+    description: 'Data, Structure, Indexes, Constraints, Query — everything you need to understand a table in one focused interface. Export as CSV or JSON.',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>`,
+  },
+  {
+    title: 'Extension-Aware Rendering',
+    description: 'Understands pgvector embeddings and PostGIS geometry. Data is rendered meaningfully — not as raw binary blobs or unreadable values.',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
+  },
+];
+---
+
+<Layout>
+
+  <!-- ============================================================
+       NAVIGATION
+  ============================================================= -->
+  <nav class="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
+    <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+
+      <a href="/" class="flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-md bg-card border border-border flex items-center justify-center text-foreground">
+          <!-- Compass-inspired logo mark -->
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.25"/>
+            <circle cx="7" cy="7" r="1.5" fill="currentColor"/>
+            <line x1="7" y1="1.5" x2="7" y2="4.5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
+            <line x1="7" y1="9.5" x2="7" y2="12.5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
+            <line x1="1.5" y1="7" x2="4.5" y2="7" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
+            <line x1="9.5" y1="7" x2="12.5" y2="7" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="font-semibold text-sm text-foreground">PG Compass</span>
+        <span class="hidden sm:inline text-xs text-muted-foreground border border-border rounded px-1.5 py-0.5 font-mono leading-none">v0.1</span>
+      </a>
+
+      <div class="flex items-center gap-5">
+        <a href="#features" class="hidden sm:block text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
+        <a href="#preview" class="hidden sm:block text-sm text-muted-foreground hover:text-foreground transition-colors">Preview</a>
+        <a
+          href="https://github.com/waterrmalann/pg-compass"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/>
+          </svg>
+          <span class="hidden sm:inline">GitHub</span>
+        </a>
+      </div>
+
+    </div>
+  </nav>
+
+
+  <main>
+
+    <!-- ============================================================
+         HERO
+    ============================================================= -->
+    <section class="hero-section relative min-h-screen flex flex-col items-center justify-center pt-14 overflow-hidden">
+
+      <!-- Dot grid background -->
+      <div class="hero-grid absolute inset-0 pointer-events-none" aria-hidden="true"></div>
+
+      <!-- Accent glow -->
+      <div class="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] rounded-full bg-accent/[0.07] blur-[100px] pointer-events-none" aria-hidden="true"></div>
+
+      <div class="relative z-10 max-w-4xl mx-auto px-6 text-center">
+
+        <!-- Eyebrow badge -->
+        <div class="inline-flex items-center gap-2 border border-border rounded-full px-3 py-1 mb-8 text-xs font-mono text-muted-foreground">
+          <span class="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0"></span>
+          PostgreSQL Database Explorer
+        </div>
+
+        <!-- Headline -->
+        <h1 class="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight leading-[1.04] mb-6">
+          Browse your database.<br>
+          <span class="text-muted-foreground">Not fight your tools.</span>
+        </h1>
+
+        <!-- Description -->
+        <p class="text-lg text-muted-foreground max-w-xl mx-auto mb-10 leading-relaxed">
+          PG Compass is a fast, minimal database viewer for PostgreSQL. Connect, navigate schemas, inspect tables, and run queries — without the overhead of a full IDE.
+        </p>
+
+        <!-- CTAs -->
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-3 mb-12">
+          <a href="#download" class="btn-primary inline-flex items-center gap-2 px-6 py-3 rounded-md font-medium text-sm">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download for Windows
+          </a>
+          <a
+            href="https://github.com/waterrmalann/pg-compass"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn-secondary inline-flex items-center gap-2 px-6 py-3 rounded-md font-medium text-sm"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/>
+            </svg>
+            View on GitHub
+          </a>
+        </div>
+
+        <!-- Connection string hint -->
+        <div class="inline-flex flex-wrap items-center justify-center gap-0 bg-card border border-border rounded-lg px-4 py-2.5 text-sm font-mono">
+          <span class="text-muted-foreground mr-2">$</span>
+          <span class="text-accent">postgresql://</span><span class="text-muted-foreground">user:pass@localhost:5432/</span><span class="text-foreground">mydb</span>
+          <span class="flex items-center gap-1.5 text-xs ml-4 text-[#4ade80]">
+            <span class="w-1.5 h-1.5 rounded-full bg-[#4ade80]"></span>
+            Connected
+          </span>
+        </div>
+
+      </div>
+
+      <!-- Scroll nudge -->
+      <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-muted-foreground/50" aria-hidden="true">
+        <div class="w-5 h-8 rounded-full border border-border flex items-start justify-center pt-1.5">
+          <div class="scroll-dot w-1 h-1.5 rounded-full bg-muted-foreground/50"></div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ============================================================
+         STATS STRIP
+    ============================================================= -->
+    <div class="border-y border-border bg-card/40">
+      <div class="max-w-6xl mx-auto px-6 py-4 flex flex-wrap items-center justify-center gap-6 sm:gap-10">
+
+        <div class="flex items-center gap-2 text-sm text-muted-foreground">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+          </svg>
+          Open Source
+        </div>
+
+        <div class="hidden sm:block w-px h-4 bg-border"></div>
+
+        <div class="text-sm text-muted-foreground">MIT License</div>
+
+        <div class="hidden sm:block w-px h-4 bg-border"></div>
+
+        <div class="flex items-center gap-2 text-sm text-muted-foreground">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+          Windows · macOS · Linux
+        </div>
+
+        <div class="hidden sm:block w-px h-4 bg-border"></div>
+
+        <div class="flex items-center gap-2 text-sm text-muted-foreground">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          No Telemetry
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- ============================================================
+         FEATURES
+    ============================================================= -->
+    <section id="features" class="py-24">
+      <div class="max-w-6xl mx-auto px-6">
+
+        <div class="max-w-2xl mb-16">
+          <span class="font-mono text-xs text-accent uppercase tracking-widest">Features</span>
+          <h2 class="text-4xl md:text-5xl font-bold tracking-tight mt-3 mb-4">
+            Everything you need.<br>Nothing you don't.
+          </h2>
+          <p class="text-lg text-muted-foreground">
+            Built for one purpose: helping developers quickly understand what's inside their database.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {features.map((f) => (
+            <div class="feature-card group p-6 rounded-lg border border-border bg-card transition-colors hover:border-border-strong hover:bg-card-hover">
+              <div class="w-10 h-10 rounded-md bg-background border border-border flex items-center justify-center mb-4 text-accent group-hover:border-border-strong transition-colors">
+                <Fragment set:html={f.icon} />
+              </div>
+              <h3 class="font-semibold text-base mb-2">{f.title}</h3>
+              <p class="text-sm text-muted-foreground leading-relaxed">{f.description}</p>
+            </div>
+          ))}
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- ============================================================
+         APP PREVIEW MOCK
+    ============================================================= -->
+    <section id="preview" class="py-24 border-t border-border">
+      <div class="max-w-6xl mx-auto px-6">
+
+        <div class="text-center max-w-2xl mx-auto mb-16">
+          <span class="font-mono text-xs text-accent uppercase tracking-widest">Interface</span>
+          <h2 class="text-4xl md:text-5xl font-bold tracking-tight mt-3 mb-4">See your database clearly.</h2>
+          <p class="text-lg text-muted-foreground">
+            A focused, no-bloat interface built for speed. Every pixel earns its place.
+          </p>
+        </div>
+
+        <!-- The mock window -->
+        <div class="mock-wrapper">
+          <div class="mock-window">
+
+            <!-- OS title bar -->
+            <div class="mock-titlebar">
+              <div class="flex items-center gap-1.5">
+                <span class="traffic-dot" style="background:#ff5f57"></span>
+                <span class="traffic-dot" style="background:#febc2e"></span>
+                <span class="traffic-dot" style="background:#28c840"></span>
+              </div>
+              <span class="mock-app-title">PG Compass</span>
+              <div style="flex:1"></div>
+              <!-- Settings icon -->
+              <span class="mock-icon-btn" aria-hidden="true">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+              </span>
+            </div>
+
+            <!-- App body: sidebar + main -->
+            <div class="mock-body">
+
+              <!-- Sidebar -->
+              <aside class="mock-sidebar">
+                <div class="mock-sidebar-header">Connections</div>
+
+                <!-- Connection: production -->
+                <div class="mock-conn-row">
+                  <span class="mock-conn-indicator" style="background:#3b82f6"></span>
+                  <span class="mock-chevron">▾</span>
+                  <span class="mock-conn-label">production</span>
+                </div>
+                <div class="mock-schema-row">
+                  <span class="mock-chevron-sm">▾</span>
+                  <span>public</span>
+                </div>
+                <div class="mock-table-row active">
+                  <span class="mock-chevron-sm">▶</span>
+                  <span>users</span>
+                </div>
+                <div class="mock-table-row">
+                  <span class="mock-chevron-sm">▶</span>
+                  <span>posts</span>
+                </div>
+                <div class="mock-table-row">
+                  <span class="mock-chevron-sm">▶</span>
+                  <span>comments</span>
+                </div>
+                <div class="mock-table-row">
+                  <span class="mock-chevron-sm">▶</span>
+                  <span>tags</span>
+                </div>
+                <div class="mock-schema-row collapsed">
+                  <span class="mock-chevron-sm">▸</span>
+                  <span>auth</span>
+                </div>
+
+                <!-- Connection: local_dev -->
+                <div class="mock-conn-row" style="margin-top:6px">
+                  <span class="mock-conn-indicator" style="background:#22c55e"></span>
+                  <span class="mock-chevron">▸</span>
+                  <span class="mock-conn-label">local_dev</span>
+                </div>
+              </aside>
+
+              <!-- Main workspace -->
+              <div class="mock-main">
+
+                <!-- Workspace tab bar -->
+                <div class="mock-tab-bar">
+                  <div class="mock-tab active">
+                    <span class="mock-tab-indicator" style="background:#3b82f6"></span>
+                    users
+                    <span class="mock-tab-x">×</span>
+                  </div>
+                  <div class="mock-tab">
+                    posts
+                    <span class="mock-tab-x">×</span>
+                  </div>
+                </div>
+
+                <!-- Table viewer sub-tabs -->
+                <div class="mock-subtab-bar">
+                  <span class="mock-subtab active">Data</span>
+                  <span class="mock-subtab">Structure</span>
+                  <span class="mock-subtab">Indexes</span>
+                  <span class="mock-subtab">Constraints</span>
+                  <span class="mock-subtab">Query</span>
+                </div>
+
+                <!-- Data table -->
+                <div class="mock-data-area">
+                  <table class="mock-data-table">
+                    <thead>
+                      <tr>
+                        <th>id</th>
+                        <th>username</th>
+                        <th>email</th>
+                        <th class="hide-sm">created_at</th>
+                        <th>role</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr class="is-active">
+                        <td>1</td>
+                        <td>alice</td>
+                        <td>alice@example.com</td>
+                        <td class="hide-sm">2024-01-15 09:00</td>
+                        <td><span class="mock-badge admin">admin</span></td>
+                      </tr>
+                      <tr>
+                        <td>2</td>
+                        <td>bob</td>
+                        <td>bob@example.com</td>
+                        <td class="hide-sm">2024-01-16 11:23</td>
+                        <td><span class="mock-badge">user</span></td>
+                      </tr>
+                      <tr>
+                        <td>3</td>
+                        <td>charlie</td>
+                        <td>charlie@example.com</td>
+                        <td class="hide-sm">2024-01-17 14:05</td>
+                        <td><span class="mock-badge">user</span></td>
+                      </tr>
+                      <tr>
+                        <td>4</td>
+                        <td>dave</td>
+                        <td>dave@example.com</td>
+                        <td class="hide-sm">2024-01-18 08:41</td>
+                        <td><span class="mock-badge">user</span></td>
+                      </tr>
+                      <tr>
+                        <td>5</td>
+                        <td>eve</td>
+                        <td>eve@example.com</td>
+                        <td class="hide-sm">2024-01-19 16:30</td>
+                        <td><span class="mock-badge">user</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Pagination footer -->
+                <div class="mock-pagination">
+                  <span class="mock-pagination-label">1–25 of 2,847 rows</span>
+                  <div class="mock-pagination-nav">
+                    <button aria-label="Previous page">‹</button>
+                    <span>1 / 114</span>
+                    <button aria-label="Next page">›</button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- ============================================================
+         DOWNLOAD CTA
+    ============================================================= -->
+    <section id="download" class="py-24 border-t border-border">
+      <div class="max-w-3xl mx-auto px-6 text-center">
+
+        <h2 class="text-4xl md:text-5xl font-bold tracking-tight mb-4">
+          Ready to explore?
+        </h2>
+        <p class="text-lg text-muted-foreground mb-10">
+          Connect to your first database in under 30 seconds. Free, open source, no account required.
+        </p>
+
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6">
+          <a href="#" class="btn-primary inline-flex items-center gap-2 px-7 py-3.5 rounded-md font-medium">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download for Windows
+          </a>
+          <a href="#" class="btn-secondary inline-flex items-center gap-2 px-7 py-3.5 rounded-md font-medium">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.54 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/>
+            </svg>
+            Download for macOS
+          </a>
+        </div>
+
+        <p class="text-xs text-muted-foreground">
+          Also available on Linux &nbsp;·&nbsp; Free &nbsp;·&nbsp; Open Source &nbsp;·&nbsp; MIT License
+        </p>
+
+      </div>
+    </section>
+
+  </main>
+
+
+  <!-- ============================================================
+       FOOTER
+  ============================================================= -->
+  <footer class="border-t border-border py-8">
+    <div class="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+
+      <div class="flex items-center gap-2 text-sm text-muted-foreground">
+        <span class="font-semibold text-foreground">PG Compass</span>
+        <span aria-hidden="true">·</span>
+        <span>MIT License</span>
+        <span aria-hidden="true">·</span>
+        <span>© 2025</span>
+      </div>
+
+      <div class="flex items-center gap-6">
+        <a
+          href="https://github.com/waterrmalann/pg-compass"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/>
+          </svg>
+          GitHub
+        </a>
+        <a href="https://github.com/waterrmalann/pg-compass/releases" target="_blank" rel="noopener noreferrer" class="text-sm text-muted-foreground hover:text-foreground transition-colors">Releases</a>
+        <a href="https://github.com/waterrmalann/pg-compass/issues" target="_blank" rel="noopener noreferrer" class="text-sm text-muted-foreground hover:text-foreground transition-colors">Issues</a>
+      </div>
+
+    </div>
+  </footer>
+
+</Layout>
+
+
+<style>
+  /* ── Buttons ─────────────────────────────────────────────────── */
+  .btn-primary {
+    background-color: var(--accent);
+    color: #fff;
+    transition: background-color 0.15s;
+  }
+  .btn-primary:hover {
+    background-color: var(--accent-hover);
+  }
+
+  .btn-secondary {
+    border: 1px solid var(--border);
+    color: var(--muted-foreground);
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .btn-secondary:hover {
+    color: var(--foreground);
+    border-color: var(--border-strong);
+  }
+
+  /* ── Hero ─────────────────────────────────────────────────────── */
+  .hero-grid {
+    background-image: radial-gradient(circle, oklch(1 0 0 / 0.04) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  .scroll-dot {
+    animation: scroll-pulse 2.2s ease-in-out infinite;
+  }
+
+  @keyframes scroll-pulse {
+    0%, 100% { transform: translateY(0); opacity: 0.8; }
+    60%       { transform: translateY(14px); opacity: 0.2; }
+  }
+
+  /* ── App Mock Window ─────────────────────────────────────────── */
+  .mock-wrapper {
+    position: relative;
+  }
+
+  /* Accent glow behind the window */
+  .mock-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 14px;
+    background: linear-gradient(180deg, oklch(0.488 0.243 264.376 / 0.15) 0%, transparent 60%);
+    filter: blur(24px);
+    z-index: -1;
+  }
+
+  .mock-window {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid oklch(1 0 0 / 12%);
+    background: var(--background);
+    overflow: hidden;
+    box-shadow:
+      0 0 0 1px oklch(1 0 0 / 4%),
+      0 32px 80px oklch(0 0 0 / 0.55);
+    font-size: 12px;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+  }
+
+  /* Title bar */
+  .mock-titlebar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    height: 38px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .traffic-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  .mock-app-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted-foreground);
+    letter-spacing: 0.01em;
+  }
+
+  .mock-icon-btn {
+    color: var(--muted-foreground);
+    padding: 4px;
+    border-radius: 4px;
+    cursor: default;
+    opacity: 0.7;
+  }
+
+  /* App body layout */
+  .mock-body {
+    display: flex;
+    height: 430px;
+  }
+
+  /* ── Sidebar ─────────────────────────────── */
+  .mock-sidebar {
+    width: 188px;
+    min-width: 188px;
+    border-right: 1px solid var(--border);
+    background: var(--card);
+    overflow: hidden;
+    padding: 8px 0;
+    flex-shrink: 0;
+  }
+
+  .mock-sidebar-header {
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted-foreground);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 4px 12px 8px;
+  }
+
+  .mock-conn-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--foreground);
+    cursor: default;
+  }
+
+  .mock-conn-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .mock-chevron {
+    font-size: 10px;
+    color: var(--muted-foreground);
+    width: 10px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .mock-conn-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mock-schema-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px 3px 22px;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    color: var(--muted-foreground);
+    cursor: default;
+  }
+
+  .mock-schema-row.collapsed {
+    opacity: 0.5;
+  }
+
+  .mock-chevron-sm {
+    font-size: 9px;
+    width: 10px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .mock-table-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3.5px 10px 3.5px 34px;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    color: var(--muted-foreground);
+    cursor: default;
+  }
+
+  .mock-table-row.active {
+    background: var(--muted);
+    color: var(--foreground);
+  }
+
+  /* ── Main workspace ──────────────────────── */
+  .mock-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--background);
+    min-width: 0;
+  }
+
+  .mock-tab-bar {
+    display: flex;
+    align-items: flex-end;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    height: 38px;
+    padding: 0 4px;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+
+  .mock-tab {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 5px 5px 0 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 11.5px;
+    color: var(--muted-foreground);
+    cursor: default;
+    height: 30px;
+    border: 1px solid transparent;
+    border-bottom: none;
+  }
+
+  .mock-tab.active {
+    background: var(--background);
+    color: var(--foreground);
+    border-color: var(--border);
+  }
+
+  .mock-tab-indicator {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .mock-tab-x {
+    font-size: 13px;
+    line-height: 1;
+    color: var(--muted-foreground);
+    opacity: 0.6;
+  }
+
+  .mock-subtab-bar {
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    height: 36px;
+    border-bottom: 1px solid var(--border);
+    gap: 0;
+    flex-shrink: 0;
+  }
+
+  .mock-subtab {
+    padding: 0 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    color: var(--muted-foreground);
+    height: 36px;
+    display: flex;
+    align-items: center;
+    border-bottom: 2px solid transparent;
+    cursor: default;
+  }
+
+  .mock-subtab.active {
+    color: var(--foreground);
+    border-bottom-color: var(--accent);
+  }
+
+  /* Data table */
+  .mock-data-area {
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .mock-data-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  .mock-data-table th {
+    text-align: left;
+    padding: 7px 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted-foreground);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .mock-data-table td {
+    padding: 7px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--foreground);
+    border-bottom: 1px solid oklch(1 0 0 / 5%);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mock-data-table tr.is-active td {
+    background: oklch(0.269 0 0);
+  }
+
+  .mock-badge {
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: var(--muted);
+    color: var(--muted-foreground);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  .mock-badge.admin {
+    background: oklch(0.488 0.243 264.376 / 0.18);
+    color: oklch(0.65 0.2 264.376);
+    border-color: oklch(0.488 0.243 264.376 / 0.3);
+  }
+
+  /* Pagination */
+  .mock-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 12px;
+    border-top: 1px solid var(--border);
+    background: var(--card);
+    flex-shrink: 0;
+  }
+
+  .mock-pagination-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    color: var(--muted-foreground);
+  }
+
+  .mock-pagination-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    color: var(--muted-foreground);
+  }
+
+  .mock-pagination-nav button {
+    background: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+    color: var(--muted-foreground);
+    font-size: 13px;
+    line-height: 1;
+  }
+
+  /* Responsive: hide the created_at column on narrow screens */
+  @media (max-width: 640px) {
+    .mock-sidebar {
+      width: 130px;
+      min-width: 130px;
+    }
+
+    .mock-body {
+      height: 380px;
+    }
+
+    .hide-sm {
+      display: none;
+    }
+  }
+</style>
