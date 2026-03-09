@@ -1,11 +1,15 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
+import { registerConnectionHandlers } from './main/connection-ipc';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
   app.quit();
 }
+
+// Register IPC handlers before window creation.
+registerConnectionHandlers();
 
 const createWindow = () => {
   // Create the browser window.
