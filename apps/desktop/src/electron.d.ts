@@ -8,6 +8,15 @@ import type {
   AppSettings,
   AppSettingsPatch,
 } from './shared/types/settings';
+import type {
+  ColumnStructure,
+  ConstraintInfo,
+  ExecuteQueryParams,
+  GetRowsParams,
+  IndexInfo,
+  TableMetaParams,
+  TableRowsResult,
+} from './shared/types/table-data';
 
 export interface IpcResult<T> {
   success: boolean;
@@ -34,9 +43,18 @@ interface SettingsApi {
   update(patch: AppSettingsPatch): Promise<IpcResult<AppSettings>>;
 }
 
+interface TableDataApi {
+  getRows(params: GetRowsParams): Promise<IpcResult<TableRowsResult>>;
+  getStructure(params: TableMetaParams): Promise<IpcResult<ColumnStructure[]>>;
+  getIndexes(params: TableMetaParams): Promise<IpcResult<IndexInfo[]>>;
+  getConstraints(params: TableMetaParams): Promise<IpcResult<ConstraintInfo[]>>;
+  executeQuery(params: ExecuteQueryParams): Promise<IpcResult<TableRowsResult>>;
+}
+
 declare global {
   interface Window {
     connectionApi: ConnectionApi;
     settingsApi: SettingsApi;
+    tableDataApi: TableDataApi;
   }
 }

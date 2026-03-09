@@ -7,6 +7,7 @@ import { SchemaListViewer } from '@/components/workspace/schema-list-viewer';
 import { TableListViewer } from '@/components/workspace/table-list-viewer';
 import { TableDetailsViewer } from '@/components/workspace/table-details-viewer';
 import { ViewListViewer } from '@/components/workspace/view-list-viewer';
+import { ViewDetailsViewer } from '@/components/workspace/view-details-viewer';
 
 export function Workspace() {
   const { tabs, activeTabId, setActiveTab, closeTab } = useWorkspace();
@@ -129,6 +130,10 @@ function WorkspaceContent({
 
   if (activeTab.view.type === 'view-list') {
     return <ViewListViewer path={activeTab.view.path} />;
+  }
+
+  if (activeTab.view.type === 'view-details') {
+    return <ViewDetailsViewer path={activeTab.view.path} />;
   }
 
   return (

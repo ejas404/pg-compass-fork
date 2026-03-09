@@ -37,6 +37,10 @@ export type WorkspaceTabView =
   | {
       type: 'view-list';
       path: ViewListViewerPath;
+    }
+  | {
+      type: 'view-details';
+      path: ViewListViewerPath;
     };
 
 export interface WorkspaceTab {

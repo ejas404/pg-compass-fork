@@ -25,7 +25,7 @@ export function SchemaViewer({ path }: Readonly<SchemaViewerProps>) {
     schemaCache,
     refreshSchemaTree,
     openTableDetailsViewer,
-    openViewListViewer,
+    openViewDetailsViewer,
     navigateToView,
   } = useWorkspace();
   const [activeTab, setActiveTab] = useState('tables');
@@ -68,7 +68,7 @@ export function SchemaViewer({ path }: Readonly<SchemaViewerProps>) {
   }
 
   function handleOpenView(name: string) {
-    openViewListViewer({
+    openViewDetailsViewer({
       ...path,
       viewName: name,
     }).catch(() => undefined);

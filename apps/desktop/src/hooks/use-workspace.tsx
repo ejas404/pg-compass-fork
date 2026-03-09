@@ -30,6 +30,7 @@ interface WorkspaceContextValue {
   openTableListViewer: (path: TableListViewerPath, color?: string) => Promise<void>;
   openTableDetailsViewer: (path: TableListViewerPath, color?: string) => Promise<void>;
   openViewListViewer: (path: ViewListViewerPath, color?: string) => Promise<void>;
+  openViewDetailsViewer: (path: ViewListViewerPath, color?: string) => Promise<void>;
   navigateToView: (view: WorkspaceTabView) => Promise<void>;
   refreshSchemaTree: (connectionId: string, force?: boolean) => Promise<DatabaseSchema[]>;
 }
@@ -56,6 +57,10 @@ function buildViewListTabId(path: ViewListViewerPath): string {
   return `${path.connectionId}:view-list:${path.schemaName}:${path.viewName}`;
 }
 
+function buildViewDetailsTabId(path: ViewListViewerPath): string {
+  return `${path.connectionId}:view-details:${path.schemaName}:${path.viewName}`;
+}
+
 function buildTabId(view: WorkspaceTabView): string {
   if (view.type === 'schema-list') {
     return buildSchemaListTabId(view.path);
@@ -73,7 +78,11 @@ function buildTabId(view: WorkspaceTabView): string {
     return buildTableDetailsTabId(view.path);
   }
 
-  return buildViewListTabId(view.path);
+  if (view.type === 'view-list') {
+    return buildViewListTabId(view.path);
+  }
+
+  return buildViewDetailsTabId(view.path);
 }
 
 function buildTabTitle(view: WorkspaceTabView): string {
@@ -89,6 +98,7 @@ function buildTabTitle(view: WorkspaceTabView): string {
     return view.path.tableName;
   }
 
+  // view-list or view-details
   return view.path.viewName;
 }
 
@@ -267,6 +277,29 @@ export function WorkspaceProvider({ children }: Readonly<{ children: ReactNode }
     [refreshSchemaTree],
   );
 
+  const openViewDetailsViewer = useCallback(
+    async (path: ViewListViewerPath, color?: string) => {
+      await refreshSchemaTree(path.connectionId);
+
+      const nextTab = buildWorkspaceTab(
+        {
+          type: 'view-details',
+          path,
+        },
+        color,
+      );
+      setTabs((prev) => {
+        const existing = prev.find((tab) => tab.id === nextTab.id);
+        if (existing) {
+          return prev;
+        }
+        return [...prev, nextTab];
+      });
+      setActiveTabId(nextTab.id);
+    },
+    [refreshSchemaTree],
+  );
+
   const navigateToView = useCallback(
     async (view: WorkspaceTabView) => {
       await refreshSchemaTree(view.path.connectionId);
@@ -308,6 +341,7 @@ export function WorkspaceProvider({ children }: Readonly<{ children: ReactNode }
       openTableListViewer,
       openTableDetailsViewer,
       openViewListViewer,
+      openViewDetailsViewer,
       navigateToView,
       refreshSchemaTree,
     }),
@@ -322,6 +356,7 @@ export function WorkspaceProvider({ children }: Readonly<{ children: ReactNode }
       openTableListViewer,
       openTableDetailsViewer,
       openViewListViewer,
+      openViewDetailsViewer,
       navigateToView,
       refreshSchemaTree,
     ],

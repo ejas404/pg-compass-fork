@@ -4,6 +4,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { ConnectionChannels } from './shared/types/connection';
 import { SettingsChannels } from './shared/types/settings';
+import { TableDataChannels } from './shared/types/table-data';
 import type {
   ConnectionConfig,
   ConnectionInput,
@@ -14,6 +15,15 @@ import type {
   AppSettings,
   AppSettingsPatch,
 } from './shared/types/settings';
+import type {
+  ColumnStructure,
+  ConstraintInfo,
+  ExecuteQueryParams,
+  GetRowsParams,
+  IndexInfo,
+  TableMetaParams,
+  TableRowsResult,
+} from './shared/types/table-data';
 
 /** IPC result wrapper. */
 export interface IpcResult<T> {
@@ -59,5 +69,23 @@ const settingsApi = {
     ipcRenderer.invoke(SettingsChannels.UPDATE, patch),
 };
 
+const tableDataApi = {
+  getRows: (params: GetRowsParams): Promise<IpcResult<TableRowsResult>> =>
+    ipcRenderer.invoke(TableDataChannels.GET_ROWS, params),
+
+  getStructure: (params: TableMetaParams): Promise<IpcResult<ColumnStructure[]>> =>
+    ipcRenderer.invoke(TableDataChannels.GET_STRUCTURE, params),
+
+  getIndexes: (params: TableMetaParams): Promise<IpcResult<IndexInfo[]>> =>
+    ipcRenderer.invoke(TableDataChannels.GET_INDEXES, params),
+
+  getConstraints: (params: TableMetaParams): Promise<IpcResult<ConstraintInfo[]>> =>
+    ipcRenderer.invoke(TableDataChannels.GET_CONSTRAINTS, params),
+
+  executeQuery: (params: ExecuteQueryParams): Promise<IpcResult<TableRowsResult>> =>
+    ipcRenderer.invoke(TableDataChannels.EXECUTE_QUERY, params),
+};
+
 contextBridge.exposeInMainWorld('connectionApi', connectionApi);
 contextBridge.exposeInMainWorld('settingsApi', settingsApi);
+contextBridge.exposeInMainWorld('tableDataApi', tableDataApi);

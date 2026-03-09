@@ -4,6 +4,9 @@ import { ConnectionProvider } from '@/hooks/use-connections';
 import { SettingsProvider } from '@/hooks/use-settings';
 import { WorkspaceProvider } from '@/hooks/use-workspace';
 import { Toaster } from '@/components/ui/sonner';
+import { registerDefaultRenderers } from '@/components/workspace/renderers/default-renderers';
+
+registerDefaultRenderers();
 
 export function App() {
   return (

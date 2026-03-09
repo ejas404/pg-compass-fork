@@ -7,13 +7,13 @@ import { IndexesTab } from '@/components/workspace/table-viewer/indexes-tab';
 import { ConstraintsTab } from '@/components/workspace/table-viewer/constraints-tab';
 import { QueryTab } from '@/components/workspace/table-viewer/query-tab';
 import { useWorkspace } from '@/hooks/use-workspace';
-import type { TableListViewerPath } from '@/shared/types/workspace';
+import type { ViewListViewerPath } from '@/shared/types/workspace';
 
-interface TableDetailsViewerProps {
-  path: TableListViewerPath;
+interface ViewDetailsViewerProps {
+  path: ViewListViewerPath;
 }
 
-export function TableDetailsViewer({ path }: Readonly<TableDetailsViewerProps>) {
+export function ViewDetailsViewer({ path }: Readonly<ViewDetailsViewerProps>) {
   const { refreshSchemaTree, navigateToView } = useWorkspace();
   const [activeTab, setActiveTab] = useState('data');
 
@@ -46,9 +46,9 @@ export function TableDetailsViewer({ path }: Readonly<TableDetailsViewerProps>) 
           },
         },
         {
-          label: path.tableName,
+          label: path.viewName,
           view: {
-            type: 'table-details',
+            type: 'view-details',
             path,
           },
         },
@@ -85,7 +85,7 @@ export function TableDetailsViewer({ path }: Readonly<TableDetailsViewerProps>) 
           <DataTab
             connectionId={path.connectionId}
             schema={path.schemaName}
-            table={path.tableName}
+            table={path.viewName}
           />
         </TabsContent>
 
@@ -93,7 +93,7 @@ export function TableDetailsViewer({ path }: Readonly<TableDetailsViewerProps>) 
           <StructureTab
             connectionId={path.connectionId}
             schema={path.schemaName}
-            table={path.tableName}
+            table={path.viewName}
           />
         </TabsContent>
 
@@ -101,7 +101,7 @@ export function TableDetailsViewer({ path }: Readonly<TableDetailsViewerProps>) 
           <IndexesTab
             connectionId={path.connectionId}
             schema={path.schemaName}
-            table={path.tableName}
+            table={path.viewName}
           />
         </TabsContent>
 
@@ -109,7 +109,7 @@ export function TableDetailsViewer({ path }: Readonly<TableDetailsViewerProps>) 
           <ConstraintsTab
             connectionId={path.connectionId}
             schema={path.schemaName}
-            table={path.tableName}
+            table={path.viewName}
           />
         </TabsContent>
 
@@ -117,7 +117,7 @@ export function TableDetailsViewer({ path }: Readonly<TableDetailsViewerProps>) 
           <QueryTab
             connectionId={path.connectionId}
             schema={path.schemaName}
-            table={path.tableName}
+            table={path.viewName}
           />
         </TabsContent>
       </Tabs>
