@@ -6,6 +6,8 @@ A fast, minimal desktop database viewer for **PostgreSQL**, inspired by the usab
 
 > Most PostgreSQL tools are either bloated IDE-style apps (pgAdmin, DataGrip) with features you never use, or primitive CLI wrappers. PG Compass sits in the sweet spot — a focused, fast tool for the thing developers actually do most: *inspecting data*.
 
+![PG Compass Demo](./docs/demo.gif)
+
 ---
 
 ## Features
@@ -20,6 +22,9 @@ A fast, minimal desktop database viewer for **PostgreSQL**, inspired by the usab
 - 🌓 **Dark/Light mode** — dark by default, because we're not animals.
 - 🛟 **Type-safe** — fully written in TypeScript with type-safe IPC between Electron processes.
 - 🔓 **Open source** — MIT licensed, no accounts, no telemetry, no nonsense.
+
+
+![PG Compass Screenshot featuring light and dark modes](./docs/dark_light_mode.png)
 
 ## Getting Started
 
@@ -60,6 +65,7 @@ This is a [Turborepo](https://turborepo.dev/) monorepo:
 ```
 apps/
   desktop/          # Electron + React desktop app
+  landing/          # Marketing landing page (Astro + Tailwind)
 packages/
   ui/               # Shared React component library
   eslint-config/    # Shared ESLint configurations
