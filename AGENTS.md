@@ -32,4 +32,4 @@ Everytime you make an architectural or project-wide decision, you should documen
 
 ## Tasks
 
-If you're operating from a task file (`docs/tasks/*.md`), make sure to update the relevant task file with any progress, implementation details, and completion status. This ensures that all stakeholders are informed of the current state of the task and can refer back to it for context.
+If you're operating from a task file (`docs/tasks/*.md`), make sure to update the relevant task file with any progress, implementation details, and completion status. This ensures that all stakeholders are informed of the current state of the task and can refer back to it for context. Avoid writing file paths or code snippets in the task files that may become outdated; instead, focus on describing the implementation and linking to the relevant code if necessary.
