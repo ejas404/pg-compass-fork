@@ -25,6 +25,8 @@ interface WorkspaceContextValue {
   openTab: (view: WorkspaceTabView, color?: string) => Promise<void>;
   navigateToView: (view: WorkspaceTabView) => Promise<void>;
   refreshSchemaTree: (connectionId: string, force?: boolean) => Promise<DatabaseSchema[]>;
+  /** Patch path fields on all open tabs belonging to a connection. */
+  refreshTabs: (connectionId: string, patch: { connectionLabel?: string }) => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -97,6 +99,23 @@ export function WorkspaceProvider({ children }: Readonly<{ children: ReactNode }
     },
     [getSchemaTree, settings.general.hideInternalSchemas],
   );
+
+  const refreshTabs = useCallback((connectionId: string, patch: { connectionLabel?: string }) => {
+    setTabs((prevTabs) =>
+      prevTabs.map((tab) => {
+        if (tab.view.path.connectionId !== connectionId) return tab;
+        const updatedView = {
+          ...tab.view,
+          path: { ...tab.view.path, ...patch },
+        } as WorkspaceTabView;
+        const updatedTitle =
+          tab.view.type === 'schema-list' && patch.connectionLabel
+            ? patch.connectionLabel
+            : tab.title;
+        return { ...tab, title: updatedTitle, view: updatedView };
+      }),
+    );
+  }, []);
 
   const setActiveTab = useCallback((id: string) => {
     setActiveTabId(id);
@@ -171,6 +190,7 @@ export function WorkspaceProvider({ children }: Readonly<{ children: ReactNode }
       openTab,
       navigateToView,
       refreshSchemaTree,
+      refreshTabs,
     }),
     [
       tabs,
@@ -181,6 +201,7 @@ export function WorkspaceProvider({ children }: Readonly<{ children: ReactNode }
       openTab,
       navigateToView,
       refreshSchemaTree,
+      refreshTabs,
     ],
   );
 

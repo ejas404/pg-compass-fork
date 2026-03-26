@@ -18,6 +18,7 @@ import {
 import { ChevronDown, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useConnections } from '@/hooks/use-connections';
+import { useWorkspace } from '@/hooks/use-workspace';
 import type {
   ConnectionConfig,
   ConnectionInput,
@@ -78,6 +79,7 @@ export function ConnectionFormDialog({
   editConnection,
 }: Readonly<ConnectionFormDialogProps>) {
   const { create, update } = useConnections();
+  const { refreshTabs } = useWorkspace();
   const isEdit = !!editConnection;
 
   // Form state
@@ -135,7 +137,10 @@ export function ConnectionFormDialog({
     };
 
     if (isEdit && editConnection) {
-      await update(editConnection.id, input);
+      const result = await update(editConnection.id, input);
+      if (result && input.label !== editConnection.label) {
+        refreshTabs(editConnection.id, { connectionLabel: input.label });
+      }
     } else {
       await create(input);
     }
