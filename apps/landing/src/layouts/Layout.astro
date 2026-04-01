@@ -10,6 +10,8 @@ const {
   title = 'PG Compass — PostgreSQL Database Explorer',
   description = 'A fast, minimal database explorer for PostgreSQL. Connect, navigate schemas, inspect tables, and run queries — without the overhead of a full IDE.',
 } = Astro.props;
+
+const base = import.meta.env.BASE_URL;
 ---
 
 <!doctype html>
@@ -23,7 +25,7 @@ const {
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href={`${base}favicon.png`} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
