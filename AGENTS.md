@@ -15,6 +15,8 @@ This is a **Turborepo** powered monorepo for **PG Compass**, a **MongoDB Compass
 
 > 📦 We use `pnpm` as our package manager. Always use `pnpm` and `pnpm dlx` when running commands.
 
+Since we're on a monorepo, never `cd` into a package to run commands. Always run commands from the root of the repository, and use `--filter` flags to specify the package.
+
 **Electron**
 
 ## Coding Guidelines
