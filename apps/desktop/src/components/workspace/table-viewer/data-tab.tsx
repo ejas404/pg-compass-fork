@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Loader2, LayoutList, Table2, Search } from 'lucide-react';
+import { Loader2, LayoutList, Table2, Search, CircleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { SqlEditor, type CompletionSchema } from '@/components/sql-editor/SqlEditor';
@@ -22,6 +22,29 @@ function DataViewContent({
   return <CardDataView columns={columns} rows={rows} />;
 }
 
+function DataContent({
+  viewMode,
+  columns,
+  rows,
+  error,
+}: Readonly<{
+  viewMode: ViewMode;
+  columns: ColumnInfo[];
+  rows: Record<string, unknown>[];
+  error: string | null;
+}>) {
+  if (error) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center">
+        <CircleAlert className="size-5 text-destructive" />
+        <p className="text-sm text-muted-foreground">No rows to display.</p>
+        <p className="max-w-lg text-xs text-destructive">{error}</p>
+      </div>
+    );
+  }
+  return <DataViewContent viewMode={viewMode} columns={columns} rows={rows} />;
+}
+
 interface DataTabProps {
   connectionId: string;
   schema: string;
@@ -39,6 +62,7 @@ export function DataTab({ connectionId, schema, table }: Readonly<DataTabProps>)
   const [pendingWhere, setPendingWhere] = useState('');
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [error, setError] = useState<string | null>(null);
 
   const completionSchema = useMemo<CompletionSchema>(() => {
     const schemas: string[] = [];
@@ -70,6 +94,7 @@ export function DataTab({ connectionId, schema, table }: Readonly<DataTabProps>)
   const fetchRows = useCallback(
     async (p: number, ps: number, where: string) => {
       setLoading(true);
+      setError(null);
       try {
         const result = await globalThis.window.tableDataApi.getRows({
           connectionId,
@@ -79,9 +104,12 @@ export function DataTab({ connectionId, schema, table }: Readonly<DataTabProps>)
           pageSize: ps,
           whereClause: where || undefined,
         });
-
         if (!result.success || !result.data) {
-          toast.error('Failed to load rows', { description: result.error });
+          const msg = result.error ?? 'Unknown error';
+          setError(msg);
+          setRows([]);
+          setTotalCount(0);
+          toast.error('Failed to load rows', { description: msg });
           return;
         }
 
@@ -89,7 +117,11 @@ export function DataTab({ connectionId, schema, table }: Readonly<DataTabProps>)
         setRows(result.data.rows);
         setTotalCount(result.data.totalCount);
       } catch (err) {
-        toast.error('Failed to load rows', { description: (err as Error).message });
+        const msg = (err as Error).message;
+        setError(msg);
+        setRows([]);
+        setTotalCount(0);
+        toast.error('Failed to load rows', { description: msg });
       } finally {
         setLoading(false);
       }
@@ -181,7 +213,7 @@ export function DataTab({ connectionId, schema, table }: Readonly<DataTabProps>)
             <Loader2 className="size-5 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <DataViewContent viewMode={viewMode} columns={columns} rows={rows} />
+          <DataContent viewMode={viewMode} columns={columns} rows={rows} error={error} />
         )}
       </div>
 

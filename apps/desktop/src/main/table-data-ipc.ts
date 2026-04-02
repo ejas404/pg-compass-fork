@@ -39,14 +39,14 @@ async function buildTypeMap(
   if (oids.length === 0) return new Map();
 
   const unique = [...new Set(oids)];
-  const result = await client.query<{ oid: number; typname: string }>(
-    `SELECT oid::int, typname FROM pg_type WHERE oid = ANY($1::oid[])`,
+  const result = await client.query<{ oid: string; typname: string }>(
+    `SELECT oid, typname FROM pg_type WHERE oid = ANY($1::oid[])`,
     [unique],
   );
 
   const map = new Map<number, string>();
   for (const row of result.rows) {
-    map.set(row.oid, row.typname);
+    map.set(Number(row.oid), row.typname);
   }
   return map;
 }
@@ -64,28 +64,36 @@ async function getRows(params: GetRowsParams): Promise<TableRowsResult> {
 
     const offset = (params.page - 1) * params.pageSize;
 
-    const countResult = await client.query<{ count: string }>(
-      `SELECT count(*) AS count FROM ${qualifiedTable} ${whereFragment}`,
-    );
-    const totalCount = Number.parseInt(countResult.rows[0]!.count, 10);
+    const countSql = `SELECT count(*) AS count FROM ${qualifiedTable} ${whereFragment}`;
+    // Use a read-only transaction so count and data are consistent.
+    await client.query('BEGIN READ ONLY');
+    try {
+      const countResult = await client.query<{ count: string }>(countSql);
+      const totalCount = Number.parseInt(countResult.rows[0]!.count, 10);
 
-    const dataResult = await client.query(
-      `SELECT * FROM ${qualifiedTable} ${whereFragment} LIMIT $1 OFFSET $2`,
-      [params.pageSize, offset],
-    );
+      const dataResult = await client.query(
+        `SELECT * FROM ${qualifiedTable} ${whereFragment} LIMIT $1 OFFSET $2`,
+        [params.pageSize, offset],
+      );
 
-    const typeMap = await buildTypeMap(
-      client,
-      dataResult.fields.map((f) => f.dataTypeID),
-    );
+      await client.query('COMMIT');
 
-    const columns: ColumnInfo[] = dataResult.fields.map((f) => ({
-      name: f.name,
-      dataTypeId: f.dataTypeID,
-      dataType: typeMap.get(f.dataTypeID) ?? 'unknown',
-    }));
+      const typeMap = await buildTypeMap(
+        client,
+        dataResult.fields.map((f) => f.dataTypeID),
+      );
 
-    return { columns, rows: dataResult.rows, totalCount };
+      const columns: ColumnInfo[] = dataResult.fields.map((f) => ({
+        name: f.name,
+        dataTypeId: f.dataTypeID,
+        dataType: typeMap.get(f.dataTypeID) ?? 'unknown',
+      }));
+
+      return { columns, rows: dataResult.rows, totalCount };
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw err;
+    }
   });
 }
 
@@ -306,6 +314,29 @@ function isReadOnlyQuery(sql: string): boolean {
   return ALLOWED_QUERY_PREFIXES.some((prefix) => trimmed.startsWith(prefix));
 }
 
+/**
+ * Strip trailing LIMIT and OFFSET clauses from a SQL string so we can
+ * apply our own pagination wrapper without double-limiting.
+ * Returns the cleaned SQL and the user-provided LIMIT (if any) so we can
+ * honour it as an upper bound on totalCount.
+ */
+function stripLimitOffset(sql: string): { core: string; userLimit: number | null } {
+  let core = sql;
+  let userLimit: number | null = null;
+
+  // Strip trailing OFFSET (must come after LIMIT in standard SQL)
+  core = core.replace(/\s+OFFSET\s+\d+\s*$/i, '');
+
+  // Strip trailing LIMIT and capture the value
+  const limitMatch = /\s+LIMIT\s+(\d+)\s*$/i.exec(core);
+  if (limitMatch?.[1]) {
+    userLimit = Number.parseInt(limitMatch[1], 10);
+    core = core.slice(0, -limitMatch[0].length);
+  }
+
+  return { core, userLimit };
+}
+
 async function executeQuery(params: ExecuteQueryParams): Promise<TableRowsResult> {
   if (!isReadOnlyQuery(params.sql)) {
     throw new Error('Only SELECT statements (including CTEs with WITH) are allowed.');
@@ -317,15 +348,21 @@ async function executeQuery(params: ExecuteQueryParams): Promise<TableRowsResult
 
     try {
       const offset = (params.page - 1) * params.pageSize;
-      const wrappedSql = params.sql.replace(/;\s*$/, '');
+      const trimmedSql = params.sql.replace(/;\s*$/, '');
+      const { core, userLimit } = stripLimitOffset(trimmedSql);
 
       const countResult = await client.query<{ count: string }>(
-        `SELECT count(*) AS count FROM (${wrappedSql}) AS __count_subquery`,
+        `SELECT count(*) AS count FROM (${core}) AS __count_subquery`,
       );
-      const totalCount = Number.parseInt(countResult.rows[0]!.count, 10);
+      let totalCount = Number.parseInt(countResult.rows[0]!.count, 10);
+
+      // Honour the user's LIMIT as an upper bound on total rows.
+      if (userLimit !== null && userLimit < totalCount) {
+        totalCount = userLimit;
+      }
 
       const dataResult = await client.query(
-        `SELECT * FROM (${wrappedSql}) AS __data_subquery LIMIT $1 OFFSET $2`,
+        `SELECT * FROM (${core}) AS __data_subquery LIMIT $1 OFFSET $2`,
         [params.pageSize, offset],
       );
 
