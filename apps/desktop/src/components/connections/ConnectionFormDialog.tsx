@@ -73,6 +73,57 @@ const defaultSSH: SSHConfig = {
   passphrase: '',
 };
 
+const POSTGRES_URL_RE = /^postgres(?:ql)?:\/\//i;
+
+/**
+ * Attempt to parse a full PostgreSQL connection URL into individual fields.
+ * Returns the parsed fields on success, or null if the value is not a recognisable URL.
+ */
+function tryParsePostgresUrl(value: string): ConnectionFields | null {
+  if (!POSTGRES_URL_RE.test(value)) return null;
+  try {
+    const parsed = new URL(value);
+    return {
+      host: parsed.hostname,
+      port: parsed.port ? Number.parseInt(parsed.port, 10) : 5432,
+      database: parsed.pathname.replace(/^\//, ''),
+      user: parsed.username ? decodeURIComponent(parsed.username) : 'postgres',
+      password: parsed.password ? decodeURIComponent(parsed.password) : '',
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Validate connection form inputs. Returns a map of field → error message. */
+function validateConnectionInput(
+  mode: 'uri' | 'fields',
+  uri: string,
+  fields: ConnectionFields,
+): Record<string, string> {
+  const errors: Record<string, string> = {};
+
+  if (mode === 'uri') {
+    if (!uri.trim()) {
+      errors.uri = 'Connection URI is required.';
+    } else if (!POSTGRES_URL_RE.test(uri.trim())) {
+      errors.uri = 'URI must start with postgres:// or postgresql://';
+    }
+  } else {
+    if (!fields.host.trim()) {
+      errors.host = 'Host is required.';
+    }
+    if (!fields.database.trim()) {
+      errors.database = 'Database name is required.';
+    }
+    if (!Number.isInteger(fields.port) || fields.port < 1 || fields.port > 65535) {
+      errors.port = 'Port must be a number between 1 and 65535.';
+    }
+  }
+
+  return errors;
+}
+
 export function ConnectionFormDialog({
   open,
   onOpenChange,
@@ -92,6 +143,7 @@ export function ConnectionFormDialog({
   const [ssh, setSsh] = useState<SSHConfig>({ ...defaultSSH });
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Populate form when editing
   useEffect(() => {
@@ -123,6 +175,20 @@ export function ConnectionFormDialog({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+
+    // If a postgres URL was pasted into the host field, expand it before validating.
+    let resolvedFields = fields;
+    if (mode === 'fields') {
+      const parsed = tryParsePostgresUrl(fields.host);
+      if (parsed) resolvedFields = { ...fields, ...parsed };
+    }
+
+    const errs = validateConnectionInput(mode, uri, resolvedFields);
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      return;
+    }
+    setErrors({});
     setSaving(true);
 
     const input: ConnectionInput = {
@@ -131,7 +197,7 @@ export function ConnectionFormDialog({
       favourite: editConnection?.favourite ?? false,
       mode,
       uri: mode === 'uri' ? uri : undefined,
-      fields: mode === 'fields' ? fields : undefined,
+      fields: mode === 'fields' ? resolvedFields : undefined,
       ssl: ssl.enabled ? ssl : undefined,
       ssh: ssh.enabled ? ssh : undefined,
     };
@@ -205,7 +271,7 @@ export function ConnectionFormDialog({
                 type="button"
                 variant={mode === 'uri' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setMode('uri')}
+                onClick={() => { setMode('uri'); setErrors({}); }}
               >
                 URI
               </Button>
@@ -213,7 +279,7 @@ export function ConnectionFormDialog({
                 type="button"
                 variant={mode === 'fields' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setMode('fields')}
+                onClick={() => { setMode('fields'); setErrors({}); }}
               >
                 Individual Fields
               </Button>
@@ -231,6 +297,7 @@ export function ConnectionFormDialog({
                 value={uri}
                 onChange={(e) => setUri(e.target.value)}
               />
+              {errors.uri && <p className="text-xs text-destructive">{errors.uri}</p>}
             </div>
           )}
 
@@ -243,10 +310,9 @@ export function ConnectionFormDialog({
                   id="conn-host"
                   placeholder="localhost"
                   value={fields.host}
-                  onChange={(e) =>
-                    setFields((f) => ({ ...f, host: e.target.value }))
-                  }
+                  onChange={(e) => setFields((f) => ({ ...f, host: e.target.value }))}
                 />
+                {errors.host && <p className="text-xs text-destructive">{errors.host}</p>}
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="conn-port">Port</Label>
@@ -262,6 +328,7 @@ export function ConnectionFormDialog({
                     }))
                   }
                 />
+                {errors.port && <p className="text-xs text-destructive">{errors.port}</p>}
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="conn-database">Database</Label>
@@ -273,6 +340,7 @@ export function ConnectionFormDialog({
                     setFields((f) => ({ ...f, database: e.target.value }))
                   }
                 />
+                {errors.database && <p className="text-xs text-destructive">{errors.database}</p>}
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="conn-user">User</Label>
