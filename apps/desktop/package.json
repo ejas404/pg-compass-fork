@@ -1,7 +1,7 @@
 {
   "name": "@pg-compass/desktop",
   "productName": "PG Compass",
-  "version": "1.0.0",
+  "version": "0.1.1",
   "description": "PostgreSQL database viewer desktop application",
   "main": ".vite/build/main.js",
   "private": true,
@@ -30,6 +30,7 @@
     "@electron-forge/plugin-fuses": "^7.11.1",
     "@electron-forge/plugin-vite": "^7.11.1",
     "@electron/fuses": "^1.0.0",
+    "@reforged/maker-appimage": "^5.2.0",
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/electron-squirrel-startup": "^1.0.2",
@@ -38,6 +39,7 @@
     "@types/react-dom": "19.2.2",
     "@vitejs/plugin-react": "^5.1.4",
     "electron": "40.8.0",
+    "electron-installer-debian": "^3.2.0",
     "eslint": "^9.39.1",
     "typescript": "5.9.2",
     "vite": "^5.0.12"
