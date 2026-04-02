@@ -10,9 +10,12 @@ import { TableDetailsViewer } from '@/components/workspace/table-details-viewer'
 import { ViewListViewer } from '@/components/workspace/view-list-viewer';
 import { ViewDetailsViewer } from '@/components/workspace/view-details-viewer';
 import type { WorkspaceTab, WorkspaceTabView } from '@/shared/types/workspace';
+import { useDynamicWindowTitle } from './hooks/use-dynamic-title';
 
 export function Workspace() {
   const { tabs, activeTabId, setActiveTab, closeTab } = useWorkspace();
+
+  useDynamicWindowTitle(tabs.find((t) => t.id === activeTabId));
 
   // Stable refs to avoid stale closures in IPC callbacks
   const tabsRef = useRef(tabs);
