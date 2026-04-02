@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react';
-import { Compass, X } from 'lucide-react';
+import { useEffect } from 'react';
+import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useWorkspace } from '@/hooks/use-workspace';
+import { useWorkspaceShortcuts } from '@/hooks/use-workspace-shortcuts';
 import { SchemaViewer } from '@/components/workspace/schema-viewer';
 import { SchemaListViewer } from '@/components/workspace/schema-list-viewer';
 import { TableListViewer } from '@/components/workspace/table-list-viewer';
@@ -11,49 +12,14 @@ import { ViewListViewer } from '@/components/workspace/view-list-viewer';
 import { ViewDetailsViewer } from '@/components/workspace/view-details-viewer';
 import type { WorkspaceTab, WorkspaceTabView } from '@/shared/types/workspace';
 import { useDynamicWindowTitle } from './hooks/use-dynamic-title';
+import { WelcomeScreen } from './welcome-screen';
 
 export function Workspace() {
   const { tabs, activeTabId, setActiveTab, closeTab } = useWorkspace();
 
   useDynamicWindowTitle(tabs.find((t) => t.id === activeTabId));
 
-  // Stable refs to avoid stale closures in IPC callbacks
-  const tabsRef = useRef(tabs);
-  tabsRef.current = tabs;
-  const activeTabIdRef = useRef(activeTabId);
-  activeTabIdRef.current = activeTabId;
-
-  // IPC-driven shortcuts: Ctrl+W, Ctrl+Tab, Ctrl+Shift+Tab
-  useEffect(() => {
-    const removeClose = globalThis.window.workspaceApi.onCloseTab(() => {
-      const id = activeTabIdRef.current;
-      if (id) closeTab(id);
-    });
-
-    const removeNext = globalThis.window.workspaceApi.onNextTab(() => {
-      const t = tabsRef.current;
-      if (t.length === 0) return;
-      const idx = t.findIndex((tab) => tab.id === activeTabIdRef.current);
-      if (idx < 0) return;
-      const nextTab = t[(idx + 1) % t.length];
-      if (nextTab) setActiveTab(nextTab.id);
-    });
-
-    const removePrev = globalThis.window.workspaceApi.onPrevTab(() => {
-      const t = tabsRef.current;
-      if (t.length === 0) return;
-      const idx = t.findIndex((tab) => tab.id === activeTabIdRef.current);
-      if (idx < 0) return;
-      const prevTab = t[(idx - 1 + t.length) % t.length];
-      if (prevTab) setActiveTab(prevTab.id);
-    });
-
-    return () => {
-      removeClose();
-      removeNext();
-      removePrev();
-    };
-  }, [closeTab, setActiveTab]);
+  useWorkspaceShortcuts(tabs, activeTabId, closeTab, setActiveTab);
 
   // Ctrl+F / Cmd+F: focus the visible query editor (if any)
   useEffect(() => {
@@ -153,26 +119,6 @@ function WorkspaceTabBar({
   );
 }
 
-function WelcomeScreen() {
-  return (
-    <div className="flex flex-1 items-center justify-center bg-background">
-      <div className="flex max-w-sm flex-col items-center gap-4 text-center">
-        <div className="rounded-xl bg-muted p-4">
-          <Compass className="size-10 text-muted-foreground" />
-        </div>
-        <div className="space-y-1.5">
-          <h2 className="text-lg font-semibold text-foreground">
-            Welcome to PG Compass
-          </h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Connect to a PostgreSQL database using the sidebar to start
-            exploring your schemas and tables.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function WorkspaceTabPanels({
   tabs,
