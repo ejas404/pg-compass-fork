@@ -129,7 +129,7 @@ export function DataTab({ connectionId, schema, table }: Readonly<DataTabProps>)
     [connectionId, schema, table],
   );
 
-  useEffect(() => {
+  useEffect(function fetchTableData() {
     fetchRows(page, pageSize, whereClause);
   }, [fetchRows, page, pageSize, whereClause]);
 

@@ -42,7 +42,7 @@ export function IndexesTab({ connectionId, schema, table }: Readonly<IndexesTabP
     }
   }, [connectionId, schema, table]);
 
-  useEffect(() => {
+  useEffect(function loadIndexes() {
     fetch();
   }, [fetch]);
 

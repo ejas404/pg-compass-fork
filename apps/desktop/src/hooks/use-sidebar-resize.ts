@@ -26,11 +26,11 @@ export function useSidebarResize() {
   const sidebarRef = useRef<HTMLElement | null>(null);
   const sidebarWidthRef = useRef(SIDEBAR_DEFAULT_WIDTH);
 
-  useEffect(() => {
+  useEffect(function syncSidebarWidthRef() {
     sidebarWidthRef.current = sidebarWidth;
   }, [sidebarWidth]);
 
-  useEffect(() => {
+  useEffect(function handleResizeEvents() {
     if (!isResizing) {
       return;
     }
@@ -68,7 +68,7 @@ export function useSidebarResize() {
     };
   }, [isResizing, settings.appearance.sidebarWidth, updateSettings]);
 
-  useEffect(() => {
+  useEffect(function handleWindowResize() {
     function handleWindowResize() {
       setSidebarWidth((current) => clampSidebarWidth(current));
     }
@@ -80,7 +80,7 @@ export function useSidebarResize() {
     };
   }, []);
 
-  useEffect(() => {
+  useEffect(function loadPersistedWidth() {
     if (loading) {
       return;
     }

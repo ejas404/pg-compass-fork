@@ -22,7 +22,7 @@ export function Workspace() {
   useWorkspaceShortcuts(tabs, activeTabId, closeTab, setActiveTab);
 
   // Ctrl+F / Cmd+F: focus the visible query editor (if any)
-  useEffect(() => {
+  useEffect(function setupGlobalSearchShortcut() {
     function handleKeyDown(e: KeyboardEvent) {
       const isMod = e.metaKey || e.ctrlKey;
       if (!isMod || e.key !== 'f') return;

@@ -46,11 +46,11 @@ export function SettingsProvider({ children }: Readonly<{ children: ReactNode }>
     setLoading(false);
   }, []);
 
-  useEffect(() => {
+  useEffect(function loadSettings() {
     refresh();
   }, [refresh]);
 
-  useEffect(() => {
+  useEffect(function watchSystemTheme() {
     const preference = settings.appearance.theme;
     let mediaQuery: MediaQueryList | null = null;
     let cleanup = () => {};
@@ -74,7 +74,7 @@ export function SettingsProvider({ children }: Readonly<{ children: ReactNode }>
     return cleanup;
   }, [settings.appearance.theme]);
 
-  useEffect(() => {
+  useEffect(function applyThemeClass() {
     document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
   }, [resolvedTheme]);
 

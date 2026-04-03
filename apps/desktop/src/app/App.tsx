@@ -12,7 +12,7 @@ export function App() {
   const [licenseOpen, setLicenseOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
 
-  useEffect(() => {
+  useEffect(function setupHelpEventListeners() {
     const removeLicense = globalThis.window.helpApi.onShowLicense(() => setLicenseOpen(true));
     const removeAbout = globalThis.window.helpApi.onShowAbout(() => setAboutOpen(true));
 

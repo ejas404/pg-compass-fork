@@ -14,7 +14,7 @@ export function useWorkspaceShortcuts(
   activeTabIdRef.current = activeTabId;
 
   // IPC-driven shortcuts: Ctrl+W, Ctrl+Tab, Ctrl+Shift+Tab
-  useEffect(() => {
+  useEffect(function setupTabShortcuts() {
     const removeClose = globalThis.window.workspaceApi.onCloseTab(() => {
       const id = activeTabIdRef.current;
       if (id) closeTab(id);

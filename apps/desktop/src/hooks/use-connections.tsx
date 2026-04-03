@@ -50,7 +50,7 @@ export function ConnectionProvider({ children }: Readonly<{ children: ReactNode 
     setLoading(false);
   }, []);
 
-  useEffect(() => {
+  useEffect(function loadConnections() {
     refresh();
   }, [refresh]);
 

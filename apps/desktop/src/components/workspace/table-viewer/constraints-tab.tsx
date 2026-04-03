@@ -71,7 +71,7 @@ export function ConstraintsTab({ connectionId, schema, table }: Readonly<Constra
     }
   }, [connectionId, schema, table]);
 
-  useEffect(() => {
+  useEffect(function loadConstraints() {
     fetch();
   }, [fetch]);
 

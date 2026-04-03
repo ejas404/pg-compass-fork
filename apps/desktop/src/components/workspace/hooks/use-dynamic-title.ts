@@ -26,7 +26,7 @@ function buildWindowTitle(view: WorkspaceTabView | undefined): string {
  * @param activeTab The currently active workspace tab, or undefined if no tabs are open.
  */
 export function useDynamicWindowTitle(activeTab: WorkspaceTab | undefined) {
-  useEffect(() => {
+  useEffect(function updateWindowTitle() {
     document.title = buildWindowTitle(activeTab?.view);
   }, [activeTab]);
 }

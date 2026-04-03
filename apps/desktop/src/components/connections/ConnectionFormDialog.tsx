@@ -146,7 +146,7 @@ export function ConnectionFormDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Populate form when editing
-  useEffect(() => {
+  useEffect(function populateFormForEdit() {
     if (!open) return;
 
     if (editConnection) {

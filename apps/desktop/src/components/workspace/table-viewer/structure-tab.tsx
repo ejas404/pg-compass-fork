@@ -63,7 +63,7 @@ export function StructureTab({ connectionId, schema, table }: Readonly<Structure
     }
   }, [connectionId, schema, table]);
 
-  useEffect(() => {
+  useEffect(function loadStructure() {
     fetch();
   }, [fetch]);
 

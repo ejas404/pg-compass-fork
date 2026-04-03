@@ -164,7 +164,7 @@ export function useCodemirror(
   const defaultSchema = schema?.defaultSchema;
 
   // Create the editor once on mount
-  useEffect(() => {
+  useEffect(function createEditor() {
     const container = containerRef.current;
     if (!container) return;
 
@@ -247,7 +247,7 @@ export function useCodemirror(
   }, [containerRef, singleLine, readOnly]);
 
   // Sync external value → CM state (only when value differs from CM doc)
-  useEffect(() => {
+  useEffect(function syncExternalValue() {
     const view = viewRef.current;
     if (!view) return;
     const currentDoc = view.state.doc.toString();
@@ -263,7 +263,7 @@ export function useCodemirror(
   }, [value]);
 
   // Reconfigure SQL language when schema changes
-  useEffect(() => {
+  useEffect(function reconfigureSqlLanguage() {
     const view = viewRef.current;
     if (!view) return;
     view.dispatch({
