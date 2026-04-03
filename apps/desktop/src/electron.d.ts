@@ -11,9 +11,13 @@ import type {
 import type {
   ColumnStructure,
   ConstraintInfo,
+  ExportDataParams,
+  ExportResult,
   ExecuteQueryParams,
   GetRowsParams,
   IndexInfo,
+  SaveDialogOptions,
+  SqlDumpParams,
   TableMetaParams,
   TableRowsResult,
 } from './shared/types/table-data';
@@ -49,6 +53,10 @@ interface TableDataApi {
   getIndexes(params: TableMetaParams): Promise<IpcResult<IndexInfo[]>>;
   getConstraints(params: TableMetaParams): Promise<IpcResult<ConstraintInfo[]>>;
   executeQuery(params: ExecuteQueryParams): Promise<IpcResult<TableRowsResult>>;
+  showSaveDialog(options: SaveDialogOptions): Promise<IpcResult<string | null>>;
+  exportData(params: ExportDataParams): Promise<IpcResult<ExportResult>>;
+  sqlDump(params: SqlDumpParams): Promise<IpcResult<ExportResult>>;
+  onExportProgress(callback: (rowCount: number) => void): () => void;
 }
 
 interface HelpApi {

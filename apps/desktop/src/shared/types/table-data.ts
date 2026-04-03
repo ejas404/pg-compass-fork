@@ -82,6 +82,41 @@ export interface TableMetaParams {
   table: string;
 }
 
+/** Parameters for exporting table data as CSV or JSON. */
+export interface ExportDataParams {
+  connectionId: string;
+  format: 'csv' | 'json';
+  /** Destination file path (from a prior save dialog). */
+  filePath: string;
+  /** Full table export: schema + table. Omit sql. */
+  schema?: string;
+  table?: string;
+  /** Query-based export: the SQL to run. Omit schema + table. */
+  sql?: string;
+}
+
+/** Result returned after a successful data export. */
+export interface ExportResult {
+  filePath: string;
+  rowCount: number;
+}
+
+/** Parameters for an SQL COPY-based dump. */
+export interface SqlDumpParams {
+  connectionId: string;
+  schema: string;
+  table: string;
+  /** Destination file path (from a prior save dialog). */
+  filePath: string;
+}
+
+/** Options for the native save-file dialog. */
+export interface SaveDialogOptions {
+  title?: string;
+  defaultPath?: string;
+  filters?: { name: string; extensions: string[] }[];
+}
+
 /** IPC channel names for table data operations. */
 export const TableDataChannels = {
   GET_ROWS: 'table-data:get-rows',
@@ -89,4 +124,8 @@ export const TableDataChannels = {
   GET_INDEXES: 'table-data:get-indexes',
   GET_CONSTRAINTS: 'table-data:get-constraints',
   EXECUTE_QUERY: 'table-data:execute-query',
+  SHOW_SAVE_DIALOG: 'table-data:show-save-dialog',
+  EXPORT_DATA: 'table-data:export-data',
+  EXPORT_PROGRESS: 'table-data:export-progress',
+  SQL_DUMP: 'table-data:sql-dump',
 } as const;

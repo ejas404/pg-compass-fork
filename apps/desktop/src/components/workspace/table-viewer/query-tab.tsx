@@ -6,6 +6,7 @@ import { SqlEditor, type CompletionSchema } from '@/components/sql-editor/SqlEdi
 import { DataPagination } from '@/components/workspace/table-viewer/data-pagination';
 import { TableDataView } from '@/components/workspace/table-viewer/table-data-view';
 import { CardDataView } from '@/components/workspace/table-viewer/card-data-view';
+import { ExportDropdown } from '@/components/workspace/export-dropdown';
 import { useWorkspace } from '@/hooks/use-workspace';
 import type { ColumnInfo } from '@/shared/types/table-data';
 
@@ -165,27 +166,36 @@ export function QueryTab({ connectionId, schema, table }: Readonly<QueryTabProps
             <span className="text-xs text-muted-foreground">
               {totalCount.toLocaleString()} row{totalCount === 1 ? '' : 's'} returned
             </span>
-            <div className="flex items-center gap-0.5 rounded-md border border-border p-0.5">
-              <Button
-                type="button"
-                variant={viewMode === 'table' ? 'secondary' : 'ghost'}
-                size="icon-sm"
-                className="size-6"
-                onClick={() => setViewMode('table')}
-                aria-label="Table view"
-              >
-                <Table2 className="size-3.5" />
-              </Button>
-              <Button
-                type="button"
-                variant={viewMode === 'card' ? 'secondary' : 'ghost'}
-                size="icon-sm"
-                className="size-6"
-                onClick={() => setViewMode('card')}
-                aria-label="Card view"
-              >
-                <LayoutList className="size-3.5" />
-              </Button>
+            <div className="flex items-center gap-2">
+              <ExportDropdown
+                connectionId={connectionId}
+                schema={schema}
+                table={table}
+                sql={sql}
+                hasQueryResults={hasRun && rows.length > 0}
+              />
+              <div className="flex items-center gap-0.5 rounded-md border border-border p-0.5">
+                <Button
+                  type="button"
+                  variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+                  size="icon-sm"
+                  className="size-6"
+                  onClick={() => setViewMode('table')}
+                  aria-label="Table view"
+                >
+                  <Table2 className="size-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant={viewMode === 'card' ? 'secondary' : 'ghost'}
+                  size="icon-sm"
+                  className="size-6"
+                  onClick={() => setViewMode('card')}
+                  aria-label="Card view"
+                >
+                  <LayoutList className="size-3.5" />
+                </Button>
+              </div>
             </div>
           </div>
 

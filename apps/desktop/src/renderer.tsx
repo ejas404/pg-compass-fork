@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import "./polyfills";
 import { App } from '@/app/App';
 import { registerDefaultRenderers } from '@/components/workspace/renderers/default-renderers';
 import { registerPgVectorRenderers } from '@/components/workspace/renderers/pgvector-renderers';

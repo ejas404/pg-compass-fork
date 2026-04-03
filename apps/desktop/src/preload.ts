@@ -20,9 +20,13 @@ import type {
 import type {
   ColumnStructure,
   ConstraintInfo,
+  ExportDataParams,
+  ExportResult,
   ExecuteQueryParams,
   GetRowsParams,
   IndexInfo,
+  SaveDialogOptions,
+  SqlDumpParams,
   TableMetaParams,
   TableRowsResult,
 } from './shared/types/table-data';
@@ -86,6 +90,21 @@ const tableDataApi = {
 
   executeQuery: (params: ExecuteQueryParams): Promise<IpcResult<TableRowsResult>> =>
     ipcRenderer.invoke(TableDataChannels.EXECUTE_QUERY, params),
+
+  showSaveDialog: (options: SaveDialogOptions): Promise<IpcResult<string | null>> =>
+    ipcRenderer.invoke(TableDataChannels.SHOW_SAVE_DIALOG, options),
+
+  exportData: (params: ExportDataParams): Promise<IpcResult<ExportResult>> =>
+    ipcRenderer.invoke(TableDataChannels.EXPORT_DATA, params),
+
+  sqlDump: (params: SqlDumpParams): Promise<IpcResult<ExportResult>> =>
+    ipcRenderer.invoke(TableDataChannels.SQL_DUMP, params),
+
+  onExportProgress: (callback: (rowCount: number) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, rowCount: number) => callback(rowCount);
+    ipcRenderer.on(TableDataChannels.EXPORT_PROGRESS, handler);
+    return () => { ipcRenderer.removeListener(TableDataChannels.EXPORT_PROGRESS, handler); };
+  },
 };
 
 const helpApi = {

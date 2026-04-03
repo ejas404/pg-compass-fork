@@ -6,6 +6,7 @@ import { SqlEditor, type CompletionSchema } from '@/components/sql-editor/SqlEdi
 import { DataPagination } from '@/components/workspace/table-viewer/data-pagination';
 import { TableDataView } from '@/components/workspace/table-viewer/table-data-view';
 import { CardDataView } from '@/components/workspace/table-viewer/card-data-view';
+import { ExportDropdown } from '@/components/workspace/export-dropdown';
 import { useWorkspace } from '@/hooks/use-workspace';
 import type { ColumnInfo } from '@/shared/types/table-data';
 
@@ -181,6 +182,13 @@ export function DataTab({ connectionId, schema, table }: Readonly<DataTabProps>)
             </Button>
           )}
         </form>
+
+        <ExportDropdown
+          connectionId={connectionId}
+          schema={schema}
+          table={table}
+          whereClause={whereClause || undefined}
+        />
 
         <div className="flex items-center gap-0.5 rounded-md border border-border p-0.5">
           <Button
