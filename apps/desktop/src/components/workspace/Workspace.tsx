@@ -100,6 +100,11 @@ function WorkspaceTabBar({
               type="button"
               className="max-w-48 cursor-pointer truncate text-left"
               onClick={() => onSelectTab(tab.id)}
+              onAuxClick={(e) => {
+                if (e.button === 1) { // MMB
+                  onCloseTab(tab.id);
+                }
+              }}
             >
               {tab.title}
             </button>
