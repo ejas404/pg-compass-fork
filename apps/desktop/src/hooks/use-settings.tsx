@@ -6,15 +6,15 @@ import {
   useMemo,
   useState,
   type ReactNode,
-} from 'react';
+} from "react";
 import {
   DEFAULT_APP_SETTINGS,
   type AppSettings,
   type AppSettingsPatch,
   type ThemePreference,
-} from '@/shared/types/settings';
+} from "@/shared/types/settings";
 
-type ResolvedTheme = 'light' | 'dark';
+type ResolvedTheme = "light" | "dark";
 
 interface SettingsContextValue {
   settings: AppSettings;
@@ -28,15 +28,17 @@ interface SettingsContextValue {
 const SettingsContext = createContext<SettingsContextValue | null>(null);
 
 function resolveSystemTheme(): ResolvedTheme {
-  return globalThis.matchMedia('(prefers-color-scheme: dark)').matches
-    ? 'dark'
-    : 'light';
+  return globalThis.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
 }
 
-export function SettingsProvider({ children }: Readonly<{ children: ReactNode }>) {
+export function SettingsProvider({
+  children,
+}: Readonly<{ children: ReactNode }>) {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
   const [loading, setLoading] = useState(true);
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('dark');
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("dark");
 
   const refresh = useCallback(async () => {
     const result = await globalThis.window.settingsApi.get();
@@ -46,37 +48,41 @@ export function SettingsProvider({ children }: Readonly<{ children: ReactNode }>
     setLoading(false);
   }, []);
 
-  useEffect(function loadSettings() {
-    refresh();
-  }, [refresh]);
+  useEffect(
+    function loadSettings() {
+      refresh();
+    },
+    [refresh],
+  );
 
-  useEffect(function watchSystemTheme() {
-    const preference = settings.appearance.theme;
-    let mediaQuery: MediaQueryList | null = null;
-    let cleanup = () => {};
+  useEffect(
+    function watchSystemTheme() {
+      const preference = settings.appearance.theme;
+      let mediaQuery: MediaQueryList | null = null;
 
-    if (preference === 'system') {
-      mediaQuery = globalThis.matchMedia('(prefers-color-scheme: dark)');
-
-      const applyFromMedia = () => {
-        setResolvedTheme(mediaQuery?.matches ? 'dark' : 'light');
+      const apply = (theme: "dark" | "light") => {
+        setResolvedTheme(theme);
+        document.documentElement.classList.toggle("dark", theme === "dark");
       };
 
-      applyFromMedia();
+      if (preference === "system") {
+        mediaQuery = globalThis.matchMedia("(prefers-color-scheme: dark)");
 
-      const onChange = () => applyFromMedia();
-      mediaQuery.addEventListener('change', onChange);
-      cleanup = () => mediaQuery?.removeEventListener('change', onChange);
-    } else {
-      setResolvedTheme(preference);
-    }
+        const applyFromMedia = () => {
+          apply(mediaQuery?.matches ? "dark" : "light");
+        };
 
-    return cleanup;
-  }, [settings.appearance.theme]);
+        applyFromMedia();
 
-  useEffect(function applyThemeClass() {
-    document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
-  }, [resolvedTheme]);
+        const onChange = () => applyFromMedia();
+        mediaQuery.addEventListener("change", onChange);
+        return () => mediaQuery?.removeEventListener("change", onChange);
+      } else {
+        apply(preference);
+      }
+    },
+    [settings.appearance.theme],
+  );
 
   const updateSettings = useCallback(
     async (patch: AppSettingsPatch): Promise<AppSettings | null> => {
@@ -120,7 +126,7 @@ export function SettingsProvider({ children }: Readonly<{ children: ReactNode }>
 export function useSettings(): SettingsContextValue {
   const context = useContext(SettingsContext);
   if (!context) {
-    throw new Error('useSettings must be used within SettingsProvider');
+    throw new Error("useSettings must be used within SettingsProvider");
   }
 
   return context;
