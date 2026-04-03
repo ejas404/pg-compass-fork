@@ -11,13 +11,13 @@ import { TableDetailsViewer } from '@/components/workspace/table-details-viewer'
 import { ViewListViewer } from '@/components/workspace/view-list-viewer';
 import { ViewDetailsViewer } from '@/components/workspace/view-details-viewer';
 import type { WorkspaceTab, WorkspaceTabView } from '@/shared/types/workspace';
-import { useDynamicWindowTitle } from './hooks/use-dynamic-title';
 import { WelcomeScreen } from './welcome-screen';
+import { ApplicationTitle } from '../topbar/application-title';
+import { buildWindowTitle } from './utils/build-window-title';
 
 export function Workspace() {
   const { tabs, activeTabId, setActiveTab, closeTab } = useWorkspace();
-
-  useDynamicWindowTitle(tabs.find((t) => t.id === activeTabId));
+  const activeTab = tabs.find((t) => t.id === activeTabId)
 
   useWorkspaceShortcuts(tabs, activeTabId, closeTab, setActiveTab);
 
@@ -45,6 +45,7 @@ export function Workspace() {
 
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
+      <ApplicationTitle>{buildWindowTitle(activeTab?.view)}</ApplicationTitle>
       <WorkspaceTabBar
         tabs={tabs}
         activeTabId={activeTabId}
