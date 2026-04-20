@@ -1,3 +1,4 @@
+import path from "node:path";
 import { ipcMain, dialog, BrowserWindow } from "electron";
 import { TableDataChannels } from "../shared/types/table-data";
 import type {
@@ -14,6 +15,23 @@ import type {
 import { executeQuery, getRows } from "./table-data-rows";
 import { getConstraints, getIndexes, getStructure } from "./table-data-meta";
 import { exportData, sqlDump } from "./table-data-export";
+
+function resolveTestSaveDialogPath(
+  options: Electron.SaveDialogOptions,
+): string | null {
+  const explicitPath = process.env.PG_COMPASS_TEST_SAVE_DIALOG_PATH?.trim();
+  if (explicitPath) {
+    return explicitPath;
+  }
+
+  const saveDir = process.env.PG_COMPASS_TEST_SAVE_DIALOG_DIR?.trim();
+  if (!saveDir) {
+    return null;
+  }
+
+  const fallbackName = options.defaultPath ?? "export.txt";
+  return path.resolve(saveDir, path.basename(fallbackName));
+}
 
 // ---------------------------------------------------------------------------
 // Handler registration
@@ -84,6 +102,11 @@ export function registerTableDataHandlers(): void {
     TableDataChannels.SHOW_SAVE_DIALOG,
     async (event, options: Electron.SaveDialogOptions) => {
       try {
+        const testFilePath = resolveTestSaveDialogPath(options);
+        if (testFilePath) {
+          return { success: true, data: testFilePath };
+        }
+
         const win = BrowserWindow.fromWebContents(event.sender);
         const result = win
           ? await dialog.showSaveDialog(win, options)

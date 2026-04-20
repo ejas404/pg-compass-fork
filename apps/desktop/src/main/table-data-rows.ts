@@ -60,7 +60,7 @@ export async function getRows(params: GetRowsParams): Promise<TableRowsResult> {
 
 const ALLOWED_QUERY_PREFIXES = ["select", "with"];
 
-function isReadOnlyQuery(sql: string): boolean {
+export function isReadOnlyQuery(sql: string): boolean {
   const trimmed = sql.trim().toLowerCase();
   return ALLOWED_QUERY_PREFIXES.some((prefix) => trimmed.startsWith(prefix));
 }
@@ -71,7 +71,7 @@ function isReadOnlyQuery(sql: string): boolean {
  * Returns the cleaned SQL and the user-provided LIMIT (if any) so we can
  * honour it as an upper bound on totalCount.
  */
-function stripLimitOffset(sql: string): {
+export function stripLimitOffset(sql: string): {
   core: string;
   userLimit: number | null;
 } {

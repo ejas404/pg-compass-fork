@@ -4,13 +4,14 @@ import {
   type AppSettings,
   type AppSettingsPatch,
 } from '../shared/types/settings';
+import { resolveStoreOptions } from './store-config';
 
 interface SettingsStoreSchema {
   settings: AppSettings;
 }
 
 const store = new Store<SettingsStoreSchema>({
-  name: 'settings',
+  ...resolveStoreOptions({ name: 'settings' }),
   defaults: {
     settings: DEFAULT_APP_SETTINGS,
   },

@@ -8,7 +8,14 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
-    "make": "turbo run make"
+    "make": "turbo run make",
+    "test": "turbo run test --filter @pg-compass/desktop",
+    "test:unit": "turbo run test:unit --filter @pg-compass/desktop",
+    "test:integration": "turbo run test:integration --filter @pg-compass/desktop",
+    "test:integration:postgres": "turbo run test:integration:postgres --filter @pg-compass/desktop",
+    "test:e2e": "turbo run test:e2e --filter @pg-compass/desktop",
+    "test:coverage": "turbo run test:coverage --filter @pg-compass/desktop",
+    "test:watch": "turbo run test:watch --filter @pg-compass/desktop"
   },
   "devDependencies": {
     "prettier": "^3.7.4",

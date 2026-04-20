@@ -15,7 +15,7 @@ import { quoteIdent, withPoolClient } from "./pg-utils";
 // ---------------------------------------------------------------------------
 
 /** Throttle progress IPC sends to avoid flooding the renderer. */
-function createProgressThrottle(sender: WebContents, intervalMs = 200) {
+export function createProgressThrottle(sender: WebContents, intervalMs = 200) {
   let lastSent = 0;
   let pending: ReturnType<typeof setTimeout> | null = null;
 
@@ -48,14 +48,14 @@ function createProgressThrottle(sender: WebContents, intervalMs = 200) {
 }
 
 /** Convert a row to a CSV line, properly quoting values. */
-function csvEscapeValue(value: unknown): string {
+export function csvEscapeValue(value: unknown): string {
   if (value === null || value === undefined) return "";
   if (typeof value === "object") return csvQuoteField(JSON.stringify(value));
   if (typeof value === "symbol") return csvQuoteField(value.toString());
   return csvQuoteField(String(value as string | number | boolean | bigint));
 }
 
-function csvQuoteField(str: string): string {
+export function csvQuoteField(str: string): string {
   if (
     str.includes(",") ||
     str.includes('"') ||
@@ -68,7 +68,7 @@ function csvQuoteField(str: string): string {
 }
 
 /** Build the SQL to run for the export (either a full table or a user query). */
-function buildExportSql(params: ExportDataParams): string {
+export function buildExportSql(params: ExportDataParams): string {
   if (params.sql) {
     const ALLOWED_QUERY_PREFIXES = ["select", "with"];
     const trimmed = params.sql.trim().toLowerCase();

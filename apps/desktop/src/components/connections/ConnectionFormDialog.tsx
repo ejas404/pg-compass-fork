@@ -79,7 +79,7 @@ const POSTGRES_URL_RE = /^postgres(?:ql)?:\/\//i;
  * Attempt to parse a full PostgreSQL connection URL into individual fields.
  * Returns the parsed fields on success, or null if the value is not a recognisable URL.
  */
-function tryParsePostgresUrl(value: string): ConnectionFields | null {
+export function tryParsePostgresUrl(value: string): ConnectionFields | null {
   if (!POSTGRES_URL_RE.test(value)) return null;
   try {
     const parsed = new URL(value);
@@ -96,7 +96,7 @@ function tryParsePostgresUrl(value: string): ConnectionFields | null {
 }
 
 /** Validate connection form inputs. Returns a map of field → error message. */
-function validateConnectionInput(
+export function validateConnectionInput(
   mode: 'uri' | 'fields',
   uri: string,
   fields: ConnectionFields,

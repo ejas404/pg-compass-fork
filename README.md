@@ -51,11 +51,29 @@ pnpm dev
 
 ```bash
 # Package the Electron app
-cd apps/desktop
-pnpm package
+pnpm --filter @pg-compass/desktop package
 
 # Or create distributable installers
-pnpm make
+pnpm --filter @pg-compass/desktop make
+```
+
+### Running Tests
+
+```bash
+# Unit and integration suites
+pnpm test
+
+# Fast integration suite only
+pnpm test:integration
+
+# Authoritative PostgreSQL-backed integration suite
+pnpm test:integration:postgres
+
+# Coverage
+pnpm test:coverage
+
+# Electron Playwright
+pnpm test:e2e
 ```
 
 ## Project Structure

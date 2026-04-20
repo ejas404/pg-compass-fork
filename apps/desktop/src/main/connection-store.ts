@@ -5,13 +5,14 @@ import type {
   ConnectionConfig,
   ConnectionInput,
 } from '../shared/types/connection';
+import { resolveStoreOptions } from './store-config';
 
 interface StoreSchema {
   connections: ConnectionConfig[];
 }
 
 const store = new Store<StoreSchema>({
-  name: 'connections',
+  ...resolveStoreOptions({ name: 'connections' }),
   defaults: {
     connections: [],
   },
