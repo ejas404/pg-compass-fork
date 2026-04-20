@@ -6,15 +6,26 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { typeRegistry } from '@/components/workspace/renderers/type-registry';
+import { EditableCell } from '@/components/workspace/table-viewer/editable-cell';
 import type { ColumnInfo } from '@/shared/types/table-data';
+import type { EditContext } from '@/components/workspace/table-viewer/data-tab';
 
 interface TableDataViewProps {
   columns: ColumnInfo[];
   rows: Record<string, unknown>[];
+  editContext: EditContext;
 }
 
-export function TableDataView({ columns, rows }: Readonly<TableDataViewProps>) {
+function pkValuesFor(row: Record<string, unknown>, primaryKey: string[] | null): unknown[] {
+  if (!primaryKey) return [];
+  return primaryKey.map((col) => row[col]);
+}
+
+export function TableDataView({
+  columns,
+  rows,
+  editContext,
+}: Readonly<TableDataViewProps>) {
   if (rows.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -43,24 +54,28 @@ export function TableDataView({ columns, rows }: Readonly<TableDataViewProps>) {
         <TableBody>
           {rows.map((row, rowIndex) => {
             const rowKey = `row-${String(rowIndex)}`;
+            const pkValues = pkValuesFor(row, editContext.primaryKey);
             return (
               <TableRow key={rowKey} className="hover:bg-muted/50">
-                {columns.map((col) => {
-                  const value = row[col.name];
-                  const isNull = value === null || value === undefined;
-                  const renderer = isNull
-                    ? typeRegistry.get('__null__')
-                    : typeRegistry.get(col.dataType);
-
-                  return (
-                    <TableCell
-                      key={col.name}
-                      className="max-w-75 truncate font-mono text-xs"
-                    >
-                      {renderer.renderCell(value)}
-                    </TableCell>
-                  );
-                })}
+                {columns.map((col) => (
+                  <TableCell
+                    key={col.name}
+                    className="max-w-75 truncate font-mono text-xs"
+                  >
+                    <EditableCell
+                      col={col}
+                      value={row[col.name]}
+                      readOnly={editContext.readOnly}
+                      primaryKey={editContext.primaryKey}
+                      pkValues={pkValues}
+                      schema={editContext.schema}
+                      table={editContext.table}
+                      connectionId={editContext.connectionId}
+                      variant="cell"
+                      onRowUpdated={(updated) => editContext.onRowUpdated(rowIndex, updated)}
+                    />
+                  </TableCell>
+                ))}
               </TableRow>
             );
           })}

@@ -20,6 +20,8 @@ import type {
   SqlDumpParams,
   TableMetaParams,
   TableRowsResult,
+  UpdateCellParams,
+  UpdateCellResult,
 } from './shared/types/table-data';
 
 export interface IpcResult<T> {
@@ -56,6 +58,7 @@ interface TableDataApi {
   showSaveDialog(options: SaveDialogOptions): Promise<IpcResult<string | null>>;
   exportData(params: ExportDataParams): Promise<IpcResult<ExportResult>>;
   sqlDump(params: SqlDumpParams): Promise<IpcResult<ExportResult>>;
+  updateCell(params: UpdateCellParams): Promise<IpcResult<UpdateCellResult>>;
   onExportProgress(callback: (rowCount: number) => void): () => void;
 }
 

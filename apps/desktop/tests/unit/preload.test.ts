@@ -34,6 +34,7 @@ describe("preload API contract", () => {
       };
       tableDataApi: {
         onExportProgress: (callback: () => void) => () => void;
+        updateCell: (params: unknown) => Promise<unknown>;
       };
     };
 
@@ -51,5 +52,20 @@ describe("preload API contract", () => {
       "table-data:export-progress",
       expect.any(Function),
     );
+
+    // Write path: updateCell forwards to the UPDATE_CELL channel.
+    const updateParams = {
+      connectionId: "c1",
+      schema: "app",
+      table: "users",
+      pkColumns: ["id"],
+      pkValues: [1],
+      column: "display_name",
+      pgCast: "text",
+      newValue: "new",
+      setNull: false,
+    };
+    await exposed.tableDataApi.updateCell(updateParams);
+    expect(invoke).toHaveBeenCalledWith("table-data:update-cell", updateParams);
   });
 });

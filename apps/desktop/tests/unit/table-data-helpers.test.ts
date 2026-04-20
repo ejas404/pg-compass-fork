@@ -8,6 +8,7 @@ import {
   csvEscapeValue,
   csvQuoteField,
 } from "@/main/table-data-export";
+import { assertSafePgCast } from "@/main/table-data-write";
 
 describe("table-data query helpers", () => {
   it("accepts read-only queries and rejects mutating ones", () => {
@@ -52,5 +53,44 @@ describe("table-data export helpers", () => {
         sql: "SELECT * FROM app.users;",
       }),
     ).toBe("SELECT * FROM app.users");
+  });
+});
+
+describe("assertSafePgCast", () => {
+  it.each([
+    "text",
+    "int2",
+    "int4",
+    "int8",
+    "float4",
+    "float8",
+    "numeric",
+    "bool",
+    "uuid",
+    "json",
+    "jsonb",
+    "date",
+    "time",
+    "timestamp",
+    "timestamptz",
+    "_int4",
+    "_text",
+    "geometry",
+    "geography",
+    "vector",
+  ])("accepts %s", (cast) => {
+    expect(() => assertSafePgCast(cast)).not.toThrow();
+  });
+
+  it.each([
+    "text; DROP TABLE x",
+    "unknown_type",
+    "",
+    "INT4",
+    "int4 WITH TIME ZONE",
+    "text OR 1=1",
+    "jsonb); DELETE FROM users; --",
+  ])("rejects %s", (cast) => {
+    expect(() => assertSafePgCast(cast)).toThrow(/cast/i);
   });
 });

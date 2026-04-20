@@ -6,11 +6,24 @@ import { SqlEditor, type CompletionSchema } from '@/components/sql-editor/SqlEdi
 import { DataPagination } from '@/components/workspace/table-viewer/data-pagination';
 import { TableDataView } from '@/components/workspace/table-viewer/table-data-view';
 import { CardDataView } from '@/components/workspace/table-viewer/card-data-view';
+import type { EditContext } from '@/components/workspace/table-viewer/data-tab';
 import { ExportDropdown } from '@/components/workspace/export-dropdown';
 import { useWorkspace } from '@/hooks/use-workspace';
 import type { ColumnInfo } from '@/shared/types/table-data';
 
 type ViewMode = 'table' | 'card';
+
+// Ad-hoc queries cannot be tied back to a single source relation, so cells
+// in the query tab are never editable. Phase 2 may lift this for simple
+// single-table selects.
+const NON_EDITABLE_CONTEXT: EditContext = {
+  connectionId: '',
+  schema: '',
+  table: '',
+  readOnly: true,
+  primaryKey: null,
+  onRowUpdated: () => undefined,
+};
 
 function QueryResultView({
   viewMode,
@@ -18,9 +31,9 @@ function QueryResultView({
   rows,
 }: Readonly<{ viewMode: ViewMode; columns: ColumnInfo[]; rows: Record<string, unknown>[] }>) {
   if (viewMode === 'table') {
-    return <TableDataView columns={columns} rows={rows} />;
+    return <TableDataView columns={columns} rows={rows} editContext={NON_EDITABLE_CONTEXT} />;
   }
-  return <CardDataView columns={columns} rows={rows} />;
+  return <CardDataView columns={columns} rows={rows} editContext={NON_EDITABLE_CONTEXT} />;
 }
 
 interface QueryTabProps {

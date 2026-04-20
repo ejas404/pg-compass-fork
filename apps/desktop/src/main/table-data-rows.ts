@@ -6,7 +6,45 @@ import type {
   TableRowsResult,
 } from "../shared/types/table-data";
 import { quoteIdent, withPoolClient } from "./pg-utils";
-import { buildTypeMap } from "./table-data-utils";
+import { buildEnumTypeMap, buildTypeMap } from "./table-data-utils";
+
+// ---------------------------------------------------------------------------
+// Primary-key resolution
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the primary-key columns for a real table, in declaration order.
+ * Returns `null` for relations that have no primary key — views, foreign
+ * tables, and tables declared without PRIMARY KEY. Cells are only editable
+ * when this is non-null.
+ */
+export async function resolvePrimaryKey(
+  client: PoolClient,
+  schema: string,
+  table: string,
+): Promise<string[] | null> {
+  // pg_index.indkey is an int2vector in column-order; unnest WITH ORDINALITY
+  // preserves that order and lets us join to pg_attribute for the names.
+  const result = await client.query<{ attname: string }>(
+    `
+    SELECT a.attname
+    FROM pg_index i
+    JOIN pg_class c ON c.oid = i.indrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    JOIN unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord) ON true
+    JOIN pg_attribute a
+      ON a.attrelid = c.oid AND a.attnum = k.attnum
+    WHERE i.indisprimary
+      AND n.nspname = $1
+      AND c.relname = $2
+    ORDER BY k.ord
+    `,
+    [schema, table],
+  );
+
+  if (result.rows.length === 0) return null;
+  return result.rows.map((r) => r.attname);
+}
 
 // ---------------------------------------------------------------------------
 // GET_ROWS
@@ -33,20 +71,31 @@ export async function getRows(params: GetRowsParams): Promise<TableRowsResult> {
         [params.pageSize, offset],
       );
 
-      await client.query("COMMIT");
-
-      const typeMap = await buildTypeMap(
+      const primaryKey = await resolvePrimaryKey(
         client,
-        dataResult.fields.map((f) => f.dataTypeID),
+        params.schema,
+        params.table,
       );
 
-      const columns: ColumnInfo[] = dataResult.fields.map((f) => ({
-        name: f.name,
-        dataTypeId: f.dataTypeID,
-        dataType: typeMap.get(f.dataTypeID) ?? "unknown",
-      }));
+      await client.query("COMMIT");
 
-      return { columns, rows: dataResult.rows, totalCount };
+      const oids = dataResult.fields.map((f) => f.dataTypeID);
+      const typeMap = await buildTypeMap(client, oids);
+      const enumMap = await buildEnumTypeMap(client, oids);
+
+      const columns: ColumnInfo[] = dataResult.fields.map((f) => {
+        const enumInfo = enumMap.get(f.dataTypeID);
+        return {
+          name: f.name,
+          dataTypeId: f.dataTypeID,
+          dataType: typeMap.get(f.dataTypeID) ?? "unknown",
+          ...(enumInfo
+            ? { enumLabels: enumInfo.labels, enumPgCast: enumInfo.pgCast }
+            : {}),
+        };
+      });
+
+      return { columns, rows: dataResult.rows, totalCount, primaryKey };
     } catch (err) {
       await client.query("ROLLBACK").catch(() => undefined);
       throw err;
@@ -126,18 +175,26 @@ export async function executeQuery(
 
       await client.query("COMMIT");
 
-      const typeMap = await buildTypeMap(
-        client,
-        dataResult.fields.map((f) => f.dataTypeID),
-      );
+      const oids = dataResult.fields.map((f) => f.dataTypeID);
+      const typeMap = await buildTypeMap(client, oids);
+      const enumMap = await buildEnumTypeMap(client, oids);
 
-      const columns: ColumnInfo[] = dataResult.fields.map((f) => ({
-        name: f.name,
-        dataTypeId: f.dataTypeID,
-        dataType: typeMap.get(f.dataTypeID) ?? "unknown",
-      }));
+      const columns: ColumnInfo[] = dataResult.fields.map((f) => {
+        const enumInfo = enumMap.get(f.dataTypeID);
+        return {
+          name: f.name,
+          dataTypeId: f.dataTypeID,
+          dataType: typeMap.get(f.dataTypeID) ?? "unknown",
+          ...(enumInfo
+            ? { enumLabels: enumInfo.labels, enumPgCast: enumInfo.pgCast }
+            : {}),
+        };
+      });
 
-      return { columns, rows: dataResult.rows, totalCount };
+      // Ad-hoc queries span an arbitrary set of source relations (or none —
+      // e.g. VALUES). There is no single primary key to return, so cells
+      // from this code path are always read-only.
+      return { columns, rows: dataResult.rows, totalCount, primaryKey: null };
     } catch (err) {
       await client.query("ROLLBACK").catch(() => undefined);
       throw err;

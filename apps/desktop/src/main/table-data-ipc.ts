@@ -11,10 +11,12 @@ import type {
   SqlDumpParams,
   TableMetaParams,
   TableRowsResult,
+  UpdateCellParams,
 } from "../shared/types/table-data";
 import { executeQuery, getRows } from "./table-data-rows";
 import { getConstraints, getIndexes, getStructure } from "./table-data-meta";
 import { exportData, sqlDump } from "./table-data-export";
+import { updateCell } from "./table-data-write";
 
 function resolveTestSaveDialogPath(
   options: Electron.SaveDialogOptions,
@@ -137,6 +139,18 @@ export function registerTableDataHandlers(): void {
     async (event, params: SqlDumpParams) => {
       try {
         const data = await sqlDump(params, event.sender);
+        return { success: true, data };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    TableDataChannels.UPDATE_CELL,
+    async (_event, params: UpdateCellParams) => {
+      try {
+        const data = await updateCell(params);
         return { success: true, data };
       } catch (err) {
         return { success: false, error: (err as Error).message };

@@ -29,6 +29,8 @@ import type {
   SqlDumpParams,
   TableMetaParams,
   TableRowsResult,
+  UpdateCellParams,
+  UpdateCellResult,
 } from './shared/types/table-data';
 
 /** IPC result wrapper. */
@@ -99,6 +101,9 @@ const tableDataApi = {
 
   sqlDump: (params: SqlDumpParams): Promise<IpcResult<ExportResult>> =>
     ipcRenderer.invoke(TableDataChannels.SQL_DUMP, params),
+
+  updateCell: (params: UpdateCellParams): Promise<IpcResult<UpdateCellResult>> =>
+    ipcRenderer.invoke(TableDataChannels.UPDATE_CELL, params),
 
   onExportProgress: (callback: (rowCount: number) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, rowCount: number) => callback(rowCount);

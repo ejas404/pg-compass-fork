@@ -8,19 +8,35 @@ import { TableDataView } from '@/components/workspace/table-viewer/table-data-vi
 import { CardDataView } from '@/components/workspace/table-viewer/card-data-view';
 import { ExportDropdown } from '@/components/workspace/export-dropdown';
 import { useWorkspace } from '@/hooks/use-workspace';
+import { useSettings } from '@/hooks/use-settings';
 import type { ColumnInfo } from '@/shared/types/table-data';
 
 type ViewMode = 'table' | 'card';
+
+export interface EditContext {
+  connectionId: string;
+  schema: string;
+  table: string;
+  readOnly: boolean;
+  primaryKey: string[] | null;
+  onRowUpdated: (rowIndex: number, row: Record<string, unknown>) => void;
+}
 
 function DataViewContent({
   viewMode,
   columns,
   rows,
-}: Readonly<{ viewMode: ViewMode; columns: ColumnInfo[]; rows: Record<string, unknown>[] }>) {
+  editContext,
+}: Readonly<{
+  viewMode: ViewMode;
+  columns: ColumnInfo[];
+  rows: Record<string, unknown>[];
+  editContext: EditContext;
+}>) {
   if (viewMode === 'table') {
-    return <TableDataView columns={columns} rows={rows} />;
+    return <TableDataView columns={columns} rows={rows} editContext={editContext} />;
   }
-  return <CardDataView columns={columns} rows={rows} />;
+  return <CardDataView columns={columns} rows={rows} editContext={editContext} />;
 }
 
 function DataContent({
@@ -28,11 +44,13 @@ function DataContent({
   columns,
   rows,
   error,
+  editContext,
 }: Readonly<{
   viewMode: ViewMode;
   columns: ColumnInfo[];
   rows: Record<string, unknown>[];
   error: string | null;
+  editContext: EditContext;
 }>) {
   if (error) {
     return (
@@ -43,7 +61,14 @@ function DataContent({
       </div>
     );
   }
-  return <DataViewContent viewMode={viewMode} columns={columns} rows={rows} />;
+  return (
+    <DataViewContent
+      viewMode={viewMode}
+      columns={columns}
+      rows={rows}
+      editContext={editContext}
+    />
+  );
 }
 
 interface DataTabProps {
@@ -54,8 +79,10 @@ interface DataTabProps {
 
 export function DataTab({ connectionId, schema, table }: Readonly<DataTabProps>) {
   const { schemaCache } = useWorkspace();
+  const { settings } = useSettings();
   const [columns, setColumns] = useState<ColumnInfo[]>([]);
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
+  const [primaryKey, setPrimaryKey] = useState<string[] | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
@@ -116,6 +143,7 @@ export function DataTab({ connectionId, schema, table }: Readonly<DataTabProps>)
 
         setColumns(result.data.columns);
         setRows(result.data.rows);
+        setPrimaryKey(result.data.primaryKey);
         setTotalCount(result.data.totalCount);
       } catch (err) {
         const msg = (err as Error).message;
@@ -145,6 +173,30 @@ export function DataTab({ connectionId, schema, table }: Readonly<DataTabProps>)
     setWhereClause('');
     setPage(1);
   }
+
+  const handleRowUpdated = useCallback(
+    (rowIndex: number, row: Record<string, unknown>) => {
+      setRows((prev) => {
+        if (rowIndex < 0 || rowIndex >= prev.length) return prev;
+        const next = prev.slice();
+        next[rowIndex] = row;
+        return next;
+      });
+    },
+    [],
+  );
+
+  const editContext = useMemo<EditContext>(
+    () => ({
+      connectionId,
+      schema,
+      table,
+      readOnly: settings.general.readOnlyMode,
+      primaryKey,
+      onRowUpdated: handleRowUpdated,
+    }),
+    [connectionId, schema, table, settings.general.readOnlyMode, primaryKey, handleRowUpdated],
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -221,7 +273,13 @@ export function DataTab({ connectionId, schema, table }: Readonly<DataTabProps>)
             <Loader2 className="size-5 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <DataContent viewMode={viewMode} columns={columns} rows={rows} error={error} />
+          <DataContent
+            viewMode={viewMode}
+            columns={columns}
+            rows={rows}
+            error={error}
+            editContext={editContext}
+          />
         )}
       </div>
 

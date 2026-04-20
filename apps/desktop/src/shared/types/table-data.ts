@@ -7,6 +7,17 @@ export interface ColumnInfo {
   dataTypeId: number;
   /** PostgreSQL type name resolved from OID. */
   dataType: string;
+  /**
+   * For user-defined enum types: the allowed labels in declaration order.
+   * Absent for non-enum columns. Drives the enum dropdown in the cell editor.
+   */
+  enumLabels?: string[];
+  /**
+   * Authoritative enum cast string from the catalog, schema-qualified and
+   * SQL-safe for direct interpolation (e.g. `"app"."user_role"` or
+   * `"App"."Role"`). Absent for non-enum columns.
+   */
+  enumPgCast?: string;
 }
 
 /** Paginated row result shared by data tab and query tab. */
@@ -14,6 +25,13 @@ export interface TableRowsResult {
   columns: ColumnInfo[];
   rows: Record<string, unknown>[];
   totalCount: number;
+  /**
+   * Primary-key column names for the source relation, in declaration order.
+   * `null` when the relation has no primary key (e.g. a view, or a table
+   * without PRIMARY KEY), or when the result is not from a single table
+   * (e.g. an ad-hoc query). Cells are only editable when this is non-null.
+   */
+  primaryKey: string[] | null;
 }
 
 /** Column structure for the Structure tab. */
@@ -117,6 +135,41 @@ export interface SaveDialogOptions {
   filters?: { name: string; extensions: string[] }[];
 }
 
+/**
+ * Parameters for updating a single cell in a single row.
+ *
+ * The renderer validates the value before sending, but the main process is
+ * authoritative: it re-checks read-only mode, rejects unknown casts, and lets
+ * Postgres surface constraint errors.
+ */
+export interface UpdateCellParams {
+  connectionId: string;
+  schema: string;
+  table: string;
+  /** Primary-key column names, matching `TableRowsResult.primaryKey`. */
+  pkColumns: string[];
+  /** Primary-key values in the same order as `pkColumns`. */
+  pkValues: unknown[];
+  /** The column to update. */
+  column: string;
+  /**
+   * Postgres type name used as an explicit cast (e.g. `jsonb`, `int4`,
+   * `geometry`). Must be on the `safePgCast` allowlist. Ignored when
+   * `setNull` is true.
+   */
+  pgCast: string;
+  /** The new value (JS-side; `pg` parameterises it). Ignored when `setNull`. */
+  newValue: unknown;
+  /** When true, SET col = NULL instead of using `newValue`. */
+  setNull: boolean;
+}
+
+/** Result returned after a successful cell update. */
+export interface UpdateCellResult {
+  /** Full row after the update, re-typed through `buildTypeMap`. */
+  row: Record<string, unknown>;
+}
+
 /** IPC channel names for table data operations. */
 export const TableDataChannels = {
   GET_ROWS: 'table-data:get-rows',
@@ -128,4 +181,5 @@ export const TableDataChannels = {
   EXPORT_DATA: 'table-data:export-data',
   EXPORT_PROGRESS: 'table-data:export-progress',
   SQL_DUMP: 'table-data:sql-dump',
+  UPDATE_CELL: 'table-data:update-cell',
 } as const;

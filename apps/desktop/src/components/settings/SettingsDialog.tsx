@@ -87,7 +87,7 @@ function GeneralSettingsPanel() {
 
       <SettingToggleRow
         label="Set Read-Only Mode"
-        description="Limit PG Compass to read operations and disable write/delete actions (coming soon)."
+        description="Limit PG Compass to read operations. Inline cell edits are hidden and write requests are rejected at the main process."
         checked={settings.general.readOnlyMode}
         onCheckedChange={(checked) =>
           updateSettings({ general: { readOnlyMode: checked } })

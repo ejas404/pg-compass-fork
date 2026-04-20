@@ -2,6 +2,7 @@ import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
+import { vector } from "@electric-sql/pglite/vector";
 import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
 
 const seedSql = fs.readFileSync(
@@ -39,7 +40,10 @@ export async function createSeededPGliteDatabase(): Promise<{
   connectionUrl: string;
   cleanup: () => Promise<void>;
 }> {
-  const db = await PGlite.create();
+  // pgvector ships as an opt-in PGlite extension bundle; PostGIS is not
+  // available in PGlite and the seed SQL gates it on `pg_available_extensions`
+  // so CREATE EXTENSION postgis is a no-op here.
+  const db = await PGlite.create({ extensions: { vector } });
   await db.exec(seedSql);
 
   const port = await findFreePort();
