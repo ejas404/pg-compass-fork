@@ -3,6 +3,10 @@ import Layout from '../layouts/Layout.astro';
 import landingPkg from '../../package.json';
 
 const appVersion = landingPkg.version;
+const siteBase = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : `${import.meta.env.BASE_URL}/`;
+const currentYear = new Date().getFullYear();
 const githubLatestReleaseUrl = 'https://github.com/waterrmalann/pg-compass/releases/latest';
 const githubReleasesUrl = 'https://github.com/waterrmalann/pg-compass/releases';
 const githubLatestReleaseApiUrl = 'https://api.github.com/repos/waterrmalann/pg-compass/releases/latest';
@@ -39,7 +43,7 @@ const features = [
   <nav class="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
     <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
 
-      <a href="/" class="flex items-center gap-2.5">
+      <a href={siteBase} class="flex items-center gap-2.5">
         <div class="w-7 h-7 rounded-md bg-card border border-border flex items-center justify-center text-foreground">
           <!-- Compass-inspired logo mark -->
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -179,7 +183,7 @@ const features = [
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
           </svg>
-          Windows · macOS · Linux
+          Windows · Linux
         </div>
 
         <div class="hidden sm:block w-px h-4 bg-border"></div>
@@ -478,7 +482,7 @@ const features = [
         <span aria-hidden="true">·</span>
         <span>MIT License</span>
         <span aria-hidden="true">·</span>
-        <span>© 2025</span>
+        <span>© {currentYear}</span>
       </div>
 
       <div class="flex items-center gap-6">
