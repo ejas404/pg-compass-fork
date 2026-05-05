@@ -72,6 +72,14 @@ export function runTableDataIntegrationSuite(
       });
       expect(rows.totalCount).toBe(120);
       expect(rows.rows).toHaveLength(25);
+      expect(
+        rows.columns.find((column) => column.name === "display_name")
+          ?.isNullable,
+      ).toBe(false);
+      expect(
+        rows.columns.find((column) => column.name === "profile_note")
+          ?.isNullable,
+      ).toBe(true);
 
       const query = await executeQuery({
         connectionId,

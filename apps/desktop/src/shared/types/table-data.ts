@@ -35,6 +35,12 @@ export interface ColumnInfo {
   /** PostgreSQL type name resolved from OID. */
   dataType: string;
   /**
+   * Whether the source relation declares the column nullable. Present for
+   * table/view data loaded through `getRows`; absent for ad-hoc query results
+   * where there is no single catalog column to inspect.
+   */
+  isNullable?: boolean;
+  /**
    * For user-defined enum types: the allowed labels in declaration order.
    * Absent for non-enum columns. Drives the enum dropdown in the cell editor.
    */

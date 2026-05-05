@@ -262,6 +262,7 @@ function sameValue(a: unknown, b: unknown): boolean {
 interface ForeignKeyModalEditorProps extends TypeEditorProps {
   foreignKey: ForeignKeyRef;
   connectionId: string;
+  allowNull: boolean;
 }
 
 export function ForeignKeyModalEditor(
@@ -273,7 +274,7 @@ export function ForeignKeyModalEditor(
         currentValue={props.initialValue}
         foreignKey={props.foreignKey}
         connectionId={props.connectionId}
-        allowNull
+        allowNull={props.allowNull}
         onPick={(value) => {
           const result: EditResult = {
             value,

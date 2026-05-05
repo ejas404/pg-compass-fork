@@ -93,7 +93,8 @@ export function EditableCell(props: Readonly<EditableCellProps>) {
   const editable =
     !props.readOnly &&
     props.primaryKey !== null &&
-    props.primaryKey.length > 0;
+    props.primaryKey.length > 0 &&
+    !props.primaryKey.includes(props.col.name);
 
   const display =
     props.displayOverride ?? renderDisplay(props.col, props.value, props.variant);
@@ -157,6 +158,8 @@ function makeEnumEditor(labels: string[], pgCast: string): TypeEditor {
 function EditDialog(props: Readonly<EditDialogProps>) {
   const enumLabels = props.col.enumLabels;
   const fk = props.col.foreignKey;
+  const connectionId = props.connectionId;
+  const columnIsNullable = props.col.isNullable === true;
   // Resolution priority: FK ⇒ enum ⇒ type-registered ⇒ fallback. FK takes
   // precedence so a column that's both an enum and an FK (rare) still gets
   // the searchable dropdown.
@@ -173,7 +176,8 @@ function EditDialog(props: Readonly<EditDialogProps>) {
           <ForeignKeyModalEditor
             {...compProps}
             foreignKey={fk}
-            connectionId={props.connectionId}
+            connectionId={connectionId}
+            allowNull={columnIsNullable}
           />
         ),
       }
@@ -302,17 +306,19 @@ function EditDialog(props: Readonly<EditDialogProps>) {
 
         {!isModal || !ModalComponent ? (
           <DialogFooter className="gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={saving}
-              onClick={() => {
-                void handleSetNull();
-              }}
-            >
-              Set NULL
-            </Button>
+            {columnIsNullable ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={saving}
+                onClick={() => {
+                  void handleSetNull();
+                }}
+              >
+                Set NULL
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="outline"

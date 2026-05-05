@@ -19,10 +19,10 @@ beforeAll(() => {
 });
 
 const columns: ColumnInfo[] = [
-  { name: "id", dataTypeId: 23, dataType: "int4" },
-  { name: "display_name", dataTypeId: 1043, dataType: "varchar" },
-  { name: "login_count", dataTypeId: 23, dataType: "int4" },
-  { name: "profile_note", dataTypeId: 25, dataType: "text" },
+  { name: "id", dataTypeId: 23, dataType: "int4", isNullable: false },
+  { name: "display_name", dataTypeId: 1043, dataType: "varchar", isNullable: false },
+  { name: "login_count", dataTypeId: 23, dataType: "int4", isNullable: false },
+  { name: "profile_note", dataTypeId: 25, dataType: "text", isNullable: true },
 ];
 
 const row = {
@@ -79,6 +79,9 @@ describe("RowEditDialog", () => {
     expect(screen.getByTestId("row-field-id")).toBeInTheDocument();
     expect(screen.queryByTestId("setnull-id")).toBeNull();
     expect(screen.queryByTestId("revert-id")).toBeNull();
+    expect(screen.queryByTestId("setnull-display_name")).toBeNull();
+    expect(screen.queryByTestId("setnull-login_count")).toBeNull();
+    expect(screen.getByTestId("setnull-profile_note")).toBeInTheDocument();
   });
 
   it("enables Save once a field changes; saves with both edits in one call", async () => {

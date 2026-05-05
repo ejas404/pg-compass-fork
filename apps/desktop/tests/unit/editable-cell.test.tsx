@@ -25,6 +25,7 @@ const textCol: ColumnInfo = {
   name: "display_name",
   dataTypeId: 25,
   dataType: "text",
+  isNullable: true,
 };
 
 /**
@@ -123,6 +124,42 @@ describe("EditableCell gating", () => {
     );
     fireEvent.doubleClick(screen.getByTestId("cell-editor-target"));
     expect(screen.getByTestId("cell-editor")).toBeInTheDocument();
+  });
+
+  it("renders no edit affordance for a primary-key cell", () => {
+    render(
+      <EditableCell
+        col={{ name: "id", dataTypeId: 23, dataType: "int4", isNullable: false }}
+        value={1}
+        readOnly={false}
+        primaryKey={["id"]}
+        pkValues={[1]}
+        schema="app"
+        table="users"
+        connectionId="c1"
+        variant="cell"
+      />,
+    );
+    expect(screen.queryByTestId("cell-editor-target")).toBeNull();
+    expect(screen.queryByTestId("cell-editor")).toBeNull();
+  });
+
+  it("hides Set NULL when the column is not nullable", () => {
+    render(
+      <EditableCell
+        col={{ ...textCol, isNullable: false }}
+        value="Frank"
+        readOnly={false}
+        primaryKey={["id"]}
+        pkValues={[1]}
+        schema="app"
+        table="users"
+        connectionId="c1"
+        variant="cell"
+      />,
+    );
+    fireEvent.doubleClick(screen.getByTestId("cell-editor-target"));
+    expect(screen.queryByText("Set NULL")).toBeNull();
   });
 });
 

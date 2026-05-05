@@ -348,17 +348,19 @@ export function RowEditDialog(props: Readonly<RowEditDialogProps>) {
                         >
                           <RotateCcw className="size-3" />
                         </Button>
-                        <Button
-                          type="button"
-                          variant={draft?.setNull ? "secondary" : "ghost"}
-                          size="sm"
-                          className="h-7 px-2 text-[10px]"
-                          disabled={saving}
-                          onClick={() => setDraftNull(col.name)}
-                          data-testid={`setnull-${col.name}`}
-                        >
-                          NULL
-                        </Button>
+                        {col.isNullable === true ? (
+                          <Button
+                            type="button"
+                            variant={draft?.setNull ? "secondary" : "ghost"}
+                            size="sm"
+                            className="h-7 px-2 text-[10px]"
+                            disabled={saving}
+                            onClick={() => setDraftNull(col.name)}
+                            data-testid={`setnull-${col.name}`}
+                          >
+                            NULL
+                          </Button>
+                        ) : null}
                       </>
                     ) : null}
                   </div>

@@ -60,6 +60,28 @@ export async function resolvePrimaryKey(
   return result.rows.map((r) => r.attname);
 }
 
+async function resolveColumnNullability(
+  client: PoolClient,
+  schema: string,
+  table: string,
+): Promise<Map<string, boolean>> {
+  const result = await client.query<{
+    column_name: string;
+    is_nullable: string;
+  }>(
+    `
+    SELECT column_name, is_nullable
+    FROM information_schema.columns
+    WHERE table_schema = $1 AND table_name = $2
+    `,
+    [schema, table],
+  );
+
+  return new Map(
+    result.rows.map((row) => [row.column_name, row.is_nullable === "YES"]),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // GET_ROWS
 // ---------------------------------------------------------------------------
@@ -86,6 +108,11 @@ export async function getRows(params: GetRowsParams): Promise<TableRowsResult> {
       );
 
       const primaryKey = await resolvePrimaryKey(
+        client,
+        params.schema,
+        params.table,
+      );
+      const nullability = await resolveColumnNullability(
         client,
         params.schema,
         params.table,
@@ -119,6 +146,7 @@ export async function getRows(params: GetRowsParams): Promise<TableRowsResult> {
           name: f.name,
           dataTypeId: f.dataTypeID,
           dataType: typeMap.get(f.dataTypeID) ?? "unknown",
+          isNullable: nullability.get(f.name) ?? true,
           ...(enumInfo
             ? { enumLabels: enumInfo.labels, enumPgCast: enumInfo.pgCast }
             : {}),

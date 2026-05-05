@@ -425,6 +425,7 @@ Coverage-matrix update: add a row "Cell edit (text, json, postgis)" with Yes / Y
 - **Dialog-backed edit flow.** Double-click opens a Radix Dialog with a compact `<Input>` or multi-line `<textarea>` depending on type. Enter saves (for inline editors); Shift+Enter is reserved for newlines; Escape / backdrop-click cancels. Save shows a spinner; errors surface inline AND via `toast.error` with the Postgres message verbatim.
 - **PostGIS map editor** (`src/components/workspace/renderers/postgis-editor.tsx`) renders a Leaflet map, structured lat/lng/SRID inputs, and an authoritative WKT/EWKT textarea. Point geometries two-way-bind between the map pin and the structured form; other geometries (LineString, Polygon, …) are edited in the textarea and the map is purely visual. Click-to-place updates the form and regenerates the WKT.
 - **Optimistic update.** `DataTab` replaces the mutated row in place from the `UPDATE … RETURNING *` payload. No refetch, no spinner, no flicker.
+- **Immutable and NULL affordance gating.** Inline cell edit treats primary-key cells as immutable even when the row is otherwise editable, so double-clicking a PK value renders no editor. `ColumnInfo` carries table/view nullability from `getRows`; Set NULL controls are only rendered for nullable columns, including FK modal editors.
 
 ### Tests
 

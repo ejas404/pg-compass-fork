@@ -225,6 +225,7 @@ describe("ForeignKeyModalEditor", () => {
         onCancel={() => {}}
         foreignKey={fk}
         connectionId="c1"
+        allowNull
       />,
     );
     await advanceSearchDebounce();
