@@ -114,6 +114,43 @@ export interface ConstraintInfo {
   checkClause: string | null;
 }
 
+/** Trigger info for the Triggers tab. */
+export interface TriggerInfo {
+  name: string;
+  enabled: boolean;
+  enabledMode: "ORIGIN" | "DISABLED" | "REPLICA" | "ALWAYS";
+  timing: "BEFORE" | "AFTER" | "INSTEAD OF";
+  events: string[];
+  functionName: string;
+  definition: string;
+}
+
+export type TableTypeKind = "ENUM" | "DOMAIN" | "COMPOSITE";
+
+export interface TableTypeColumnUsage {
+  name: string;
+  isArray: boolean;
+}
+
+export interface CompositeTypeAttribute {
+  name: string;
+  dataType: string;
+  isNullable: boolean;
+}
+
+/** User-defined type info for the Types tab. */
+export interface TableTypeInfo {
+  name: string;
+  schema: string;
+  kind: TableTypeKind;
+  usedByColumns: TableTypeColumnUsage[];
+  enumLabels: string[];
+  domainBaseType: string | null;
+  domainDefault: string | null;
+  domainConstraints: string[];
+  compositeAttributes: CompositeTypeAttribute[];
+}
+
 /** Parameters for fetching paginated table rows. */
 export interface GetRowsParams {
   connectionId: string;
@@ -137,6 +174,12 @@ export interface TableMetaParams {
   connectionId: string;
   schema: string;
   table: string;
+}
+
+/** Parameters for enabling or disabling a table trigger. */
+export interface ToggleTriggerParams extends TableMetaParams {
+  trigger: string;
+  enabled: boolean;
 }
 
 /** Parameters for exporting table data as CSV or JSON. */
@@ -298,6 +341,9 @@ export const TableDataChannels = {
   GET_STRUCTURE: "table-data:get-structure",
   GET_INDEXES: "table-data:get-indexes",
   GET_CONSTRAINTS: "table-data:get-constraints",
+  GET_TRIGGERS: "table-data:get-triggers",
+  GET_TYPES: "table-data:get-types",
+  TOGGLE_TRIGGER: "table-data:toggle-trigger",
   EXECUTE_QUERY: "table-data:execute-query",
   SHOW_SAVE_DIALOG: "table-data:show-save-dialog",
   EXPORT_DATA: "table-data:export-data",

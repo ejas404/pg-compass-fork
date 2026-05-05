@@ -34,6 +34,9 @@ describe("preload API contract", () => {
       };
       tableDataApi: {
         onExportProgress: (callback: () => void) => () => void;
+        getTriggers: (params: unknown) => Promise<unknown>;
+        getTypes: (params: unknown) => Promise<unknown>;
+        toggleTrigger: (params: unknown) => Promise<unknown>;
         updateCell: (params: unknown) => Promise<unknown>;
         updateRow: (params: unknown) => Promise<unknown>;
         deleteRows: (params: unknown) => Promise<unknown>;
@@ -43,6 +46,34 @@ describe("preload API contract", () => {
 
     await exposed.connectionApi.getAll();
     expect(invoke).toHaveBeenCalledWith("connections:get-all");
+
+    const triggerMetaParams = {
+      connectionId: "c1",
+      schema: "app",
+      table: "users",
+    };
+    await exposed.tableDataApi.getTriggers(triggerMetaParams);
+    expect(invoke).toHaveBeenCalledWith(
+      "table-data:get-triggers",
+      triggerMetaParams,
+    );
+
+    await exposed.tableDataApi.getTypes(triggerMetaParams);
+    expect(invoke).toHaveBeenCalledWith(
+      "table-data:get-types",
+      triggerMetaParams,
+    );
+
+    const toggleTriggerParams = {
+      ...triggerMetaParams,
+      trigger: "users_audit_trigger",
+      enabled: false,
+    };
+    await exposed.tableDataApi.toggleTrigger(toggleTriggerParams);
+    expect(invoke).toHaveBeenCalledWith(
+      "table-data:toggle-trigger",
+      toggleTriggerParams,
+    );
 
     const cleanup = exposed.tableDataApi.onExportProgress(vi.fn());
     expect(on).toHaveBeenCalledWith(

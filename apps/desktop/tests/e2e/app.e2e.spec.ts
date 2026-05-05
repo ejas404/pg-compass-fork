@@ -1,6 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
-import { test, expect, _electron as electron, type TestInfo } from "@playwright/test";
+import {
+  test,
+  expect,
+  _electron as electron,
+  type TestInfo,
+} from "@playwright/test";
 
 function getRuntimeState(testInfo: TestInfo) {
   const runtimeStatePath = String(testInfo.config.metadata.runtimeStatePath);
@@ -43,7 +48,10 @@ test.describe.configure({ mode: "serial" });
 test("explores, queries, exports, and updates settings in the real Electron app", async ({
   browserName,
 }, testInfo) => {
-  test.skip(browserName !== "chromium", "Electron tests only run with Chromium");
+  test.skip(
+    browserName !== "chromium",
+    "Electron tests only run with Chromium",
+  );
 
   const runtime = getRuntimeState(testInfo);
   const app = await electron.launch({
@@ -57,7 +65,9 @@ test("explores, queries, exports, and updates settings in the real Electron app"
 
   const page = await app.firstWindow();
 
-  await expect(page.getByRole("button", { name: "Open E2E Database" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Open E2E Database" }),
+  ).toBeVisible();
 
   await page.getByRole("button", { name: "Open E2E Database" }).hover();
   await page.getByRole("button", { name: "More actions" }).click();
@@ -70,6 +80,26 @@ test("explores, queries, exports, and updates settings in the real Electron app"
 
   await page.getByRole("row", { name: /users/i }).click();
   await expect(page.getByRole("tab", { name: "Query" })).toBeVisible();
+
+  await page.getByRole("tab", { name: "Types" }).click();
+  await expect(page.getByRole("row", { name: /user_role/i })).toBeVisible();
+  await page.getByRole("button", { name: /user_role/i }).click();
+  await expect(page.getByText("admin")).toBeVisible();
+  await expect(page.getByText("editor")).toBeVisible();
+  await expect(page.getByText("viewer")).toBeVisible();
+
+  await page.getByRole("tab", { name: "Triggers" }).click();
+  await expect(
+    page.getByRole("row", { name: /users_updated_trigger/i }),
+  ).toBeVisible();
+  await page
+    .getByRole("switch", { name: "Disable trigger users_updated_trigger" })
+    .click();
+  await expect(page.getByRole("row", { name: /Disabled/i })).toBeVisible();
+  await page
+    .getByRole("switch", { name: "Enable trigger users_updated_trigger" })
+    .click();
+  await expect(page.getByRole("row", { name: /Enabled/i })).toBeVisible();
 
   await page.getByRole("tab", { name: "Query" }).click();
   await page.getByRole("button", { name: "Run Query" }).click();

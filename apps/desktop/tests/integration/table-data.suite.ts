@@ -91,8 +91,8 @@ export function runTableDataIntegrationSuite(
       expect(query.rows[0]).toMatchObject({ id: 1 });
     });
 
-    it("fetches structure, indexes, and constraints", async () => {
-      const { getStructure, getIndexes, getConstraints } =
+    it("fetches structure, indexes, constraints, and types", async () => {
+      const { getStructure, getIndexes, getConstraints, getTypes } =
         await import("@/main/table-data-meta");
 
       const structure = await getStructure({
@@ -120,6 +120,108 @@ export function runTableDataIntegrationSuite(
       });
       expect(
         constraints.some((constraint) => constraint.type === "FOREIGN KEY"),
+      ).toBe(true);
+
+      const types = await getTypes({
+        connectionId,
+        schema: "app",
+        table: "users",
+      });
+      const enumType = types.find((type) => type.name === "user_role");
+      expect(enumType).toMatchObject({
+        schema: "app",
+        kind: "ENUM",
+        enumLabels: ["admin", "editor", "viewer"],
+      });
+      expect(enumType?.usedByColumns).toEqual([
+        { name: "role", isArray: false },
+        { name: "role_history", isArray: true },
+      ]);
+
+      const domainType = types.find((type) => type.name === "email_text");
+      expect(domainType).toMatchObject({
+        schema: "app",
+        kind: "DOMAIN",
+        domainBaseType: "text",
+      });
+      expect(domainType?.domainConstraints[0]).toContain("CHECK");
+
+      const compositeType = types.find(
+        (type) => type.name === "mailing_address",
+      );
+      expect(compositeType).toMatchObject({
+        schema: "app",
+        kind: "COMPOSITE",
+      });
+      expect(
+        compositeType?.compositeAttributes.map((attr) => attr.name),
+      ).toEqual(["street", "city", "postcode"]);
+    });
+
+    it("fetches triggers and toggles them safely", async () => {
+      const { withPoolClient } = await import("@/main/pg-utils");
+      await withPoolClient(connectionId, async (client) => {
+        await client.query(`
+          CREATE OR REPLACE FUNCTION app.users_updated_trigger_fn()
+          RETURNS trigger
+          LANGUAGE plpgsql
+          AS $$
+          BEGIN
+            RETURN NEW;
+          END
+          $$;
+        `);
+        await client.query(`
+          DROP TRIGGER IF EXISTS users_updated_trigger ON app.users;
+          CREATE TRIGGER users_updated_trigger
+          BEFORE UPDATE ON app.users
+          FOR EACH ROW
+          EXECUTE FUNCTION app.users_updated_trigger_fn();
+        `);
+      });
+
+      const { getTriggers, toggleTrigger } =
+        await import("@/main/table-data-meta");
+
+      const triggers = await getTriggers({
+        connectionId,
+        schema: "app",
+        table: "users",
+      });
+      const trigger = triggers.find(
+        (item) => item.name === "users_updated_trigger",
+      );
+
+      expect(trigger).toMatchObject({
+        enabled: true,
+        enabledMode: "ORIGIN",
+        timing: "BEFORE",
+        events: ["UPDATE"],
+        functionName: "app.users_updated_trigger_fn",
+      });
+
+      const disabledTriggers = await toggleTrigger({
+        connectionId,
+        schema: "app",
+        table: "users",
+        trigger: "users_updated_trigger",
+        enabled: false,
+      });
+      expect(
+        disabledTriggers.find((item) => item.name === "users_updated_trigger")
+          ?.enabled,
+      ).toBe(false);
+
+      const enabledTriggers = await toggleTrigger({
+        connectionId,
+        schema: "app",
+        table: "users",
+        trigger: "users_updated_trigger",
+        enabled: true,
+      });
+      expect(
+        enabledTriggers.find((item) => item.name === "users_updated_trigger")
+          ?.enabled,
       ).toBe(true);
     });
 

@@ -26,6 +26,13 @@ END $$;
 -- cast branch). Keep it in the app schema so the integration suite proves
 -- schema-qualified enum writes rather than relying on search_path.
 CREATE TYPE app.user_role AS ENUM ('admin', 'editor', 'viewer');
+CREATE DOMAIN app.email_text AS TEXT
+  CHECK (VALUE LIKE '%@%');
+CREATE TYPE app.mailing_address AS (
+  street TEXT,
+  city TEXT,
+  postcode TEXT
+);
 
 -- Users: broad type coverage, PRIMARY KEY on id.
 -- profile_note is nullable + citext-less-text; used for SET NULL tests.
@@ -35,6 +42,9 @@ CREATE TABLE app.users (
   display_name TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
   role app.user_role NOT NULL DEFAULT 'viewer',
+  role_history app.user_role[] NOT NULL DEFAULT '{}'::app.user_role[],
+  contact_email app.email_text,
+  mailing_address app.mailing_address,
   is_verified BOOLEAN NOT NULL DEFAULT FALSE,
   login_count INTEGER NOT NULL DEFAULT 0,
   balance_cents BIGINT NOT NULL DEFAULT 0,
@@ -132,6 +142,20 @@ FROM generate_series(1, 5) AS gs;
 
 INSERT INTO app.injection_target ("evil""col; DROP TABLE x; --")
 VALUES ('original'), ('original'), ('original');
+
+CREATE OR REPLACE FUNCTION app.users_updated_trigger_fn()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN NEW;
+END
+$$;
+
+CREATE TRIGGER users_updated_trigger
+BEFORE UPDATE ON app.users
+FOR EACH ROW
+EXECUTE FUNCTION app.users_updated_trigger_fn();
 
 CREATE VIEW app.active_users AS
 SELECT id, email, display_name

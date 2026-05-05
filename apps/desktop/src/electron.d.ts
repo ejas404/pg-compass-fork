@@ -18,7 +18,10 @@ import type {
   SaveDialogOptions,
   SqlDumpParams,
   TableMetaParams,
+  TableTypeInfo,
   TableRowsResult,
+  ToggleTriggerParams,
+  TriggerInfo,
   UpdateCellParams,
   UpdateCellResult,
   UpdateRowParams,
@@ -60,6 +63,9 @@ interface TableDataApi {
   getStructure(params: TableMetaParams): Promise<IpcResult<ColumnStructure[]>>;
   getIndexes(params: TableMetaParams): Promise<IpcResult<IndexInfo[]>>;
   getConstraints(params: TableMetaParams): Promise<IpcResult<ConstraintInfo[]>>;
+  getTriggers(params: TableMetaParams): Promise<IpcResult<TriggerInfo[]>>;
+  getTypes(params: TableMetaParams): Promise<IpcResult<TableTypeInfo[]>>;
+  toggleTrigger(params: ToggleTriggerParams): Promise<IpcResult<TriggerInfo[]>>;
   executeQuery(params: ExecuteQueryParams): Promise<IpcResult<TableRowsResult>>;
   showSaveDialog(options: SaveDialogOptions): Promise<IpcResult<string | null>>;
   exportData(params: ExportDataParams): Promise<IpcResult<ExportResult>>;

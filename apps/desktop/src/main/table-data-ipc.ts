@@ -2,22 +2,26 @@ import path from "node:path";
 import { ipcMain, dialog, BrowserWindow } from "electron";
 import { TableDataChannels } from "../shared/types/table-data";
 import type {
-  ColumnStructure,
-  ConstraintInfo,
   DeleteRowsParams,
   ExecuteQueryParams,
   ExportDataParams,
   GetRowsParams,
-  IndexInfo,
   SqlDumpParams,
   TableMetaParams,
-  TableRowsResult,
+  ToggleTriggerParams,
   UpdateCellParams,
   UpdateRowParams,
   SearchForeignKeyParams,
 } from "../shared/types/table-data";
 import { executeQuery, getRows } from "./table-data-rows";
-import { getConstraints, getIndexes, getStructure } from "./table-data-meta";
+import {
+  getConstraints,
+  getIndexes,
+  getStructure,
+  getTriggers,
+  getTypes,
+  toggleTrigger,
+} from "./table-data-meta";
 import { exportData, sqlDump } from "./table-data-export";
 import { deleteRows, updateCell, updateRow } from "./table-data-write";
 import { searchForeignKey } from "./table-data-fk";
@@ -85,6 +89,42 @@ export function registerTableDataHandlers(): void {
     async (_event, params: TableMetaParams) => {
       try {
         const data = await getConstraints(params);
+        return { success: true, data };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    TableDataChannels.GET_TRIGGERS,
+    async (_event, params: TableMetaParams) => {
+      try {
+        const data = await getTriggers(params);
+        return { success: true, data };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    TableDataChannels.GET_TYPES,
+    async (_event, params: TableMetaParams) => {
+      try {
+        const data = await getTypes(params);
+        return { success: true, data };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    TableDataChannels.TOGGLE_TRIGGER,
+    async (_event, params: ToggleTriggerParams) => {
+      try {
+        const data = await toggleTrigger(params);
         return { success: true, data };
       } catch (err) {
         return { success: false, error: (err as Error).message };

@@ -1,21 +1,25 @@
-import { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ViewerShell } from '@/components/workspace/viewer-shell';
-import { DataTab } from '@/components/workspace/table-viewer/data-tab';
-import { StructureTab } from '@/components/workspace/table-viewer/structure-tab';
-import { IndexesTab } from '@/components/workspace/table-viewer/indexes-tab';
-import { ConstraintsTab } from '@/components/workspace/table-viewer/constraints-tab';
-import { QueryTab } from '@/components/workspace/table-viewer/query-tab';
-import { useWorkspace } from '@/hooks/use-workspace';
-import type { TableListViewerPath } from '@/shared/types/workspace';
+import { useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ViewerShell } from "@/components/workspace/viewer-shell";
+import { DataTab } from "@/components/workspace/table-viewer/data-tab";
+import { StructureTab } from "@/components/workspace/table-viewer/structure-tab";
+import { IndexesTab } from "@/components/workspace/table-viewer/indexes-tab";
+import { ConstraintsTab } from "@/components/workspace/table-viewer/constraints-tab";
+import { TriggersTab } from "@/components/workspace/table-viewer/triggers-tab";
+import { TypesTab } from "@/components/workspace/table-viewer/types-tab";
+import { QueryTab } from "@/components/workspace/table-viewer/query-tab";
+import { useWorkspace } from "@/hooks/use-workspace";
+import type { TableListViewerPath } from "@/shared/types/workspace";
 
 interface TableDetailsViewerProps {
   path: TableListViewerPath;
 }
 
-export function TableDetailsViewer({ path }: Readonly<TableDetailsViewerProps>) {
+export function TableDetailsViewer({
+  path,
+}: Readonly<TableDetailsViewerProps>) {
   const { refreshSchemaTree, navigateToView } = useWorkspace();
-  const [activeTab, setActiveTab] = useState('data');
+  const [activeTab, setActiveTab] = useState("data");
 
   function handleRefresh() {
     refreshSchemaTree(path.connectionId, true).catch(() => undefined);
@@ -27,7 +31,7 @@ export function TableDetailsViewer({ path }: Readonly<TableDetailsViewerProps>) 
         {
           label: path.connectionLabel,
           view: {
-            type: 'schema-list',
+            type: "schema-list",
             path: {
               connectionId: path.connectionId,
               connectionLabel: path.connectionLabel,
@@ -37,7 +41,7 @@ export function TableDetailsViewer({ path }: Readonly<TableDetailsViewerProps>) 
         {
           label: path.schemaName,
           view: {
-            type: 'schema',
+            type: "schema",
             path: {
               connectionId: path.connectionId,
               connectionLabel: path.connectionLabel,
@@ -48,7 +52,7 @@ export function TableDetailsViewer({ path }: Readonly<TableDetailsViewerProps>) 
         {
           label: path.tableName,
           view: {
-            type: 'table-details',
+            type: "table-details",
             path,
           },
         },
@@ -75,6 +79,12 @@ export function TableDetailsViewer({ path }: Readonly<TableDetailsViewerProps>) 
           </TabsTrigger>
           <TabsTrigger value="constraints" className="h-7 px-3 text-xs">
             Constraints
+          </TabsTrigger>
+          <TabsTrigger value="triggers" className="h-7 px-3 text-xs">
+            Triggers
+          </TabsTrigger>
+          <TabsTrigger value="types" className="h-7 px-3 text-xs">
+            Types
           </TabsTrigger>
           <TabsTrigger value="query" className="h-7 px-3 text-xs">
             Query
@@ -107,6 +117,22 @@ export function TableDetailsViewer({ path }: Readonly<TableDetailsViewerProps>) 
 
         <TabsContent value="constraints" className="min-h-0 flex-1">
           <ConstraintsTab
+            connectionId={path.connectionId}
+            schema={path.schemaName}
+            table={path.tableName}
+          />
+        </TabsContent>
+
+        <TabsContent value="triggers" className="min-h-0 flex-1">
+          <TriggersTab
+            connectionId={path.connectionId}
+            schema={path.schemaName}
+            table={path.tableName}
+          />
+        </TabsContent>
+
+        <TabsContent value="types" className="min-h-0 flex-1">
+          <TypesTab
             connectionId={path.connectionId}
             schema={path.schemaName}
             table={path.tableName}

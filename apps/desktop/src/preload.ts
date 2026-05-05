@@ -27,7 +27,10 @@ import type {
   SaveDialogOptions,
   SqlDumpParams,
   TableMetaParams,
+  TableTypeInfo,
   TableRowsResult,
+  ToggleTriggerParams,
+  TriggerInfo,
   UpdateCellParams,
   UpdateCellResult,
   UpdateRowParams,
@@ -99,6 +102,17 @@ const tableDataApi = {
     params: TableMetaParams,
   ): Promise<IpcResult<ConstraintInfo[]>> =>
     ipcRenderer.invoke(TableDataChannels.GET_CONSTRAINTS, params),
+
+  getTriggers: (params: TableMetaParams): Promise<IpcResult<TriggerInfo[]>> =>
+    ipcRenderer.invoke(TableDataChannels.GET_TRIGGERS, params),
+
+  getTypes: (params: TableMetaParams): Promise<IpcResult<TableTypeInfo[]>> =>
+    ipcRenderer.invoke(TableDataChannels.GET_TYPES, params),
+
+  toggleTrigger: (
+    params: ToggleTriggerParams,
+  ): Promise<IpcResult<TriggerInfo[]>> =>
+    ipcRenderer.invoke(TableDataChannels.TOGGLE_TRIGGER, params),
 
   executeQuery: (
     params: ExecuteQueryParams,
