@@ -4,6 +4,7 @@ import { TableDataChannels } from "../shared/types/table-data";
 import type {
   ColumnStructure,
   ConstraintInfo,
+  DeleteRowsParams,
   ExecuteQueryParams,
   ExportDataParams,
   GetRowsParams,
@@ -12,11 +13,14 @@ import type {
   TableMetaParams,
   TableRowsResult,
   UpdateCellParams,
+  UpdateRowParams,
+  SearchForeignKeyParams,
 } from "../shared/types/table-data";
 import { executeQuery, getRows } from "./table-data-rows";
 import { getConstraints, getIndexes, getStructure } from "./table-data-meta";
 import { exportData, sqlDump } from "./table-data-export";
-import { updateCell } from "./table-data-write";
+import { deleteRows, updateCell, updateRow } from "./table-data-write";
+import { searchForeignKey } from "./table-data-fk";
 
 function resolveTestSaveDialogPath(
   options: Electron.SaveDialogOptions,
@@ -151,6 +155,42 @@ export function registerTableDataHandlers(): void {
     async (_event, params: UpdateCellParams) => {
       try {
         const data = await updateCell(params);
+        return { success: true, data };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    TableDataChannels.UPDATE_ROW,
+    async (_event, params: UpdateRowParams) => {
+      try {
+        const data = await updateRow(params);
+        return { success: true, data };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    TableDataChannels.DELETE_ROWS,
+    async (_event, params: DeleteRowsParams) => {
+      try {
+        const data = await deleteRows(params);
+        return { success: true, data };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    TableDataChannels.SEARCH_FK,
+    async (_event, params: SearchForeignKeyParams) => {
+      try {
+        const data = await searchForeignKey(params);
         return { success: true, data };
       } catch (err) {
         return { success: false, error: (err as Error).message };

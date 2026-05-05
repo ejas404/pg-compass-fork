@@ -3,14 +3,13 @@ import type {
   ConnectionInput,
   DatabaseSchema,
   SchemaTreeOptions,
-} from './shared/types/connection';
-import type {
-  AppSettings,
-  AppSettingsPatch,
-} from './shared/types/settings';
+} from "./shared/types/connection";
+import type { AppSettings, AppSettingsPatch } from "./shared/types/settings";
 import type {
   ColumnStructure,
   ConstraintInfo,
+  DeleteRowsParams,
+  DeleteRowsResult,
   ExportDataParams,
   ExportResult,
   ExecuteQueryParams,
@@ -22,7 +21,11 @@ import type {
   TableRowsResult,
   UpdateCellParams,
   UpdateCellResult,
-} from './shared/types/table-data';
+  UpdateRowParams,
+  UpdateRowResult,
+  SearchForeignKeyParams,
+  SearchForeignKeyResult,
+} from "./shared/types/table-data";
 
 export interface IpcResult<T> {
   success: boolean;
@@ -34,7 +37,10 @@ interface ConnectionApi {
   getAll(): Promise<IpcResult<ConnectionConfig[]>>;
   getById(id: string): Promise<IpcResult<ConnectionConfig>>;
   create(input: ConnectionInput): Promise<IpcResult<ConnectionConfig>>;
-  update(id: string, input: ConnectionInput): Promise<IpcResult<ConnectionConfig>>;
+  update(
+    id: string,
+    input: ConnectionInput,
+  ): Promise<IpcResult<ConnectionConfig>>;
   delete(id: string): Promise<IpcResult<boolean>>;
   toggleFavourite(id: string): Promise<IpcResult<ConnectionConfig>>;
   test(id: string): Promise<IpcResult<boolean>>;
@@ -59,6 +65,11 @@ interface TableDataApi {
   exportData(params: ExportDataParams): Promise<IpcResult<ExportResult>>;
   sqlDump(params: SqlDumpParams): Promise<IpcResult<ExportResult>>;
   updateCell(params: UpdateCellParams): Promise<IpcResult<UpdateCellResult>>;
+  updateRow(params: UpdateRowParams): Promise<IpcResult<UpdateRowResult>>;
+  deleteRows(params: DeleteRowsParams): Promise<IpcResult<DeleteRowsResult>>;
+  searchForeignKey(
+    params: SearchForeignKeyParams,
+  ): Promise<IpcResult<SearchForeignKeyResult>>;
   onExportProgress(callback: (rowCount: number) => void): () => void;
 }
 

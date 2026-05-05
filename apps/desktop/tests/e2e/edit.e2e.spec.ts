@@ -158,3 +158,68 @@ test("views expose no edit affordance even when read-only mode is off", async ({
     await app.close();
   }
 });
+
+test("delete confirmation dialog contains wide table previews", async ({
+  browserName,
+}, testInfo) => {
+  test.skip(
+    browserName !== "chromium",
+    "Electron tests only run with Chromium",
+  );
+  const runtime = getRuntimeState(testInfo);
+  writeSettings(runtime.storeDir, false);
+
+  const { app, page } = await launch(runtime);
+  try {
+    await page.setViewportSize({ width: 900, height: 700 });
+    await openUsersDataTab(page);
+
+    await page.getByRole("button", { name: "Delete" }).click();
+    const dialog = page.getByTestId("delete-data-dialog");
+    await expect(dialog).toBeVisible();
+    await expect(page.getByTestId("delete-preview-table-scroll")).toBeVisible();
+
+    const dialogMetrics = await dialog.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        left: rect.left,
+        right: rect.right,
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+        viewportWidth: window.innerWidth,
+      };
+    });
+
+    expect(dialogMetrics.left).toBeGreaterThanOrEqual(15);
+    expect(dialogMetrics.right).toBeLessThanOrEqual(
+      dialogMetrics.viewportWidth - 15,
+    );
+    expect(dialogMetrics.scrollWidth).toBeLessThanOrEqual(
+      dialogMetrics.clientWidth + 1,
+    );
+
+    const previewMetrics = await page
+      .getByTestId("delete-preview-table-scroll")
+      .evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          left: rect.left,
+          right: rect.right,
+          clientWidth: element.clientWidth,
+          scrollWidth: element.scrollWidth,
+          viewportWidth: window.innerWidth,
+        };
+      });
+
+    expect(previewMetrics.left).toBeGreaterThanOrEqual(dialogMetrics.left);
+    expect(previewMetrics.right).toBeLessThanOrEqual(dialogMetrics.right);
+    expect(previewMetrics.scrollWidth).toBeGreaterThan(
+      previewMetrics.clientWidth,
+    );
+    expect(previewMetrics.right).toBeLessThanOrEqual(
+      previewMetrics.viewportWidth - 15,
+    );
+  } finally {
+    await app.close();
+  }
+});

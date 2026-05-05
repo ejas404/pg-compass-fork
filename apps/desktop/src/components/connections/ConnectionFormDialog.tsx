@@ -19,6 +19,10 @@ import { ChevronDown, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useConnections } from '@/hooks/use-connections';
 import { useWorkspace } from '@/hooks/use-workspace';
+import { ConnectionColorPicker } from './ConnectionColorPicker';
+import { ConnectionBasicFields } from './ConnectionBasicFields';
+import { ConnectionSSLFieldset } from './ConnectionSSLFieldset';
+import { ConnectionSSHFieldset } from './ConnectionSSHFieldset';
 import type {
   ConnectionConfig,
   ConnectionInput,
@@ -26,18 +30,6 @@ import type {
   SSLConfig,
   SSHConfig,
 } from '@/shared/types/connection';
-
-/** Predefined color palette for connection identification. */
-const COLOR_OPTIONS = [
-  '#ef4444', // red
-  '#f97316', // orange
-  '#eab308', // yellow
-  '#22c55e', // green
-  '#06b6d4', // cyan
-  '#3b82f6', // blue
-  '#8b5cf6', // violet
-  '#ec4899', // pink
-];
 
 interface ConnectionFormDialogProps {
   open: boolean;
@@ -133,7 +125,6 @@ export function ConnectionFormDialog({
   const { refreshTabs } = useWorkspace();
   const isEdit = !!editConnection;
 
-  // Form state
   const [label, setLabel] = useState('');
   const [color, setColor] = useState<string | undefined>(undefined);
   const [mode, setMode] = useState<'uri' | 'fields'>('uri');
@@ -145,8 +136,7 @@ export function ConnectionFormDialog({
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Populate form when editing
-  useEffect(function populateFormForEdit() {
+  useEffect(() => {
     if (!open) return;
 
     if (editConnection) {
@@ -161,7 +151,6 @@ export function ConnectionFormDialog({
         !!(editConnection.ssl?.enabled || editConnection.ssh?.enabled),
       );
     } else {
-      // Reset for create
       setLabel('');
       setColor(undefined);
       setMode('uri');
@@ -173,10 +162,16 @@ export function ConnectionFormDialog({
     }
   }, [open, editConnection]);
 
+  function handleModeChange(next: 'uri' | 'fields') {
+    setMode(next);
+    setErrors({});
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
 
-    // If a postgres URL was pasted into the host field, expand it before validating.
+    // Users sometimes paste a full postgres:// URL into the host field; expand
+    // it so validation sees real host/port/database values.
     let resolvedFields = fields;
     if (mode === 'fields') {
       const parsed = tryParsePostgresUrl(fields.host);
@@ -230,7 +225,6 @@ export function ConnectionFormDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {/* Label */}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="conn-label">Label</Label>
             <Input
@@ -241,133 +235,18 @@ export function ConnectionFormDialog({
             />
           </div>
 
-          {/* Color */}
-          <div className="flex flex-col gap-1.5">
-            <Label>Color</Label>
-            <div className="flex gap-2">
-              {COLOR_OPTIONS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  className={cn(
-                    'size-6 rounded-full border-2 transition-transform hover:scale-110',
-                    color === c
-                      ? 'border-foreground scale-110'
-                      : 'border-transparent',
-                  )}
-                  style={{ backgroundColor: c }}
-                  onClick={() => setColor(color === c ? undefined : c)}
-                  aria-label={`Select color ${c}`}
-                />
-              ))}
-            </div>
-          </div>
+          <ConnectionColorPicker value={color} onChange={setColor} />
 
-          {/* Mode toggle */}
-          <div className="flex flex-col gap-1.5">
-            <Label>Connection Mode</Label>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant={mode === 'uri' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => { setMode('uri'); setErrors({}); }}
-              >
-                URI
-              </Button>
-              <Button
-                type="button"
-                variant={mode === 'fields' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => { setMode('fields'); setErrors({}); }}
-              >
-                Individual Fields
-              </Button>
-            </div>
-          </div>
+          <ConnectionBasicFields
+            mode={mode}
+            onModeChange={handleModeChange}
+            uri={uri}
+            onUriChange={setUri}
+            fields={fields}
+            onFieldsChange={setFields}
+            errors={errors}
+          />
 
-          {/* URI input */}
-          {mode === 'uri' && (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="conn-uri">Connection URI</Label>
-              <Input
-                id="conn-uri"
-                placeholder="postgresql://user:password@localhost:5432/mydb"
-                className="font-mono text-sm"
-                value={uri}
-                onChange={(e) => setUri(e.target.value)}
-              />
-              {errors.uri && <p className="text-xs text-destructive">{errors.uri}</p>}
-            </div>
-          )}
-
-          {/* Individual fields */}
-          {mode === 'fields' && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2 flex flex-col gap-1.5">
-                <Label htmlFor="conn-host">Host</Label>
-                <Input
-                  id="conn-host"
-                  placeholder="localhost"
-                  value={fields.host}
-                  onChange={(e) => setFields((f) => ({ ...f, host: e.target.value }))}
-                />
-                {errors.host && <p className="text-xs text-destructive">{errors.host}</p>}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="conn-port">Port</Label>
-                <Input
-                  id="conn-port"
-                  type="number"
-                  placeholder="5432"
-                  value={fields.port}
-                  onChange={(e) =>
-                    setFields((f) => ({
-                      ...f,
-                      port: Number.parseInt(e.target.value, 10) || 5432,
-                    }))
-                  }
-                />
-                {errors.port && <p className="text-xs text-destructive">{errors.port}</p>}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="conn-database">Database</Label>
-                <Input
-                  id="conn-database"
-                  placeholder="postgres"
-                  value={fields.database}
-                  onChange={(e) =>
-                    setFields((f) => ({ ...f, database: e.target.value }))
-                  }
-                />
-                {errors.database && <p className="text-xs text-destructive">{errors.database}</p>}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="conn-user">User</Label>
-                <Input
-                  id="conn-user"
-                  placeholder="postgres"
-                  value={fields.user}
-                  onChange={(e) =>
-                    setFields((f) => ({ ...f, user: e.target.value }))
-                  }
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="conn-password">Password</Label>
-                <Input
-                  id="conn-password"
-                  type="password"
-                  value={fields.password}
-                  onChange={(e) =>
-                    setFields((f) => ({ ...f, password: e.target.value }))
-                  }
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Advanced Configuration */}
           <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
             <CollapsibleTrigger asChild>
               <Button
@@ -386,213 +265,8 @@ export function ConnectionFormDialog({
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="flex flex-col gap-4 pt-3">
-              {/* SSL */}
-              <fieldset className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 p-3">
-                <div className="flex items-center gap-2">
-                  <input
-                    id="ssl-enabled"
-                    type="checkbox"
-                    className="size-4 accent-primary"
-                    checked={ssl.enabled}
-                    onChange={(e) =>
-                      setSsl((s) => ({ ...s, enabled: e.target.checked }))
-                    }
-                  />
-                  <Label htmlFor="ssl-enabled">Enable SSL</Label>
-                </div>
-                {ssl.enabled && (
-                  <div className="flex flex-col gap-2 pl-6">
-                    <div className="flex items-center gap-2">
-                      <input
-                        id="ssl-reject"
-                        type="checkbox"
-                        className="size-4 accent-primary"
-                        checked={ssl.rejectUnauthorized ?? true}
-                        onChange={(e) =>
-                          setSsl((s) => ({
-                            ...s,
-                            rejectUnauthorized: e.target.checked,
-                          }))
-                        }
-                      />
-                      <Label htmlFor="ssl-reject">
-                        Reject unauthorized certificates
-                      </Label>
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <Label htmlFor="ssl-ca">CA Certificate path</Label>
-                      <Input
-                        id="ssl-ca"
-                        className="font-mono text-xs"
-                        placeholder="/path/to/ca.pem"
-                        value={ssl.ca ?? ''}
-                        onChange={(e) =>
-                          setSsl((s) => ({ ...s, ca: e.target.value }))
-                        }
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <Label htmlFor="ssl-cert">Client Certificate path</Label>
-                      <Input
-                        id="ssl-cert"
-                        className="font-mono text-xs"
-                        placeholder="/path/to/cert.pem"
-                        value={ssl.cert ?? ''}
-                        onChange={(e) =>
-                          setSsl((s) => ({ ...s, cert: e.target.value }))
-                        }
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <Label htmlFor="ssl-key">Client Key path</Label>
-                      <Input
-                        id="ssl-key"
-                        className="font-mono text-xs"
-                        placeholder="/path/to/key.pem"
-                        value={ssl.key ?? ''}
-                        onChange={(e) =>
-                          setSsl((s) => ({ ...s, key: e.target.value }))
-                        }
-                      />
-                    </div>
-                  </div>
-                )}
-              </fieldset>
-
-              {/* SSH */}
-              <fieldset className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 p-3">
-                <div className="flex items-center gap-2">
-                  <input
-                    id="ssh-enabled"
-                    type="checkbox"
-                    className="size-4 accent-primary"
-                    checked={ssh.enabled}
-                    onChange={(e) =>
-                      setSsh((s) => ({ ...s, enabled: e.target.checked }))
-                    }
-                  />
-                  <Label htmlFor="ssh-enabled">Enable SSH Tunnel</Label>
-                </div>
-                {ssh.enabled && (
-                  <div className="grid grid-cols-2 gap-2 pl-6">
-                    <div className="flex flex-col gap-1.5">
-                      <Label htmlFor="ssh-host">SSH Host</Label>
-                      <Input
-                        id="ssh-host"
-                        value={ssh.host}
-                        onChange={(e) =>
-                          setSsh((s) => ({ ...s, host: e.target.value }))
-                        }
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <Label htmlFor="ssh-port">SSH Port</Label>
-                      <Input
-                        id="ssh-port"
-                        type="number"
-                        value={ssh.port}
-                        onChange={(e) =>
-                          setSsh((s) => ({
-                            ...s,
-                            port: Number.parseInt(e.target.value, 10) || 22,
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <Label htmlFor="ssh-user">SSH User</Label>
-                      <Input
-                        id="ssh-user"
-                        value={ssh.user}
-                        onChange={(e) =>
-                          setSsh((s) => ({ ...s, user: e.target.value }))
-                        }
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <Label htmlFor="ssh-auth">Auth Method</Label>
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          variant={
-                            ssh.authMethod === 'password'
-                              ? 'default'
-                              : 'outline'
-                          }
-                          size="sm"
-                          className="flex-1"
-                          onClick={() =>
-                            setSsh((s) => ({ ...s, authMethod: 'password' }))
-                          }
-                        >
-                          Password
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={
-                            ssh.authMethod === 'privateKey'
-                              ? 'default'
-                              : 'outline'
-                          }
-                          size="sm"
-                          className="flex-1"
-                          onClick={() =>
-                            setSsh((s) => ({ ...s, authMethod: 'privateKey' }))
-                          }
-                        >
-                          Key
-                        </Button>
-                      </div>
-                    </div>
-                    {ssh.authMethod === 'password' && (
-                      <div className="col-span-2 flex flex-col gap-1.5">
-                        <Label htmlFor="ssh-password">SSH Password</Label>
-                        <Input
-                          id="ssh-password"
-                          type="password"
-                          value={ssh.password ?? ''}
-                          onChange={(e) =>
-                            setSsh((s) => ({ ...s, password: e.target.value }))
-                          }
-                        />
-                      </div>
-                    )}
-                    {ssh.authMethod === 'privateKey' && (
-                      <>
-                        <div className="col-span-2 flex flex-col gap-1.5">
-                          <Label htmlFor="ssh-key">Private Key path</Label>
-                          <Input
-                            id="ssh-key"
-                            className="font-mono text-xs"
-                            placeholder="~/.ssh/id_rsa"
-                            value={ssh.privateKeyPath ?? ''}
-                            onChange={(e) =>
-                              setSsh((s) => ({
-                                ...s,
-                                privateKeyPath: e.target.value,
-                              }))
-                            }
-                          />
-                        </div>
-                        <div className="col-span-2 flex flex-col gap-1.5">
-                          <Label htmlFor="ssh-passphrase">Passphrase</Label>
-                          <Input
-                            id="ssh-passphrase"
-                            type="password"
-                            value={ssh.passphrase ?? ''}
-                            onChange={(e) =>
-                              setSsh((s) => ({
-                                ...s,
-                                passphrase: e.target.value,
-                              }))
-                            }
-                          />
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </fieldset>
+              <ConnectionSSLFieldset value={ssl} onChange={setSsl} />
+              <ConnectionSSHFieldset value={ssh} onChange={setSsh} />
             </CollapsibleContent>
           </Collapsible>
 

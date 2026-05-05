@@ -26,6 +26,7 @@ import {
   type EditResult,
   type TypeEditor,
 } from "@/components/workspace/renderers/edit-registry";
+import { ForeignKeyModalEditor } from "@/components/workspace/renderers/foreign-key-editor";
 import {
   Dialog,
   DialogContent,
@@ -155,8 +156,28 @@ function makeEnumEditor(labels: string[], pgCast: string): TypeEditor {
 
 function EditDialog(props: Readonly<EditDialogProps>) {
   const enumLabels = props.col.enumLabels;
-  const editor: TypeEditor =
-    enumLabels && enumLabels.length > 0
+  const fk = props.col.foreignKey;
+  // Resolution priority: FK ⇒ enum ⇒ type-registered ⇒ fallback. FK takes
+  // precedence so a column that's both an enum and an FK (rare) still gets
+  // the searchable dropdown.
+  const editor: TypeEditor = fk
+    ? {
+        kind: "modal",
+        toInput: (value) =>
+          value === null || value === undefined ? "" : String(value),
+        validate: (raw) => ({
+          ok: true,
+          result: { value: raw, pgCast: fk.valuePgCast },
+        }),
+        Component: (compProps) => (
+          <ForeignKeyModalEditor
+            {...compProps}
+            foreignKey={fk}
+            connectionId={props.connectionId}
+          />
+        ),
+      }
+    : enumLabels && enumLabels.length > 0
       ? makeEnumEditor(
           enumLabels,
           props.col.enumPgCast ?? props.col.dataType,

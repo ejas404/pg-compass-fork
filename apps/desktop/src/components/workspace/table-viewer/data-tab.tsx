@@ -1,17 +1,38 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Loader2, LayoutList, Table2, Search, CircleAlert } from 'lucide-react';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { SqlEditor, type CompletionSchema } from '@/components/sql-editor/SqlEditor';
-import { DataPagination } from '@/components/workspace/table-viewer/data-pagination';
-import { TableDataView } from '@/components/workspace/table-viewer/table-data-view';
-import { CardDataView } from '@/components/workspace/table-viewer/card-data-view';
-import { ExportDropdown } from '@/components/workspace/export-dropdown';
-import { useWorkspace } from '@/hooks/use-workspace';
-import { useSettings } from '@/hooks/use-settings';
-import type { ColumnInfo } from '@/shared/types/table-data';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Loader2,
+  LayoutList,
+  Table2,
+  Search,
+  CircleAlert,
+  Plus,
+  Pencil,
+  Trash2,
+  FileUp,
+  FilePlus,
+} from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  SqlEditor,
+  type CompletionSchema,
+} from "@/components/sql-editor/SqlEditor";
+import { DataPagination } from "@/components/workspace/table-viewer/data-pagination";
+import { TableDataView } from "@/components/workspace/table-viewer/table-data-view";
+import { CardDataView } from "@/components/workspace/table-viewer/card-data-view";
+import { DeleteDataDialog } from "@/components/workspace/table-viewer/delete-data-dialog";
+import { ExportDropdown } from "@/components/workspace/export-dropdown";
+import { useWorkspace } from "@/hooks/use-workspace";
+import { useSettings } from "@/hooks/use-settings";
+import type { ColumnInfo } from "@/shared/types/table-data";
 
-type ViewMode = 'table' | 'card';
+type ViewMode = "table" | "card";
 
 export interface EditContext {
   connectionId: string;
@@ -33,10 +54,14 @@ function DataViewContent({
   rows: Record<string, unknown>[];
   editContext: EditContext;
 }>) {
-  if (viewMode === 'table') {
-    return <TableDataView columns={columns} rows={rows} editContext={editContext} />;
+  if (viewMode === "table") {
+    return (
+      <TableDataView columns={columns} rows={rows} editContext={editContext} />
+    );
   }
-  return <CardDataView columns={columns} rows={rows} editContext={editContext} />;
+  return (
+    <CardDataView columns={columns} rows={rows} editContext={editContext} />
+  );
 }
 
 function DataContent({
@@ -77,7 +102,11 @@ interface DataTabProps {
   table: string;
 }
 
-export function DataTab({ connectionId, schema, table }: Readonly<DataTabProps>) {
+export function DataTab({
+  connectionId,
+  schema,
+  table,
+}: Readonly<DataTabProps>) {
   const { schemaCache } = useWorkspace();
   const { settings } = useSettings();
   const [columns, setColumns] = useState<ColumnInfo[]>([]);
@@ -86,10 +115,11 @@ export function DataTab({ connectionId, schema, table }: Readonly<DataTabProps>)
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
-  const [whereClause, setWhereClause] = useState('');
-  const [pendingWhere, setPendingWhere] = useState('');
+  const [whereClause, setWhereClause] = useState("");
+  const [pendingWhere, setPendingWhere] = useState("");
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const completionSchema = useMemo<CompletionSchema>(() => {
@@ -133,11 +163,11 @@ export function DataTab({ connectionId, schema, table }: Readonly<DataTabProps>)
           whereClause: where || undefined,
         });
         if (!result.success || !result.data) {
-          const msg = result.error ?? 'Unknown error';
+          const msg = result.error ?? "Unknown error";
           setError(msg);
           setRows([]);
           setTotalCount(0);
-          toast.error('Failed to load rows', { description: msg });
+          toast.error("Failed to load rows", { description: msg });
           return;
         }
 
@@ -150,7 +180,7 @@ export function DataTab({ connectionId, schema, table }: Readonly<DataTabProps>)
         setError(msg);
         setRows([]);
         setTotalCount(0);
-        toast.error('Failed to load rows', { description: msg });
+        toast.error("Failed to load rows", { description: msg });
       } finally {
         setLoading(false);
       }
@@ -158,9 +188,12 @@ export function DataTab({ connectionId, schema, table }: Readonly<DataTabProps>)
     [connectionId, schema, table],
   );
 
-  useEffect(function fetchTableData() {
-    fetchRows(page, pageSize, whereClause);
-  }, [fetchRows, page, pageSize, whereClause]);
+  useEffect(
+    function fetchTableData() {
+      fetchRows(page, pageSize, whereClause);
+    },
+    [fetchRows, page, pageSize, whereClause],
+  );
 
   function handleWhereSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -169,8 +202,8 @@ export function DataTab({ connectionId, schema, table }: Readonly<DataTabProps>)
   }
 
   function handleClearFilter() {
-    setPendingWhere('');
-    setWhereClause('');
+    setPendingWhere("");
+    setWhereClause("");
     setPage(1);
   }
 
@@ -195,74 +228,149 @@ export function DataTab({ connectionId, schema, table }: Readonly<DataTabProps>)
       primaryKey,
       onRowUpdated: handleRowUpdated,
     }),
-    [connectionId, schema, table, settings.general.readOnlyMode, primaryKey, handleRowUpdated],
+    [
+      connectionId,
+      schema,
+      table,
+      settings.general.readOnlyMode,
+      primaryKey,
+      handleRowUpdated,
+    ],
   );
+
+  const handleRowsDeleted = useCallback(() => {
+    setPage(1);
+    void fetchRows(1, pageSize, whereClause);
+  }, [fetchRows, pageSize, whereClause]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 border-b border-border px-3 py-2">
-        <form onSubmit={handleWhereSubmit} className="flex min-w-0 flex-1 items-center gap-2">
-          <div className="relative min-w-0 flex-1">
-            <Search className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
-            <SqlEditor
-              value={pendingWhere}
-              onChange={setPendingWhere}
-              onSubmit={() => {
-                setPage(1);
-                setWhereClause(pendingWhere);
-              }}
-              placeholder="WHERE clause — e.g. id > 10 AND status = 'active'"
-              schema={completionSchema}
-              singleLine
-              minHeight="32px"
-              className="h-8 pl-5"
-            />
-          </div>
-          <Button type="submit" variant="outline" size="sm" className="h-8 text-xs">
-            Filter
-          </Button>
-          {whereClause && (
+      <div className="flex flex-col border-b border-border px-3 py-2 gap-1.5">
+        {/* Row 1: Search + view toggle */}
+        <div className="flex items-center gap-2">
+          <form
+            onSubmit={handleWhereSubmit}
+            className="flex min-w-0 flex-1 items-center gap-2"
+          >
+            <div className="relative min-w-0 flex-1">
+              <Search className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
+              <SqlEditor
+                value={pendingWhere}
+                onChange={setPendingWhere}
+                onSubmit={() => {
+                  setPage(1);
+                  setWhereClause(pendingWhere);
+                }}
+                placeholder="WHERE clause — e.g. id > 10 AND status = 'active'"
+                schema={completionSchema}
+                singleLine
+                minHeight="32px"
+                className="h-8 pl-5"
+              />
+            </div>
             <Button
-              type="button"
-              variant="ghost"
+              type="submit"
+              variant="outline"
               size="sm"
               className="h-8 text-xs"
-              onClick={handleClearFilter}
             >
-              Clear
+              Filter
             </Button>
-          )}
-        </form>
+            {whereClause && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={handleClearFilter}
+              >
+                Clear
+              </Button>
+            )}
+          </form>
 
-        <ExportDropdown
-          connectionId={connectionId}
-          schema={schema}
-          table={table}
-          whereClause={whereClause || undefined}
-        />
+          <div className="flex items-center gap-0.5 rounded-md border border-border p-0.5">
+            <Button
+              type="button"
+              variant={viewMode === "table" ? "secondary" : "ghost"}
+              size="icon-sm"
+              className="size-6"
+              onClick={() => setViewMode("table")}
+              aria-label="Table view"
+            >
+              <Table2 className="size-3.5" />
+            </Button>
+            <Button
+              type="button"
+              variant={viewMode === "card" ? "secondary" : "ghost"}
+              size="icon-sm"
+              className="size-6"
+              onClick={() => setViewMode("card")}
+              aria-label="Card view"
+            >
+              <LayoutList className="size-3.5" />
+            </Button>
+          </div>
+        </div>
 
-        <div className="flex items-center gap-0.5 rounded-md border border-border p-0.5">
+        {/* Row 2: Action buttons */}
+        <div className="flex items-center gap-1.5">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-xs"
+                disabled
+              >
+                <Plus className="size-3.5" />
+                Add Data
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48">
+              <DropdownMenuItem disabled className="gap-2">
+                <FileUp className="size-4" />
+                Import JSON or CSV file
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled className="gap-2">
+                <FilePlus className="size-4" />
+                Insert document
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button
             type="button"
-            variant={viewMode === 'table' ? 'secondary' : 'ghost'}
-            size="icon-sm"
-            className="size-6"
-            onClick={() => setViewMode('table')}
-            aria-label="Table view"
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1.5 text-xs"
+            disabled
           >
-            <Table2 className="size-3.5" />
+            <Pencil className="size-3.5" />
+            Update
           </Button>
+
           <Button
             type="button"
-            variant={viewMode === 'card' ? 'secondary' : 'ghost'}
-            size="icon-sm"
-            className="size-6"
-            onClick={() => setViewMode('card')}
-            aria-label="Card view"
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1.5 text-xs"
+            disabled={loading || settings.general.readOnlyMode || !!error}
+            onClick={() => setDeleteDialogOpen(true)}
           >
-            <LayoutList className="size-3.5" />
+            <Trash2 className="size-3.5" />
+            Delete
           </Button>
+
+          <ExportDropdown
+            connectionId={connectionId}
+            schema={schema}
+            table={table}
+            whereClause={whereClause || undefined}
+            thin
+          />
         </div>
       </div>
 
@@ -290,6 +398,18 @@ export function DataTab({ connectionId, schema, table }: Readonly<DataTabProps>)
         totalCount={totalCount}
         onPageChange={setPage}
         onPageSizeChange={setPageSize}
+      />
+
+      <DeleteDataDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        connectionId={connectionId}
+        schema={schema}
+        table={table}
+        whereClause={whereClause}
+        totalCount={totalCount}
+        initialPreviewMode={viewMode === "table" ? "table" : "json"}
+        onDeleted={handleRowsDeleted}
       />
     </div>
   );

@@ -35,6 +35,9 @@ describe("preload API contract", () => {
       tableDataApi: {
         onExportProgress: (callback: () => void) => () => void;
         updateCell: (params: unknown) => Promise<unknown>;
+        updateRow: (params: unknown) => Promise<unknown>;
+        deleteRows: (params: unknown) => Promise<unknown>;
+        searchForeignKey: (params: unknown) => Promise<unknown>;
       };
     };
 
@@ -67,5 +70,47 @@ describe("preload API contract", () => {
     };
     await exposed.tableDataApi.updateCell(updateParams);
     expect(invoke).toHaveBeenCalledWith("table-data:update-cell", updateParams);
+
+    // Atomic multi-field row update: forwards to UPDATE_ROW.
+    const rowParams = {
+      connectionId: "c1",
+      schema: "app",
+      table: "users",
+      pkColumns: ["id"],
+      pkValues: [1],
+      changes: [
+        {
+          column: "display_name",
+          pgCast: "text",
+          newValue: "x",
+          setNull: false,
+        },
+        { column: "login_count", pgCast: "int4", newValue: 5, setNull: false },
+      ],
+    };
+    await exposed.tableDataApi.updateRow(rowParams);
+    expect(invoke).toHaveBeenCalledWith("table-data:update-row", rowParams);
+
+    const deleteParams = {
+      connectionId: "c1",
+      schema: "app",
+      table: "users",
+      whereClause: "id <= 5",
+    };
+    await exposed.tableDataApi.deleteRows(deleteParams);
+    expect(invoke).toHaveBeenCalledWith("table-data:delete-rows", deleteParams);
+
+    // FK search: forwards to SEARCH_FK channel.
+    const fkParams = {
+      connectionId: "c1",
+      schema: "app",
+      table: "users",
+      valueColumn: "id",
+      labelColumn: "display_name",
+      query: "ali",
+      limit: 50,
+    };
+    await exposed.tableDataApi.searchForeignKey(fkParams);
+    expect(invoke).toHaveBeenCalledWith("table-data:search-fk", fkParams);
   });
 });

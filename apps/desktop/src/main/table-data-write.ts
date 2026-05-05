@@ -1,7 +1,11 @@
 import type { PoolClient } from "pg";
 import type {
+  DeleteRowsParams,
+  DeleteRowsResult,
   UpdateCellParams,
   UpdateCellResult,
+  UpdateRowParams,
+  UpdateRowResult,
 } from "../shared/types/table-data";
 import { quoteIdent, withPoolClient } from "./pg-utils";
 import { getSettings } from "./settings-store";
@@ -173,5 +177,127 @@ export async function updateCell(
     }
 
     return { row: result.rows[0] as Record<string, unknown> };
+  });
+}
+
+/**
+ * Atomic multi-column update of a single row. Every change in `params.changes`
+ * lands in one `UPDATE … SET col1=$1, col2=$2 WHERE pk…` statement, which
+ * Postgres applies atomically: a failing CHECK / FK / type cast on any field
+ * rolls the entire row back. There is no partial-success path.
+ *
+ * Mirrors `updateCell` for read-only enforcement, PK guards, and cast
+ * allow-listing. Identifier injection is prevented by `quoteIdent`; user
+ * values travel exclusively through bound parameters.
+ */
+export async function updateRow(
+  params: UpdateRowParams,
+): Promise<UpdateRowResult> {
+  const settings = getSettings();
+  if (settings.general.readOnlyMode) {
+    throw new Error("Cannot update row: read-only mode is enabled.");
+  }
+
+  if (params.pkColumns.length === 0) {
+    throw new Error(
+      "Cannot update row: the table has no primary key to target.",
+    );
+  }
+  if (params.pkColumns.length !== params.pkValues.length) {
+    throw new Error(
+      "Cannot update row: pkColumns and pkValues must have the same length.",
+    );
+  }
+  if (params.changes.length === 0) {
+    throw new Error("Cannot update row: no changes to apply.");
+  }
+
+  // Reject duplicate columns up front — Postgres would error too, but
+  // catching it here gives a clearer message and avoids a wasted round-trip.
+  const seenColumns = new Set<string>();
+  for (const change of params.changes) {
+    if (seenColumns.has(change.column)) {
+      throw new Error(
+        `Cannot update row: duplicate change for column "${change.column}".`,
+      );
+    }
+    seenColumns.add(change.column);
+  }
+
+  // Partition casts into allow-listed (static) and enum candidates so we can
+  // verify the latter once we have a pool client.
+  const enumCasts: string[] = [];
+  for (const change of params.changes) {
+    if (change.setNull) continue;
+    if (!SAFE_PG_CAST.has(change.pgCast)) {
+      enumCasts.push(change.pgCast);
+    }
+  }
+
+  return withPoolClient(params.connectionId, async (client) => {
+    for (const pgCast of enumCasts) {
+      await assertEnumCast(client, pgCast);
+    }
+
+    const qualifiedTable = `${quoteIdent(params.schema)}.${quoteIdent(params.table)}`;
+
+    const setParts: string[] = [];
+    const setValues: unknown[] = [];
+    for (const change of params.changes) {
+      const columnIdent = quoteIdent(change.column);
+      if (change.setNull) {
+        setParts.push(`${columnIdent} = NULL`);
+      } else {
+        setValues.push(change.newValue);
+        setParts.push(
+          `${columnIdent} = $${setValues.length}::${change.pgCast}`,
+        );
+      }
+    }
+
+    // PK placeholders come after every SET placeholder so numbering is dense
+    // and stable regardless of how many setNull entries appear.
+    const pkStart = setValues.length + 1;
+    const whereClause = params.pkColumns
+      .map((col, i) => `${quoteIdent(col)} = $${pkStart + i}`)
+      .join(" AND ");
+
+    const values = [...setValues, ...params.pkValues];
+
+    const sql = `UPDATE ${qualifiedTable} SET ${setParts.join(", ")} WHERE ${whereClause} RETURNING *`;
+    const result = await client.query(sql, values);
+
+    if (result.rowCount === 0) {
+      throw new Error(
+        "Row not found: no rows matched the provided primary key.",
+      );
+    }
+    if (result.rowCount && result.rowCount > 1) {
+      throw new Error(
+        `Unexpected row count (${result.rowCount}) from row update.`,
+      );
+    }
+
+    return { row: result.rows[0] as Record<string, unknown> };
+  });
+}
+
+export async function deleteRows(
+  params: DeleteRowsParams,
+): Promise<DeleteRowsResult> {
+  const settings = getSettings();
+  if (settings.general.readOnlyMode) {
+    throw new Error("Cannot delete rows: read-only mode is enabled.");
+  }
+
+  return withPoolClient(params.connectionId, async (client) => {
+    const qualifiedTable = `${quoteIdent(params.schema)}.${quoteIdent(params.table)}`;
+    const trimmedWhere = params.whereClause?.trim();
+    const whereFragment = trimmedWhere ? ` WHERE ${trimmedWhere}` : "";
+    const result = await client.query(
+      `DELETE FROM ${qualifiedTable}${whereFragment}`,
+    );
+
+    return { deletedCount: result.rowCount ?? 0 };
   });
 }

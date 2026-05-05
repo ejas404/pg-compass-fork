@@ -9,6 +9,7 @@ import type {
   SqlDumpParams,
 } from "../shared/types/table-data";
 import { quoteIdent, withPoolClient } from "./pg-utils";
+import { isReadOnlyQuery } from "./table-data-rows";
 
 // ---------------------------------------------------------------------------
 // EXPORT_DATA (CSV / JSON)
@@ -70,9 +71,7 @@ export function csvQuoteField(str: string): string {
 /** Build the SQL to run for the export (either a full table or a user query). */
 export function buildExportSql(params: ExportDataParams): string {
   if (params.sql) {
-    const ALLOWED_QUERY_PREFIXES = ["select", "with"];
-    const trimmed = params.sql.trim().toLowerCase();
-    if (!ALLOWED_QUERY_PREFIXES.some((prefix) => trimmed.startsWith(prefix))) {
+    if (!isReadOnlyQuery(params.sql)) {
       throw new Error("Only SELECT statements are allowed for export.");
     }
     return params.sql.replace(/;\s*$/, "");

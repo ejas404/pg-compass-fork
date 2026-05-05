@@ -2,6 +2,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { typeRegistry } from '@/components/workspace/renderers/type-registry';
 import { JsonTree } from '@/components/workspace/table-viewer/json-tree';
 import { EditableCell } from '@/components/workspace/table-viewer/editable-cell';
+import { RowEditButton } from '@/components/workspace/table-viewer/row-edit-button';
 import type { ColumnInfo } from '@/shared/types/table-data';
 import type { EditContext } from '@/components/workspace/table-viewer/data-tab';
 
@@ -56,12 +57,26 @@ export function CardDataView({
           return (
             <div
               key={rowKey}
-              className="rounded-lg border border-border bg-card"
+              className="group rounded-lg border border-border bg-card"
             >
-              <div className="border-b border-border px-3 py-1.5">
+              <div className="flex items-center justify-between border-b border-border px-3 py-1.5">
                 <span className="text-xs font-medium text-muted-foreground">
                   Document {rowIndex + 1}
                 </span>
+                <div className="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                  <RowEditButton
+                    columns={columns}
+                    row={row}
+                    readOnly={editContext.readOnly}
+                    primaryKey={editContext.primaryKey}
+                    schema={editContext.schema}
+                    table={editContext.table}
+                    connectionId={editContext.connectionId}
+                    onRowUpdated={(updated) =>
+                      editContext.onRowUpdated(rowIndex, updated)
+                    }
+                  />
+                </div>
               </div>
               <div className="px-3 py-2">
                 {columns.map((col) => (

@@ -1,5 +1,32 @@
 /** Types for table/view data queries used across main, preload, and renderer. */
 
+/**
+ * Reference to the parent of a single-column foreign key. Used by the
+ * renderer to swap the column's editor for an FK combobox. Composite FKs
+ * are intentionally not represented here in v1 — those columns fall back
+ * to the plain type editor.
+ */
+export interface ForeignKeyRef {
+  /** Parent (referenced) schema. */
+  schema: string;
+  /** Parent (referenced) table. */
+  table: string;
+  /** Parent column whose value this FK stores (the PK column on the parent). */
+  column: string;
+  /**
+   * Heuristically-picked human-readable column on the parent table, or `null`
+   * when no good label could be found. The dropdown shows the label · value
+   * when set, and just the value when null.
+   */
+  labelColumn: string | null;
+  /**
+   * pg type name to cast the value to in the eventual UPDATE. Mirrors the
+   * source column's `dataType`; surfaced here so the FK editor can construct
+   * a valid `EditResult` without re-deriving it.
+   */
+  valuePgCast: string;
+}
+
 /** Column metadata returned alongside query results. */
 export interface ColumnInfo {
   name: string;
@@ -18,6 +45,12 @@ export interface ColumnInfo {
    * `"App"."Role"`). Absent for non-enum columns.
    */
   enumPgCast?: string;
+  /**
+   * Single-column foreign-key reference, when this column is one. Drives
+   * the searchable FK dropdown in the cell / row editor. Absent for
+   * non-FK columns and for columns participating only in composite FKs.
+   */
+  foreignKey?: ForeignKeyRef;
 }
 
 /** Paginated row result shared by data tab and query tab. */
@@ -64,7 +97,7 @@ export interface IndexInfo {
 /** Constraint info for the Constraints tab. */
 export interface ConstraintInfo {
   name: string;
-  type: 'PRIMARY KEY' | 'FOREIGN KEY' | 'UNIQUE' | 'CHECK' | 'EXCLUDE';
+  type: "PRIMARY KEY" | "FOREIGN KEY" | "UNIQUE" | "CHECK" | "EXCLUDE";
   columns: string[];
   definition: string | null;
   /** For foreign keys: the referenced table. */
@@ -103,7 +136,7 @@ export interface TableMetaParams {
 /** Parameters for exporting table data as CSV or JSON. */
 export interface ExportDataParams {
   connectionId: string;
-  format: 'csv' | 'json';
+  format: "csv" | "json";
   /** Destination file path (from a prior save dialog). */
   filePath: string;
   /** Full table export: schema + table. Omit sql. */
@@ -170,16 +203,102 @@ export interface UpdateCellResult {
   row: Record<string, unknown>;
 }
 
+/**
+ * One column-level change inside a multi-field row update. Mirrors the
+ * shape of `UpdateCellParams` minus the row identity, which is shared
+ * across all fields in the parent `UpdateRowParams`.
+ */
+export interface UpdateRowFieldChange {
+  column: string;
+  pgCast: string;
+  newValue: unknown;
+  setNull: boolean;
+}
+
+/**
+ * Parameters for a multi-column atomic update of a single row. Every
+ * change lands in one `UPDATE … SET col1=$1, col2=$2 WHERE pk…` so a
+ * failure in any field rolls back all of them — partial-success is
+ * impossible by construction.
+ */
+export interface UpdateRowParams {
+  connectionId: string;
+  schema: string;
+  table: string;
+  pkColumns: string[];
+  pkValues: unknown[];
+  /** Length must be ≥ 1; duplicates by `column` are rejected. */
+  changes: UpdateRowFieldChange[];
+}
+
+/** Result returned after a successful row update. */
+export interface UpdateRowResult {
+  /** Full row after the update, re-typed through `buildTypeMap`. */
+  row: Record<string, unknown>;
+}
+
+/** Parameters for deleting rows from a table using the current data filter. */
+export interface DeleteRowsParams {
+  connectionId: string;
+  schema: string;
+  table: string;
+  whereClause?: string;
+}
+
+/** Result returned after deleting rows. */
+export interface DeleteRowsResult {
+  deletedCount: number;
+}
+
+/**
+ * Parameters for searching candidate rows on the parent of a foreign key.
+ * The handler is read-only and not gated by `readOnlyMode` — the user is
+ * picking, not writing.
+ */
+export interface SearchForeignKeyParams {
+  connectionId: string;
+  /** Parent schema (the referenced table's schema). */
+  schema: string;
+  /** Parent table. */
+  table: string;
+  /** Parent column whose value the FK stores. */
+  valueColumn: string;
+  /** Heuristic display column. `null` ⇒ search over the value column only. */
+  labelColumn: string | null;
+  /** User search text. Empty string ⇒ first page, no filter. */
+  query: string;
+  /** Maximum number of options to return. The handler clamps the upper bound. */
+  limit: number;
+}
+
+/** One row of the FK dropdown. */
+export interface ForeignKeyOption {
+  /** PK value to send back when this option is chosen. */
+  value: unknown;
+  /** Label-column value, or `null` when there is no label column. */
+  label: string | null;
+}
+
+/** Result of a foreign-key search. */
+export interface SearchForeignKeyResult {
+  options: ForeignKeyOption[];
+  /** True when more rows exist past `limit` (caller can prompt for refinement). */
+  hasMore: boolean;
+}
+
 /** IPC channel names for table data operations. */
 export const TableDataChannels = {
-  GET_ROWS: 'table-data:get-rows',
-  GET_STRUCTURE: 'table-data:get-structure',
-  GET_INDEXES: 'table-data:get-indexes',
-  GET_CONSTRAINTS: 'table-data:get-constraints',
-  EXECUTE_QUERY: 'table-data:execute-query',
-  SHOW_SAVE_DIALOG: 'table-data:show-save-dialog',
-  EXPORT_DATA: 'table-data:export-data',
-  EXPORT_PROGRESS: 'table-data:export-progress',
-  SQL_DUMP: 'table-data:sql-dump',
-  UPDATE_CELL: 'table-data:update-cell',
+  GET_ROWS: "table-data:get-rows",
+  GET_STRUCTURE: "table-data:get-structure",
+  GET_INDEXES: "table-data:get-indexes",
+  GET_CONSTRAINTS: "table-data:get-constraints",
+  EXECUTE_QUERY: "table-data:execute-query",
+  SHOW_SAVE_DIALOG: "table-data:show-save-dialog",
+  EXPORT_DATA: "table-data:export-data",
+  EXPORT_PROGRESS: "table-data:export-progress",
+  SQL_DUMP: "table-data:sql-dump",
+  UPDATE_CELL: "table-data:update-cell",
+  UPDATE_ROW: "table-data:update-row",
+  DELETE_ROWS: "table-data:delete-rows",
+  SEARCH_FK: "table-data:search-fk",
 } as const;

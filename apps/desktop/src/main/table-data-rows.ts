@@ -7,6 +7,20 @@ import type {
 } from "../shared/types/table-data";
 import { quoteIdent, withPoolClient } from "./pg-utils";
 import { buildEnumTypeMap, buildTypeMap } from "./table-data-utils";
+import { resolveForeignKeys } from "./table-data-fk";
+
+function parseCountRow(raw: string | undefined): number {
+  // `SELECT count(*)` always produces exactly one row; a missing value here
+  // implies the driver returned an unexpected shape, not an empty relation.
+  if (raw === undefined) {
+    throw new Error("count(*) query returned no rows");
+  }
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n)) {
+    throw new Error(`count(*) returned non-numeric value: ${raw}`);
+  }
+  return n;
+}
 
 // ---------------------------------------------------------------------------
 // Primary-key resolution
@@ -64,7 +78,7 @@ export async function getRows(params: GetRowsParams): Promise<TableRowsResult> {
     await client.query("BEGIN READ ONLY");
     try {
       const countResult = await client.query<{ count: string }>(countSql);
-      const totalCount = Number.parseInt(countResult.rows[0]!.count, 10);
+      const totalCount = parseCountRow(countResult.rows[0]?.count);
 
       const dataResult = await client.query(
         `SELECT * FROM ${qualifiedTable} ${whereFragment} LIMIT $1 OFFSET $2`,
@@ -83,8 +97,24 @@ export async function getRows(params: GetRowsParams): Promise<TableRowsResult> {
       const typeMap = await buildTypeMap(client, oids);
       const enumMap = await buildEnumTypeMap(client, oids);
 
+      // Build a column-name -> pg type map for FK cast resolution.  We
+      // do this from the result fields rather than re-querying so the
+      // cast we hand the FK editor matches what the wire actually sees.
+      const valueCastByColumn = new Map<string, string>();
+      for (const f of dataResult.fields) {
+        const t = typeMap.get(f.dataTypeID);
+        if (t) valueCastByColumn.set(f.name, t);
+      }
+      const fkMap = await resolveForeignKeys(
+        client,
+        params.schema,
+        params.table,
+        valueCastByColumn,
+      );
+
       const columns: ColumnInfo[] = dataResult.fields.map((f) => {
         const enumInfo = enumMap.get(f.dataTypeID);
+        const fk = fkMap.get(f.name);
         return {
           name: f.name,
           dataTypeId: f.dataTypeID,
@@ -92,6 +122,7 @@ export async function getRows(params: GetRowsParams): Promise<TableRowsResult> {
           ...(enumInfo
             ? { enumLabels: enumInfo.labels, enumPgCast: enumInfo.pgCast }
             : {}),
+          ...(fk ? { foreignKey: fk } : {}),
         };
       });
 
@@ -161,7 +192,7 @@ export async function executeQuery(
       const countResult = await client.query<{ count: string }>(
         `SELECT count(*) AS count FROM (${core}) AS __count_subquery`,
       );
-      let totalCount = Number.parseInt(countResult.rows[0]!.count, 10);
+      let totalCount = parseCountRow(countResult.rows[0]?.count);
 
       // Honour the user's LIMIT as an upper bound on total rows.
       if (userLimit !== null && userLimit < totalCount) {

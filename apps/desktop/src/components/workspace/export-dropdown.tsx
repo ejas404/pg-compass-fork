@@ -21,6 +21,8 @@ interface ExportDropdownProps {
   whereClause?: string;
   /** Whether query-based export is available (query tab has results). */
   hasQueryResults?: boolean;
+  /** Use a thinner button (h-7 instead of h-8). */
+  thin?: boolean;
 }
 
 export function ExportDropdown({
@@ -30,6 +32,7 @@ export function ExportDropdown({
   sql,
   whereClause,
   hasQueryResults,
+  thin,
 }: Readonly<ExportDropdownProps>) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [exportMode, setExportMode] = useState<'all' | 'query'>('all');
@@ -106,7 +109,7 @@ export function ExportDropdown({
             type="button"
             variant="outline"
             size="sm"
-            className="h-8 gap-1.5 text-xs"
+            className={`${thin ? 'h-7' : 'h-8'} gap-1.5 text-xs`}
           >
             <Download className="size-3.5" />
             Export

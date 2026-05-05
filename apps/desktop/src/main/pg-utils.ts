@@ -77,17 +77,26 @@ export async function withPoolClient<T>(
 /** Destroy the pool for a specific connection (e.g. after config change or deletion). */
 export async function destroyPool(connectionId: string): Promise<void> {
   const pool = pools.get(connectionId);
-  if (pool) {
-    pools.delete(connectionId);
-    await pool.end().catch(() => {});
+  if (!pool) return;
+  pools.delete(connectionId);
+  try {
+    await pool.end();
+  } catch (err) {
+    console.error(`[pg-utils] destroyPool(${connectionId}) failed:`, err);
   }
 }
 
 /** Destroy all connection pools (e.g. on app quit). */
 export async function destroyAllPools(): Promise<void> {
-  const endPromises = Array.from(pools.values()).map((pool) =>
-    pool.end().catch(() => {}),
-  );
+  const entries = Array.from(pools.entries());
   pools.clear();
-  await Promise.all(endPromises);
+  await Promise.all(
+    entries.map(async ([id, pool]) => {
+      try {
+        await pool.end();
+      } catch (err) {
+        console.error(`[pg-utils] destroyAllPools: pool ${id} failed:`, err);
+      }
+    }),
+  );
 }
