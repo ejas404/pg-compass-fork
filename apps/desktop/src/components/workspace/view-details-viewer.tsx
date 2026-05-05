@@ -86,6 +86,7 @@ export function ViewDetailsViewer({ path }: Readonly<ViewDetailsViewerProps>) {
             connectionId={path.connectionId}
             schema={path.schemaName}
             table={path.viewName}
+            relationType="view"
           />
         </TabsContent>
 

@@ -4,6 +4,7 @@ import {
   Copy,
   Database,
   Edit,
+  Eye,
   Folder,
   Loader2,
   Plug,
@@ -129,7 +130,7 @@ function SchemaTreeNode({
               onClick={() => onOpenView(schema.name, view.name)}
               aria-label={`View ${view.name}`}
             >
-              <Table2 className="size-3 shrink-0" />
+              <Eye className="size-3 shrink-0" />
               <span className="min-w-0 flex-1 truncate" title={view.name}>{view.name}</span>
             </button>
           ))}

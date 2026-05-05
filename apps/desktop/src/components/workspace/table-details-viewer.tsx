@@ -96,6 +96,7 @@ export function TableDetailsViewer({
             connectionId={path.connectionId}
             schema={path.schemaName}
             table={path.tableName}
+            relationType="table"
           />
         </TabsContent>
 

@@ -154,6 +154,9 @@ test("views expose no edit affordance even when read-only mode is off", async ({
     await page.getByRole("tab", { name: "Data" }).click();
 
     await expect(page.locator('[data-testid="cell-editor-target"]')).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Add Data" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Update" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Delete" })).toHaveCount(0);
   } finally {
     await app.close();
   }

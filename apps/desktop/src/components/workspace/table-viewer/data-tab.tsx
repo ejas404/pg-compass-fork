@@ -100,12 +100,14 @@ interface DataTabProps {
   connectionId: string;
   schema: string;
   table: string;
+  relationType: "table" | "view";
 }
 
 export function DataTab({
   connectionId,
   schema,
   table,
+  relationType,
 }: Readonly<DataTabProps>) {
   const { schemaCache } = useWorkspace();
   const { settings } = useSettings();
@@ -121,6 +123,7 @@ export function DataTab({
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isTable = relationType === "table";
 
   const completionSchema = useMemo<CompletionSchema>(() => {
     const schemas: string[] = [];
@@ -227,7 +230,7 @@ export function DataTab({
       connectionId,
       schema,
       table,
-      readOnly: settings.general.readOnlyMode,
+      readOnly: settings.general.readOnlyMode || !isTable,
       primaryKey,
       onRowUpdated: handleRowUpdated,
     }),
@@ -236,6 +239,7 @@ export function DataTab({
       schema,
       table,
       settings.general.readOnlyMode,
+      isTable,
       primaryKey,
       handleRowUpdated,
     ],
@@ -319,8 +323,33 @@ export function DataTab({
 
         {/* Row 2: Action buttons */}
         <div className="flex items-center gap-1.5">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          {isTable && (
+            <>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 gap-1.5 text-xs"
+                    disabled
+                  >
+                    <Plus className="size-3.5" />
+                    Add Data
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-48">
+                  <DropdownMenuItem disabled className="gap-2">
+                    <FileUp className="size-4" />
+                    Import JSON or CSV file
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled className="gap-2">
+                    <FilePlus className="size-4" />
+                    Insert document
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               <Button
                 type="button"
                 variant="outline"
@@ -328,44 +357,23 @@ export function DataTab({
                 className="h-7 gap-1.5 text-xs"
                 disabled
               >
-                <Plus className="size-3.5" />
-                Add Data
+                <Pencil className="size-3.5" />
+                Update
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48">
-              <DropdownMenuItem disabled className="gap-2">
-                <FileUp className="size-4" />
-                Import JSON or CSV file
-              </DropdownMenuItem>
-              <DropdownMenuItem disabled className="gap-2">
-                <FilePlus className="size-4" />
-                Insert document
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-7 gap-1.5 text-xs"
-            disabled
-          >
-            <Pencil className="size-3.5" />
-            Update
-          </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-7 gap-1.5 text-xs"
-            disabled={loading || settings.general.readOnlyMode || !!error}
-            onClick={() => setDeleteDialogOpen(true)}
-          >
-            <Trash2 className="size-3.5" />
-            Delete
-          </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-xs"
+                disabled={loading || settings.general.readOnlyMode || !!error}
+                onClick={() => setDeleteDialogOpen(true)}
+              >
+                <Trash2 className="size-3.5" />
+                Delete
+              </Button>
+            </>
+          )}
 
           <ExportDropdown
             connectionId={connectionId}
@@ -403,17 +411,19 @@ export function DataTab({
         onPageSizeChange={setPageSize}
       />
 
-      <DeleteDataDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        connectionId={connectionId}
-        schema={schema}
-        table={table}
-        whereClause={whereClause}
-        totalCount={totalCount}
-        initialPreviewMode={viewMode === "table" ? "table" : "json"}
-        onDeleted={handleRowsDeleted}
-      />
+      {isTable && (
+        <DeleteDataDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          connectionId={connectionId}
+          schema={schema}
+          table={table}
+          whereClause={whereClause}
+          totalCount={totalCount}
+          initialPreviewMode={viewMode === "table" ? "table" : "json"}
+          onDeleted={handleRowsDeleted}
+        />
+      )}
     </div>
   );
 }
