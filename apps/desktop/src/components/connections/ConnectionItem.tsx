@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   ChevronRight,
+  Copy,
   Database,
   Edit,
   Folder,
@@ -35,6 +36,26 @@ import type { ConnectionConfig, DatabaseSchema } from '@/shared/types/connection
 interface ConnectionItemProps {
   connection: ConnectionConfig;
   onEdit: (connection: ConnectionConfig) => void;
+}
+
+export function buildConnectionString(connection: ConnectionConfig): string | null {
+  if (connection.mode === 'uri') {
+    return connection.uri?.trim() || null;
+  }
+
+  const fields = connection.fields;
+  if (!fields) {
+    return null;
+  }
+
+  const url = new URL('postgresql://localhost');
+  url.hostname = fields.host;
+  url.port = String(fields.port);
+  url.pathname = `/${encodeURIComponent(fields.database)}`;
+  url.username = fields.user;
+  url.password = fields.password;
+
+  return url.toString();
 }
 
 interface SchemaTreeNodeProps {
@@ -264,6 +285,21 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
     }
   }
 
+  async function handleCopyConnectionString() {
+    const connectionString = buildConnectionString(connection);
+    if (!connectionString) {
+      toast.error(`No connection string available for "${connection.label}"`);
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(connectionString);
+      toast.success('Connection string copied');
+    } catch {
+      toast.error('Failed to copy connection string');
+    }
+  }
+
   async function handleDatabaseClick() {
     const isConnected = connected || await handleConnect();
     if (!isConnected) {
@@ -406,10 +442,18 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
                   <span className="text-xs leading-none">⋯</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuItem onClick={() => onEdit(connection)}>
                   <Edit className="mr-2 size-3" />
                   Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    handleCopyConnectionString().catch(() => undefined);
+                  }}
+                >
+                  <Copy className="mr-2 size-3" />
+                  Copy Connection String
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => toggleFavourite(connection.id)}>
                   <Star className="mr-2 size-3" />

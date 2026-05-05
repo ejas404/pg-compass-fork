@@ -1,0 +1,118 @@
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  buildConnectionString,
+  ConnectionItem,
+} from "@/components/connections/ConnectionItem";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { useConnections } from "@/hooks/use-connections";
+import { useWorkspace } from "@/hooks/use-workspace";
+import type { ConnectionConfig } from "@/shared/types/connection";
+
+vi.mock("@/hooks/use-connections", () => ({
+  useConnections: vi.fn(),
+}));
+
+vi.mock("@/hooks/use-workspace", () => ({
+  useWorkspace: vi.fn(),
+}));
+
+vi.mock("sonner", () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+  },
+}));
+
+const uriConnection: ConnectionConfig = {
+  id: "conn-1",
+  label: "Local",
+  favourite: false,
+  mode: "uri",
+  uri: "postgresql://postgres:secret@localhost:5432/app",
+};
+
+const fieldConnection: ConnectionConfig = {
+  id: "conn-2",
+  label: "Field Local",
+  favourite: false,
+  mode: "fields",
+  fields: {
+    host: "localhost",
+    port: 5432,
+    database: "app db",
+    user: "app user",
+    password: "sec/ret",
+  },
+};
+
+describe("ConnectionItem", () => {
+  beforeEach(() => {
+    vi.mocked(useConnections).mockReturnValue({
+      connections: [],
+      loading: false,
+      refresh: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      remove: vi.fn(),
+      toggleFavourite: vi.fn(),
+      testConnection: vi.fn(),
+      getSchemaTree: vi.fn(),
+    });
+
+    vi.mocked(useWorkspace).mockReturnValue({
+      tabs: [],
+      activeTabId: null,
+      schemaCache: {},
+      setActiveTab: vi.fn(),
+      closeTab: vi.fn(),
+      openTab: vi.fn(),
+      navigateToView: vi.fn(),
+      refreshSchemaTree: vi.fn(),
+      refreshTabs: vi.fn(),
+    });
+
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    });
+  });
+
+  it("copies the saved URI connection string from the context menu", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+
+    render(
+      <TooltipProvider>
+        <ConnectionItem connection={uriConnection} onEdit={vi.fn()} />
+      </TooltipProvider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(
+      await screen.findByRole("menuitem", {
+        name: "Copy Connection String",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(writeText).toHaveBeenCalledWith(
+        "postgresql://postgres:secret@localhost:5432/app",
+      ),
+    );
+  });
+
+  it("builds a PostgreSQL URL from individual connection fields", () => {
+    expect(buildConnectionString(fieldConnection)).toBe(
+      "postgresql://app%20user:sec%2Fret@localhost:5432/app%20db",
+    );
+  });
+});
