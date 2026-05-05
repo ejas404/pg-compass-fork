@@ -131,7 +131,10 @@ export function DataTab({
       if (connId !== connectionId) continue;
       for (const s of dbSchemas) {
         schemas.push(s.name);
-        tables[s.name] = s.tables;
+        tables[s.name] = [
+          ...s.tables,
+          ...s.views.map((view) => view.name),
+        ];
       }
     }
 

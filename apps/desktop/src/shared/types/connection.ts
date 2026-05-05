@@ -62,9 +62,15 @@ export interface TableStats {
   sizeOnDisk: string | null;
 }
 
+export interface DatabaseView {
+  name: string;
+  definition: string | null;
+}
+
 export interface DatabaseSchema {
   name: string;
   tables: string[];
+  views: DatabaseView[];
   tableStats?: Record<string, TableStats>;
 }
 

@@ -3,6 +3,7 @@ import { Client } from 'pg';
 import { ConnectionChannels } from '../shared/types/connection';
 import type {
   ConnectionInput,
+  DatabaseView,
   DatabaseSchema,
   SchemaTreeOptions,
   TableStats,
@@ -20,6 +21,12 @@ import { buildPgConfig, withPoolClient, destroyPool } from './pg-utils';
 interface PgTableRow {
   schema_name: string;
   table_name: string;
+}
+
+interface PgViewRow {
+  schema_name: string;
+  view_name: string;
+  definition: string | null;
 }
 
 interface PgTableStatsRow {
@@ -61,7 +68,7 @@ export function getSchemaFilterSql(
     `;
 }
 
-async function getSchemaTree(
+export async function getSchemaTree(
   connectionId: string,
   options?: SchemaTreeOptions,
 ): Promise<DatabaseSchema[]> {
@@ -95,6 +102,18 @@ async function getSchemaTree(
       ORDER BY schemaname, tablename
     `);
 
+    const viewResult = await client.query<PgViewRow>(`
+      SELECT
+        n.nspname AS schema_name,
+        c.relname AS view_name,
+        pg_get_viewdef(c.oid, true) AS definition
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE c.relkind IN ('v', 'm')
+      ${getSchemaFilterSql(includeInternalSchemas, 'n.nspname')}
+      ORDER BY n.nspname, c.relname
+    `);
+
     const statsResult = await client.query<PgTableStatsRow>(`
       SELECT
         n.nspname AS schema_name,
@@ -111,8 +130,11 @@ async function getSchemaTree(
       ORDER BY n.nspname, c.relname
     `);
 
-    const schemaMap = new Map<string, string[]>(
-      schemaResult.rows.map((row) => [row.schema_name, []]),
+    const schemaMap = new Map<string, { tables: string[]; views: DatabaseView[] }>(
+      schemaResult.rows.map((row) => [
+        row.schema_name,
+        { tables: [], views: [] },
+      ]),
     );
     const statsMap = new Map<string, Record<string, TableStats>>();
 
@@ -126,17 +148,38 @@ async function getSchemaTree(
     }
 
     for (const row of result.rows) {
-      const tables = schemaMap.get(row.schema_name);
-      if (tables) {
-        tables.push(row.table_name);
+      const schema = schemaMap.get(row.schema_name);
+      if (schema) {
+        schema.tables.push(row.table_name);
       } else {
-        schemaMap.set(row.schema_name, [row.table_name]);
+        schemaMap.set(row.schema_name, {
+          tables: [row.table_name],
+          views: [],
+        });
       }
     }
 
-    return Array.from(schemaMap.entries()).map(([name, tables]) => ({
+    for (const row of viewResult.rows) {
+      const schema = schemaMap.get(row.schema_name);
+      const view = {
+        name: row.view_name,
+        definition: row.definition,
+      };
+
+      if (schema) {
+        schema.views.push(view);
+      } else {
+        schemaMap.set(row.schema_name, {
+          tables: [],
+          views: [view],
+        });
+      }
+    }
+
+    return Array.from(schemaMap.entries()).map(([name, relations]) => ({
       name,
-      tables,
+      tables: relations.tables,
+      views: relations.views,
       tableStats: statsMap.get(name) ?? {},
     }));
   });

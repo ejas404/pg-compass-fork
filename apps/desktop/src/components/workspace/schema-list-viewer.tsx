@@ -61,6 +61,7 @@ export function SchemaListViewer({ path }: Readonly<SchemaListViewerProps>) {
               <TableRow>
                 <TableHead>Schema Name</TableHead>
                 <TableHead>Tables</TableHead>
+                <TableHead>Views</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -73,6 +74,9 @@ export function SchemaListViewer({ path }: Readonly<SchemaListViewerProps>) {
                   <TableCell className="font-medium">{schema.name}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {schema.tables.length}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {schema.views.length}
                   </TableCell>
                 </TableRow>
               ))}

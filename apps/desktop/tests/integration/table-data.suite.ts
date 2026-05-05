@@ -115,6 +115,69 @@ export function runTableDataIntegrationSuite(
       ).toBe(true);
     });
 
+    it("includes database views in the schema tree", async () => {
+      const { getSchemaTree } = await import("@/main/connection-ipc");
+
+      const schemas = await getSchemaTree(connectionId);
+      const appSchema = schemas.find((schema) => schema.name === "app");
+
+      expect(appSchema?.tables).toEqual(
+        expect.arrayContaining(["users", "orders"]),
+      );
+      expect(appSchema?.views).toContainEqual({
+        name: "active_users",
+        definition: expect.stringContaining("FROM app.users"),
+      });
+    });
+
+    it("fetches view data and metadata without edit primary-key state", async () => {
+      const { getRows } = await import("@/main/table-data-rows");
+      const { getStructure, getIndexes, getConstraints } =
+        await import("@/main/table-data-meta");
+
+      const rows = await getRows({
+        connectionId,
+        schema: "app",
+        table: "active_users",
+        page: 1,
+        pageSize: 10,
+      });
+
+      expect(rows.primaryKey).toBeNull();
+      expect(rows.totalCount).toBeGreaterThan(0);
+      expect(rows.columns.map((column) => column.name)).toEqual([
+        "id",
+        "email",
+        "display_name",
+      ]);
+
+      const structure = await getStructure({
+        connectionId,
+        schema: "app",
+        table: "active_users",
+      });
+      expect(structure.map((column) => column.name)).toEqual([
+        "id",
+        "email",
+        "display_name",
+      ]);
+
+      await expect(
+        getIndexes({
+          connectionId,
+          schema: "app",
+          table: "active_users",
+        }),
+      ).resolves.toEqual([]);
+      await expect(
+        getConstraints({
+          connectionId,
+          schema: "app",
+          table: "active_users",
+        }),
+      ).resolves.toEqual([]);
+    });
+
     // -----------------------------------------------------------------------
     // primaryKey resolution
     // -----------------------------------------------------------------------

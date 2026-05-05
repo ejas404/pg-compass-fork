@@ -9,19 +9,22 @@ interface ViewListViewerProps {
 }
 
 export function ViewListViewer({ path }: Readonly<ViewListViewerProps>) {
-  const { refreshSchemaTree, navigateToView } = useWorkspace();
+  const { schemaCache, refreshSchemaTree, navigateToView } = useWorkspace();
 
-  const rows = useMemo(
-    () => [
-      {
-        name: path.viewName,
+  const rows = useMemo(() => {
+    const schema = schemaCache[path.connectionId]?.find(
+      (item) => item.name === path.schemaName,
+    );
+
+    return (
+      schema?.views.map((view) => ({
+        name: view.name,
         rowCount: 'Unknown',
         sizeOnDisk: 'Unknown',
-        definition: `SELECT * FROM ${path.schemaName}.${path.viewName};`,
-      },
-    ],
-    [path.schemaName, path.viewName],
-  );
+        definition: view.definition ?? undefined,
+      })) ?? []
+    );
+  }, [schemaCache, path.connectionId, path.schemaName]);
 
   function handleRefresh() {
     refreshSchemaTree(path.connectionId, true).catch(() => undefined);
@@ -67,6 +70,12 @@ export function ViewListViewer({ path }: Readonly<ViewListViewerProps>) {
       <RelationListTable
         rows={rows}
         selectedName={path.viewName}
+        onOpenRow={(row) => {
+          navigateToView({
+            type: 'view-details',
+            path: { ...path, viewName: row.name },
+          }).catch(() => undefined);
+        }}
         includeDefinition
         emptyMessage="No views found in this schema."
       />

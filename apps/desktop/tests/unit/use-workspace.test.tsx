@@ -44,7 +44,7 @@ describe("useWorkspace", () => {
         test: vi.fn(),
         getSchemaTree: vi.fn().mockResolvedValue({
           success: true,
-          data: [{ name: "app", tables: ["users"] }],
+          data: [{ name: "app", tables: ["users"], views: [] }],
         }),
       },
     });

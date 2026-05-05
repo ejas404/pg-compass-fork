@@ -43,9 +43,10 @@ Keep the code clean and well-structured!
   - Clicking a database opens a schema listing view tab and expands the schema tree.
   - Clicking a schema opens a schema viewer tab.
   - Clicking a table opens a table list viewer tab.
+  - Clicking a view opens a view details viewer tab.
 - [x] Built the structure so new viewer types can be added without changing sidebar/workspace fundamentals.
 
 ## Notes
 
 - Backend schema IPC now includes per-table estimated row counts and on-disk sizes for table listings.
-- View definitions are still placeholder values (`Unknown` / fallback SQL) until dedicated view metadata endpoints are added.
+- Backend schema IPC now includes regular and materialized views with catalog definitions, so the schema `Views` tab, view list viewer, sidebar tree, and SQL completions use the real schema payload.

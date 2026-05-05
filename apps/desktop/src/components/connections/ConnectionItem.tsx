@@ -43,6 +43,7 @@ interface SchemaTreeNodeProps {
   onToggleSchema: (schemaName: string) => void;
   onOpenSchema: (schemaName: string) => void;
   onOpenTable: (schemaName: string, tableName: string) => void;
+  onOpenView: (schemaName: string, viewName: string) => void;
 }
 
 function SchemaTreeNode({
@@ -51,8 +52,10 @@ function SchemaTreeNode({
   onToggleSchema,
   onOpenSchema,
   onOpenTable,
+  onOpenView,
 }: Readonly<SchemaTreeNodeProps>) {
-  const schemaCountText = String(schema.tables.length);
+  const schemaCount = schema.tables.length + schema.views.length;
+  const schemaCountText = String(schemaCount);
 
   return (
     <div className="min-w-0 flex flex-col gap-0.5">
@@ -77,7 +80,7 @@ function SchemaTreeNode({
         </span>
         <span
           className="min-w-[4ch] shrink-0 pl-1 pr-1.5 text-right text-[10px] tabular-nums text-muted-foreground"
-          title={`${schemaCountText} tables`}
+          title={`${schemaCountText} relations`}
         >
           {schemaCountText}
         </span>
@@ -95,6 +98,18 @@ function SchemaTreeNode({
             >
               <Table2 className="size-3 shrink-0" />
               <span className="min-w-0 flex-1 truncate" title={tableName}>{tableName}</span>
+            </button>
+          ))}
+          {schema.views.map((view) => (
+            <button
+              key={`${schema.name}.${view.name}`}
+              type="button"
+              className="flex min-w-0 items-center gap-1 rounded-sm px-1 py-0.5 text-left text-xs text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+              onClick={() => onOpenView(schema.name, view.name)}
+              aria-label={`View ${view.name}`}
+            >
+              <Table2 className="size-3 shrink-0" />
+              <span className="min-w-0 flex-1 truncate" title={view.name}>{view.name}</span>
             </button>
           ))}
         </div>
@@ -194,6 +209,22 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
     ).catch(() => undefined);
   }
 
+  function handleOpenViewViewer(schemaName: string, viewName: string) {
+    const connectionLabel = getDatabaseName();
+    openTab(
+      {
+        type: 'view-details',
+        path: {
+          connectionId: connection.id,
+          connectionLabel,
+          schemaName,
+          viewName,
+        },
+      },
+      connection.color,
+    ).catch(() => undefined);
+  }
+
   function renderSchemaTree() {
     if (schemasLoading) {
       return (
@@ -208,7 +239,7 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
     if (schemas.length === 0) {
       return (
         <span className="text-xs text-muted-foreground">
-          No user schemas with tables found.
+          No user schemas with tables or views found.
         </span>
       );
     }
@@ -221,6 +252,7 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
         onToggleSchema={toggleSchema}
         onOpenSchema={handleOpenSchemaViewer}
         onOpenTable={handleOpenTableViewer}
+        onOpenView={handleOpenViewViewer}
       />
     ));
   }

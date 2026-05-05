@@ -51,9 +51,17 @@ export function SchemaViewer({ path }: Readonly<SchemaViewerProps>) {
   }, [schemaNode]);
 
   const viewRows = useMemo<RelationListRow[]>(() => {
-    // Views are not yet included in the schema IPC payload.
-    return [];
-  }, []);
+    if (!schemaNode) {
+      return [];
+    }
+
+    return schemaNode.views.map((view) => ({
+      name: view.name,
+      rowCount: 'Unknown',
+      sizeOnDisk: 'Unknown',
+      definition: view.definition ?? undefined,
+    }));
+  }, [schemaNode]);
 
   function handleRefresh() {
     refreshSchemaTree(path.connectionId, true).catch(() => undefined);
@@ -121,6 +129,7 @@ export function SchemaViewer({ path }: Readonly<SchemaViewerProps>) {
           <RelationListTable
             rows={viewRows}
             onOpenRow={(row) => handleOpenView(row.name)}
+            includeDefinition
             emptyMessage="No views found in this schema."
           />
         </TabsContent>

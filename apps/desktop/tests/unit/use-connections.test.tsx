@@ -41,7 +41,7 @@ describe("useConnections", () => {
         test: vi.fn().mockResolvedValue({ success: true, data: true }),
         getSchemaTree: vi.fn().mockResolvedValue({
           success: true,
-          data: [{ name: "app", tables: ["users"] }],
+          data: [{ name: "app", tables: ["users"], views: [] }],
         }),
       },
     });
