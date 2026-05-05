@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import type { ConnectionConfig } from "@/shared/types/connection";
 
 // Track Pool instances the code creates so we can assert lifecycle.
@@ -57,6 +60,13 @@ const fieldsConnection: ConnectionConfig = {
   },
 };
 
+function createTempFile(contents: string): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pg-compass-ssl-"));
+  const filePath = path.join(dir, "cert.pem");
+  fs.writeFileSync(filePath, contents, "utf8");
+  return filePath;
+}
+
 describe("buildPgConfig", () => {
   it("uses connectionString when mode is uri", async () => {
     const { utils } = await loadUtils();
@@ -84,9 +94,10 @@ describe("buildPgConfig", () => {
 
   it("maps field config with SSL options and omits unset SSL fields", async () => {
     const { utils } = await loadUtils();
+    const caPath = createTempFile("CA");
     const config = utils.buildPgConfig({
       ...fieldsConnection,
-      ssl: { enabled: true, rejectUnauthorized: false, ca: "CA" },
+      ssl: { enabled: true, rejectUnauthorized: false, ca: caPath },
     });
     expect(config).toMatchObject({
       host: "localhost",
@@ -98,14 +109,44 @@ describe("buildPgConfig", () => {
     );
   });
 
+  it("adds advanced SSL options to URI connections", async () => {
+    const { utils } = await loadUtils();
+    const caPath = createTempFile("URI CA");
+    const config = utils.buildPgConfig({
+      id: "c",
+      label: "x",
+      favourite: false,
+      mode: "uri",
+      uri: "postgres://u:p@h/db",
+      ssl: { enabled: true, ca: caPath },
+    });
+
+    expect(config).toEqual({
+      connectionString: "postgres://u:p@h/db",
+      ssl: { rejectUnauthorized: true, ca: "URI CA" },
+    });
+  });
+
+  it("throws a clear error when an SSL file path cannot be read", async () => {
+    const { utils } = await loadUtils();
+    expect(() =>
+      utils.buildPgConfig({
+        ...fieldsConnection,
+        ssl: { enabled: true, ca: "C:/missing/ca.pem" },
+      }),
+    ).toThrow(/Could not read SSL CA certificate file/);
+  });
+
   it("defaults rejectUnauthorized to true when SSL enabled without override", async () => {
     const { utils } = await loadUtils();
     const config = utils.buildPgConfig({
       ...fieldsConnection,
       ssl: { enabled: true },
     });
-    expect((config as { ssl: { rejectUnauthorized: boolean } }).ssl
-      .rejectUnauthorized).toBe(true);
+    expect(
+      (config as { ssl: { rejectUnauthorized: boolean } }).ssl
+        .rejectUnauthorized,
+    ).toBe(true);
   });
 });
 

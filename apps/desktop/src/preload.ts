@@ -9,6 +9,7 @@ import { HelpChannels } from "./shared/constants/help";
 import { WorkspaceChannels } from "./shared/constants/workspace";
 import type {
   ConnectionConfig,
+  ConnectionFileDialogOptions,
   ConnectionInput,
   DatabaseSchema,
   SchemaTreeOptions,
@@ -76,6 +77,11 @@ const connectionApi = {
     options?: SchemaTreeOptions,
   ): Promise<IpcResult<DatabaseSchema[]>> =>
     ipcRenderer.invoke(ConnectionChannels.GET_SCHEMA_TREE, id, options),
+
+  showOpenFileDialog: (
+    options: ConnectionFileDialogOptions,
+  ): Promise<IpcResult<string | null>> =>
+    ipcRenderer.invoke(ConnectionChannels.SHOW_OPEN_FILE_DIALOG, options),
 };
 
 const settingsApi = {

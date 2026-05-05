@@ -18,6 +18,7 @@ Connection management is implemented using a layered architecture across Electro
 4. **contextBridge** to expose a typed `connectionApi` to the renderer.
 5. **React context** (`ConnectionProvider`) to manage state and provide hooks.
 6. **pg (node-postgres)** imported only in main process for test connections.
+7. **Main-process file dialogs** for connection certificate/key selection, exposed through typed IPC rather than renderer filesystem access.
 
 ## Rationale
 
@@ -29,5 +30,6 @@ Connection management is implemented using a layered architecture across Electro
 ## Consequences
 
 - All connection operations go through IPC — renderer has zero direct Node.js access.
+- SSL certificate/key paths are persisted as paths, then read in the main process before constructing `pg` clients because node-postgres expects the file contents.
 - Connection passwords are stored in plaintext in electron-store JSON. A future task should add encryption or use the OS keychain.
 - SSH tunnel support is persisted in the schema but not yet wired to an actual tunnelling library (e.g., `ssh2`).

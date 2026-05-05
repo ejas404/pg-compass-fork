@@ -1,13 +1,14 @@
-import { ipcMain } from 'electron';
-import { Client } from 'pg';
-import { ConnectionChannels } from '../shared/types/connection';
+import { BrowserWindow, dialog, ipcMain } from "electron";
+import { Client } from "pg";
+import { ConnectionChannels } from "../shared/types/connection";
 import type {
+  ConnectionFileDialogOptions,
   ConnectionInput,
   DatabaseView,
   DatabaseSchema,
   SchemaTreeOptions,
   TableStats,
-} from '../shared/types/connection';
+} from "../shared/types/connection";
 import {
   getAllConnections,
   getConnectionById,
@@ -15,8 +16,8 @@ import {
   updateConnection,
   deleteConnection,
   toggleFavourite,
-} from './connection-store';
-import { buildPgConfig, withPoolClient, destroyPool } from './pg-utils';
+} from "./connection-store";
+import { buildPgConfig, withPoolClient, destroyPool } from "./pg-utils";
 
 interface PgTableRow {
   schema_name: string;
@@ -36,12 +37,14 @@ interface PgTableStatsRow {
   size_on_disk: string | null;
 }
 
-export function parseEstimatedRowCount(value: number | string | null): number | null {
+export function parseEstimatedRowCount(
+  value: number | string | null,
+): number | null {
   if (value == null) {
     return null;
   }
 
-  const parsed = typeof value === 'number' ? value : Number(value);
+  const parsed = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(parsed)) {
     return null;
   }
@@ -58,7 +61,7 @@ export function getSchemaFilterSql(
   column: string,
 ): string {
   if (includeInternalSchemas) {
-    return '';
+    return "";
   }
 
   return `
@@ -77,11 +80,11 @@ export async function getSchemaTree(
   return withPoolClient(connectionId, async (client) => {
     const schemaFilterSql = getSchemaFilterSql(
       includeInternalSchemas,
-      'schema_name',
+      "schema_name",
     );
     const tableFilterSql = getSchemaFilterSql(
       includeInternalSchemas,
-      'schemaname',
+      "schemaname",
     );
 
     const schemaResult = await client.query<PgSchemaRow>(`
@@ -110,7 +113,7 @@ export async function getSchemaTree(
       FROM pg_class c
       JOIN pg_namespace n ON n.oid = c.relnamespace
       WHERE c.relkind IN ('v', 'm')
-      ${getSchemaFilterSql(includeInternalSchemas, 'n.nspname')}
+      ${getSchemaFilterSql(includeInternalSchemas, "n.nspname")}
       ORDER BY n.nspname, c.relname
     `);
 
@@ -126,11 +129,14 @@ export async function getSchemaTree(
       FROM pg_class c
       JOIN pg_namespace n ON n.oid = c.relnamespace
       WHERE c.relkind IN ('r', 'p')
-      ${getSchemaFilterSql(includeInternalSchemas, 'n.nspname')}
+      ${getSchemaFilterSql(includeInternalSchemas, "n.nspname")}
       ORDER BY n.nspname, c.relname
     `);
 
-    const schemaMap = new Map<string, { tables: string[]; views: DatabaseView[] }>(
+    const schemaMap = new Map<
+      string,
+      { tables: string[]; views: DatabaseView[] }
+    >(
       schemaResult.rows.map((row) => [
         row.schema_name,
         { tables: [], views: [] },
@@ -198,38 +204,46 @@ export function registerConnectionHandlers(): void {
   ipcMain.handle(ConnectionChannels.GET_BY_ID, (_event, id: string) => {
     try {
       const connection = getConnectionById(id);
-      if (!connection) return { success: false, error: 'Connection not found.' };
+      if (!connection)
+        return { success: false, error: "Connection not found." };
       return { success: true, data: connection };
     } catch (err) {
       return { success: false, error: (err as Error).message };
     }
   });
 
-  ipcMain.handle(ConnectionChannels.CREATE, (_event, input: ConnectionInput) => {
-    try {
-      const connection = createConnection(input);
-      return { success: true, data: connection };
-    } catch (err) {
-      return { success: false, error: (err as Error).message };
-    }
-  });
+  ipcMain.handle(
+    ConnectionChannels.CREATE,
+    (_event, input: ConnectionInput) => {
+      try {
+        const connection = createConnection(input);
+        return { success: true, data: connection };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
 
-  ipcMain.handle(ConnectionChannels.UPDATE, async (_event, id: string, input: ConnectionInput) => {
-    try {
-      await destroyPool(id);
-      const connection = updateConnection(id, input);
-      if (!connection) return { success: false, error: 'Connection not found.' };
-      return { success: true, data: connection };
-    } catch (err) {
-      return { success: false, error: (err as Error).message };
-    }
-  });
+  ipcMain.handle(
+    ConnectionChannels.UPDATE,
+    async (_event, id: string, input: ConnectionInput) => {
+      try {
+        await destroyPool(id);
+        const connection = updateConnection(id, input);
+        if (!connection)
+          return { success: false, error: "Connection not found." };
+        return { success: true, data: connection };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
 
   ipcMain.handle(ConnectionChannels.DELETE, async (_event, id: string) => {
     try {
       await destroyPool(id);
       const deleted = deleteConnection(id);
-      if (!deleted) return { success: false, error: 'Connection not found.' };
+      if (!deleted) return { success: false, error: "Connection not found." };
       return { success: true, data: true };
     } catch (err) {
       return { success: false, error: (err as Error).message };
@@ -239,7 +253,8 @@ export function registerConnectionHandlers(): void {
   ipcMain.handle(ConnectionChannels.TOGGLE_FAVOURITE, (_event, id: string) => {
     try {
       const connection = toggleFavourite(id);
-      if (!connection) return { success: false, error: 'Connection not found.' };
+      if (!connection)
+        return { success: false, error: "Connection not found." };
       return { success: true, data: connection };
     } catch (err) {
       return { success: false, error: (err as Error).message };
@@ -249,13 +264,14 @@ export function registerConnectionHandlers(): void {
   ipcMain.handle(ConnectionChannels.TEST, async (_event, id: string) => {
     try {
       const connection = getConnectionById(id);
-      if (!connection) return { success: false, error: 'Connection not found.' };
+      if (!connection)
+        return { success: false, error: "Connection not found." };
 
       const pgConfig = buildPgConfig(connection);
       const client = new Client(pgConfig);
 
       await client.connect();
-      await client.query('SELECT 1');
+      await client.query("SELECT 1");
       await client.end();
 
       return { success: true, data: true };
@@ -267,12 +283,39 @@ export function registerConnectionHandlers(): void {
   ipcMain.handle(
     ConnectionChannels.GET_SCHEMA_TREE,
     async (_event, id: string, options?: SchemaTreeOptions) => {
-    try {
-      const schemas = await getSchemaTree(id, options);
-      return { success: true, data: schemas };
-    } catch (err) {
-      return { success: false, error: (err as Error).message };
-    }
+      try {
+        const schemas = await getSchemaTree(id, options);
+        return { success: true, data: schemas };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    ConnectionChannels.SHOW_OPEN_FILE_DIALOG,
+    async (event, options: ConnectionFileDialogOptions) => {
+      try {
+        const dialogOptions: Electron.OpenDialogOptions = {
+          title: options.title,
+          defaultPath: options.defaultPath,
+          filters: options.filters,
+          properties: ["openFile"],
+        };
+        const win = BrowserWindow.fromWebContents(event.sender);
+        const result = win
+          ? await dialog.showOpenDialog(win, dialogOptions)
+          : await dialog.showOpenDialog(dialogOptions);
+        const filePath = result.filePaths[0];
+
+        if (result.canceled || !filePath) {
+          return { success: true, data: null };
+        }
+
+        return { success: true, data: filePath };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
     },
   );
 }

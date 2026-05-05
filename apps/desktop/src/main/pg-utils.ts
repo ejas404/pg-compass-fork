@@ -1,7 +1,10 @@
-import { Pool } from 'pg';
-import type { PoolClient } from 'pg';
-import type { ConnectionConfig } from '../shared/types/connection';
-import { getConnectionById } from './connection-store';
+import { Pool } from "pg";
+import type { PoolClient } from "pg";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import type { ConnectionConfig } from "../shared/types/connection";
+import { getConnectionById } from "./connection-store";
 
 // ---------------------------------------------------------------------------
 // Connection config
@@ -9,31 +12,72 @@ import { getConnectionById } from './connection-store';
 
 /** Build a pg connection config from a ConnectionConfig. */
 export function buildPgConfig(connection: ConnectionConfig) {
-  if (connection.mode === 'uri' && connection.uri) {
-    return { connectionString: connection.uri };
+  const config: Record<string, unknown> =
+    connection.mode === "uri" && connection.uri
+      ? { connectionString: connection.uri }
+      : buildFieldPgConfig(connection);
+
+  if (connection.ssl?.enabled) {
+    config.ssl = buildPgSslConfig(connection);
   }
 
-  const fields = connection.fields;
-  if (!fields) throw new Error('Connection fields are required when mode is "fields".');
+  return config;
+}
 
-  const config: Record<string, unknown> = {
+function buildFieldPgConfig(
+  connection: ConnectionConfig,
+): Record<string, unknown> {
+  const fields = connection.fields;
+  if (!fields)
+    throw new Error('Connection fields are required when mode is "fields".');
+
+  return {
     host: fields.host,
     port: fields.port,
     database: fields.database,
     user: fields.user,
     password: fields.password,
   };
+}
 
-  if (connection.ssl?.enabled) {
-    config.ssl = {
-      rejectUnauthorized: connection.ssl.rejectUnauthorized ?? true,
-      ...(connection.ssl.ca ? { ca: connection.ssl.ca } : {}),
-      ...(connection.ssl.cert ? { cert: connection.ssl.cert } : {}),
-      ...(connection.ssl.key ? { key: connection.ssl.key } : {}),
-    };
+function buildPgSslConfig(
+  connection: ConnectionConfig,
+): Record<string, unknown> {
+  const ssl = connection.ssl;
+  if (!ssl?.enabled) return {};
+
+  return {
+    rejectUnauthorized: ssl.rejectUnauthorized ?? true,
+    ...(ssl.ca ? { ca: readConnectionFile(ssl.ca, "SSL CA certificate") } : {}),
+    ...(ssl.cert
+      ? { cert: readConnectionFile(ssl.cert, "SSL client certificate") }
+      : {}),
+    ...(ssl.key ? { key: readConnectionFile(ssl.key, "SSL client key") } : {}),
+  };
+}
+
+function readConnectionFile(filePath: string, label: string): string {
+  const resolvedPath = resolveUserPath(filePath.trim());
+  try {
+    return fs.readFileSync(resolvedPath, "utf8");
+  } catch (err) {
+    const message = (err as Error).message;
+    throw new Error(
+      `Could not read ${label} file at "${filePath}": ${message}`,
+    );
+  }
+}
+
+function resolveUserPath(filePath: string): string {
+  if (filePath === "~") {
+    return os.homedir();
   }
 
-  return config;
+  if (filePath.startsWith(`~${path.sep}`) || filePath.startsWith("~/")) {
+    return path.join(os.homedir(), filePath.slice(2));
+  }
+
+  return filePath;
 }
 
 /** Quote a PostgreSQL identifier to prevent SQL injection. */
@@ -53,7 +97,7 @@ function getOrCreatePool(connectionId: string): Pool {
   if (pool) return pool;
 
   const connection = getConnectionById(connectionId);
-  if (!connection) throw new Error('Connection not found.');
+  if (!connection) throw new Error("Connection not found.");
 
   pool = new Pool({ ...buildPgConfig(connection), max: 5 });
   pools.set(connectionId, pool);

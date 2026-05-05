@@ -1,5 +1,6 @@
 import type {
   ConnectionConfig,
+  ConnectionFileDialogOptions,
   ConnectionInput,
   DatabaseSchema,
   SchemaTreeOptions,
@@ -51,6 +52,9 @@ interface ConnectionApi {
     id: string,
     options?: SchemaTreeOptions,
   ): Promise<IpcResult<DatabaseSchema[]>>;
+  showOpenFileDialog(
+    options: ConnectionFileDialogOptions,
+  ): Promise<IpcResult<string | null>>;
 }
 
 interface SettingsApi {

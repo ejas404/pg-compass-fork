@@ -1,6 +1,8 @@
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import type { SSLConfig } from '@/shared/types/connection';
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { FileSearch } from "lucide-react";
+import type { SSLConfig } from "@/shared/types/connection";
 
 interface ConnectionSSLFieldsetProps {
   value: SSLConfig;
@@ -19,7 +21,9 @@ export function ConnectionSSLFieldset({
           type="checkbox"
           className="size-4 accent-primary"
           checked={value.enabled}
-          onChange={(e) => onChange((s) => ({ ...s, enabled: e.target.checked }))}
+          onChange={(e) =>
+            onChange((s) => ({ ...s, enabled: e.target.checked }))
+          }
         />
         <Label htmlFor="ssl-enabled">Enable SSL</Label>
       </div>
@@ -32,30 +36,36 @@ export function ConnectionSSLFieldset({
               className="size-4 accent-primary"
               checked={value.rejectUnauthorized ?? true}
               onChange={(e) =>
-                onChange((s) => ({ ...s, rejectUnauthorized: e.target.checked }))
+                onChange((s) => ({
+                  ...s,
+                  rejectUnauthorized: e.target.checked,
+                }))
               }
             />
             <Label htmlFor="ssl-reject">Reject unauthorized certificates</Label>
           </div>
           <PathField
             id="ssl-ca"
-            label="CA Certificate path"
-            placeholder="/path/to/ca.pem"
-            value={value.ca ?? ''}
+            label="CA certificate file"
+            placeholder="Select a CA bundle, if required"
+            dialogTitle="Select CA certificate"
+            value={value.ca ?? ""}
             onChange={(v) => onChange((s) => ({ ...s, ca: v }))}
           />
           <PathField
             id="ssl-cert"
-            label="Client Certificate path"
-            placeholder="/path/to/cert.pem"
-            value={value.cert ?? ''}
+            label="Client certificate file"
+            placeholder="Select a client certificate, if required"
+            dialogTitle="Select client certificate"
+            value={value.cert ?? ""}
             onChange={(v) => onChange((s) => ({ ...s, cert: v }))}
           />
           <PathField
             id="ssl-key"
-            label="Client Key path"
-            placeholder="/path/to/key.pem"
-            value={value.key ?? ''}
+            label="Client key file"
+            placeholder="Select a client key, if required"
+            dialogTitle="Select client key"
+            value={value.key ?? ""}
             onChange={(v) => onChange((s) => ({ ...s, key: v }))}
           />
         </div>
@@ -68,21 +78,57 @@ interface PathFieldProps {
   id: string;
   label: string;
   placeholder: string;
+  dialogTitle: string;
   value: string;
   onChange: (value: string) => void;
 }
 
-function PathField({ id, label, placeholder, value, onChange }: Readonly<PathFieldProps>) {
+function PathField({
+  id,
+  label,
+  placeholder,
+  dialogTitle,
+  value,
+  onChange,
+}: Readonly<PathFieldProps>) {
+  async function handleBrowse() {
+    const result = await globalThis.window.connectionApi.showOpenFileDialog({
+      title: dialogTitle,
+      defaultPath: value || undefined,
+      filters: [
+        {
+          name: "Certificate and key files",
+          extensions: ["pem", "crt", "cer", "key"],
+        },
+        { name: "All files", extensions: ["*"] },
+      ],
+    });
+    if (result.success && result.data) {
+      onChange(result.data);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={id}>{label}</Label>
-      <Input
-        id={id}
-        className="font-mono text-xs"
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
+      <div className="flex gap-2">
+        <Input
+          id={id}
+          className="font-mono text-xs"
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleBrowse}
+        >
+          <FileSearch className="size-4" />
+          Browse
+        </Button>
+      </div>
     </div>
   );
 }

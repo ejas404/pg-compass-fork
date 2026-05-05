@@ -1,7 +1,8 @@
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import type { SSHConfig } from '@/shared/types/connection';
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { FileSearch } from "lucide-react";
+import type { SSHConfig } from "@/shared/types/connection";
 
 interface ConnectionSSHFieldsetProps {
   value: SSHConfig;
@@ -12,6 +13,20 @@ export function ConnectionSSHFieldset({
   value,
   onChange,
 }: Readonly<ConnectionSSHFieldsetProps>) {
+  async function handleBrowsePrivateKey() {
+    const result = await globalThis.window.connectionApi.showOpenFileDialog({
+      title: "Select SSH private key",
+      defaultPath: value.privateKeyPath || undefined,
+      filters: [
+        { name: "Private key files", extensions: ["pem", "key", "rsa"] },
+        { name: "All files", extensions: ["*"] },
+      ],
+    });
+    if (result.success && result.data) {
+      onChange((s) => ({ ...s, privateKeyPath: result.data ?? "" }));
+    }
+  }
+
   return (
     <fieldset className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 p-3">
       <div className="flex items-center gap-2">
@@ -20,7 +35,9 @@ export function ConnectionSSHFieldset({
           type="checkbox"
           className="size-4 accent-primary"
           checked={value.enabled}
-          onChange={(e) => onChange((s) => ({ ...s, enabled: e.target.checked }))}
+          onChange={(e) =>
+            onChange((s) => ({ ...s, enabled: e.target.checked }))
+          }
         />
         <Label htmlFor="ssh-enabled">Enable SSH Tunnel</Label>
       </div>
@@ -31,7 +48,9 @@ export function ConnectionSSHFieldset({
             <Input
               id="ssh-host"
               value={value.host}
-              onChange={(e) => onChange((s) => ({ ...s, host: e.target.value }))}
+              onChange={(e) =>
+                onChange((s) => ({ ...s, host: e.target.value }))
+              }
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -53,7 +72,9 @@ export function ConnectionSSHFieldset({
             <Input
               id="ssh-user"
               value={value.user}
-              onChange={(e) => onChange((s) => ({ ...s, user: e.target.value }))}
+              onChange={(e) =>
+                onChange((s) => ({ ...s, user: e.target.value }))
+              }
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -61,55 +82,79 @@ export function ConnectionSSHFieldset({
             <div className="flex gap-2">
               <Button
                 type="button"
-                variant={value.authMethod === 'password' ? 'default' : 'outline'}
+                variant={
+                  value.authMethod === "password" ? "default" : "outline"
+                }
                 size="sm"
                 className="flex-1"
-                onClick={() => onChange((s) => ({ ...s, authMethod: 'password' }))}
+                onClick={() =>
+                  onChange((s) => ({ ...s, authMethod: "password" }))
+                }
               >
                 Password
               </Button>
               <Button
                 type="button"
-                variant={value.authMethod === 'privateKey' ? 'default' : 'outline'}
+                variant={
+                  value.authMethod === "privateKey" ? "default" : "outline"
+                }
                 size="sm"
                 className="flex-1"
-                onClick={() => onChange((s) => ({ ...s, authMethod: 'privateKey' }))}
+                onClick={() =>
+                  onChange((s) => ({ ...s, authMethod: "privateKey" }))
+                }
               >
                 Key
               </Button>
             </div>
           </div>
-          {value.authMethod === 'password' && (
+          {value.authMethod === "password" && (
             <div className="col-span-2 flex flex-col gap-1.5">
               <Label htmlFor="ssh-password">SSH Password</Label>
               <Input
                 id="ssh-password"
                 type="password"
-                value={value.password ?? ''}
-                onChange={(e) => onChange((s) => ({ ...s, password: e.target.value }))}
+                value={value.password ?? ""}
+                onChange={(e) =>
+                  onChange((s) => ({ ...s, password: e.target.value }))
+                }
               />
             </div>
           )}
-          {value.authMethod === 'privateKey' && (
+          {value.authMethod === "privateKey" && (
             <>
               <div className="col-span-2 flex flex-col gap-1.5">
-                <Label htmlFor="ssh-key">Private Key path</Label>
-                <Input
-                  id="ssh-key"
-                  className="font-mono text-xs"
-                  placeholder="~/.ssh/id_rsa"
-                  value={value.privateKeyPath ?? ''}
-                  onChange={(e) =>
-                    onChange((s) => ({ ...s, privateKeyPath: e.target.value }))
-                  }
-                />
+                <Label htmlFor="ssh-key">Private key file</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="ssh-key"
+                    className="font-mono text-xs"
+                    placeholder="Select a private key file"
+                    value={value.privateKeyPath ?? ""}
+                    onChange={(e) =>
+                      onChange((s) => ({
+                        ...s,
+                        privateKeyPath: e.target.value,
+                      }))
+                    }
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleBrowsePrivateKey}
+                  >
+                    <FileSearch className="size-4" />
+                    Browse
+                  </Button>
+                </div>
               </div>
               <div className="col-span-2 flex flex-col gap-1.5">
                 <Label htmlFor="ssh-passphrase">Passphrase</Label>
                 <Input
                   id="ssh-passphrase"
                   type="password"
-                  value={value.passphrase ?? ''}
+                  value={value.passphrase ?? ""}
                   onChange={(e) =>
                     onChange((s) => ({ ...s, passphrase: e.target.value }))
                   }

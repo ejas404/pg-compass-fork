@@ -8,7 +8,7 @@
 2. **Label**: A user-friendly name for the connection.
 3. **Color**: An optional color to associate with the connection for easy identification.
 
-An "Advanced Configuration" section can be toggled to show additional fields for manual entry of connection parameters or SSL and SSH configurations. Expand possibilities based on what `node-postgres` supports.
+An "Advanced Configuration" section can be toggled to show additional fields for manual entry of connection parameters or SSL and SSH configurations. SSL certificate/key fields and SSH private-key auth use the desktop file picker while still storing editable paths. Expand possibilities based on what `node-postgres` supports.
 
 A connection should be persisted to local storage (use `electron-store` for this) so that it is available across app restarts. Connections can be edited or deleted from the sidebar. A connection can also be favourited for quick access.
 
@@ -26,27 +26,29 @@ Connections are available in the sidebar. A "Connect" button is visible on hover
 
 - **Main process** (`src/main/`): Handles IPC, connection persistence via `electron-store`, and PostgreSQL connectivity via `pg` (node-postgres).
 - **Preload** (`src/preload.ts`): Exposes a typed `connectionApi` via `contextBridge`.
+- **File selection**: Certificate/key paths are selected through a typed main-process open-file dialog. The renderer never receives direct filesystem access.
+- **SSL material loading**: Saved SSL paths are resolved in the main process before creating `pg` clients/pools because node-postgres expects certificate/key contents, not path strings.
 - **Renderer** (`src/components/connections/`, `src/hooks/`): React context + provider for state, dialog for creating/editing connections, sidebar integration.
 
 ### Files Created / Modified
 
-| File | Purpose |
-|------|---------|
-| `src/shared/types/connection.ts` | Shared TypeScript types (`ConnectionConfig`, `ConnectionInput`, SSL/SSH configs, IPC channel constants) |
-| `src/main/connection-store.ts` | `electron-store` v8 persistence layer (CRUD + toggle favourite) |
-| `src/main/connection-ipc.ts` | `ipcMain.handle` registrations for all connection channels, includes `pg` test connection |
-| `src/preload.ts` | `contextBridge.exposeInMainWorld('connectionApi', ...)` with typed wrappers |
-| `src/electron.d.ts` | Global `Window.connectionApi` type declaration |
-| `src/hooks/use-connections.tsx` | React context + `useConnections()` hook with full CRUD operations |
-| `src/components/connections/ConnectionFormDialog.tsx` | Modal for creating/editing connections (URI or fields, color picker, advanced SSL/SSH) |
-| `src/components/connections/ConnectionItem.tsx` | Sidebar list item with connect, expand, edit, favourite, delete |
-| `src/components/ui/label.tsx` | shadcn Label component |
-| `src/components/ui/sonner.tsx` | Sonner toast wrapper |
-| `src/components/ui/collapsible.tsx` | Radix Collapsible component |
-| `src/components/sidebar/Sidebar.tsx` | Updated to render connections, categorised into favourites + others |
-| `src/app/App.tsx` | Wrapped with `ConnectionProvider` and `Toaster` |
-| `src/main.ts` | Registers IPC handlers on startup |
-| `vite.main.config.ts` | Externalises `pg`, `pg-native`, `electron-store` for main process bundling |
+| File                                                  | Purpose                                                                                                 |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `src/shared/types/connection.ts`                      | Shared TypeScript types (`ConnectionConfig`, `ConnectionInput`, SSL/SSH configs, IPC channel constants) |
+| `src/main/connection-store.ts`                        | `electron-store` v8 persistence layer (CRUD + toggle favourite)                                         |
+| `src/main/connection-ipc.ts`                          | `ipcMain.handle` registrations for all connection channels, includes `pg` test connection               |
+| `src/preload.ts`                                      | `contextBridge.exposeInMainWorld('connectionApi', ...)` with typed wrappers                             |
+| `src/electron.d.ts`                                   | Global `Window.connectionApi` type declaration                                                          |
+| `src/hooks/use-connections.tsx`                       | React context + `useConnections()` hook with full CRUD operations                                       |
+| `src/components/connections/ConnectionFormDialog.tsx` | Modal for creating/editing connections (URI or fields, color picker, advanced SSL/SSH)                  |
+| `src/components/connections/ConnectionItem.tsx`       | Sidebar list item with connect, expand, edit, favourite, delete                                         |
+| `src/components/ui/label.tsx`                         | shadcn Label component                                                                                  |
+| `src/components/ui/sonner.tsx`                        | Sonner toast wrapper                                                                                    |
+| `src/components/ui/collapsible.tsx`                   | Radix Collapsible component                                                                             |
+| `src/components/sidebar/Sidebar.tsx`                  | Updated to render connections, categorised into favourites + others                                     |
+| `src/app/App.tsx`                                     | Wrapped with `ConnectionProvider` and `Toaster`                                                         |
+| `src/main.ts`                                         | Registers IPC handlers on startup                                                                       |
+| `vite.main.config.ts`                                 | Externalises `pg`, `pg-native`, `electron-store` for main process bundling                              |
 
 ### Dependencies Added
 

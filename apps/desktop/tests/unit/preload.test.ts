@@ -31,6 +31,7 @@ describe("preload API contract", () => {
     ) as {
       connectionApi: {
         getAll: () => Promise<unknown>;
+        showOpenFileDialog: (options: unknown) => Promise<unknown>;
       };
       tableDataApi: {
         onExportProgress: (callback: () => void) => () => void;
@@ -46,6 +47,11 @@ describe("preload API contract", () => {
 
     await exposed.connectionApi.getAll();
     expect(invoke).toHaveBeenCalledWith("connections:get-all");
+
+    await exposed.connectionApi.showOpenFileDialog({ title: "Select file" });
+    expect(invoke).toHaveBeenCalledWith("connections:show-open-file-dialog", {
+      title: "Select file",
+    });
 
     const triggerMetaParams = {
       connectionId: "c1",
