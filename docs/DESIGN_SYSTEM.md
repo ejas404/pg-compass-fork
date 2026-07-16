@@ -46,7 +46,7 @@ We use shadcn/ui's **neutral** base color in oklch. All colors are exposed as CS
 
 ### Connection Colors
 
-Each saved connection can have an optional user-chosen accent color. This color is used as a subtle left-border or indicator dot on:
+Each saved connection can have an optional user-chosen accent color. This color is used as a subtle indicator dot or surface tint on:
 - The sidebar connection item
 - Tab headers belonging to that connection
 
@@ -162,6 +162,9 @@ The workspace tab bar sits at the top of the main area. Each tab shows:
 - An optional connection color indicator (left dot or border)
 
 Tabs use `text-xs` labels and `h-10` height.
+- Workspace tabs keep a consistent width, truncate long labels with ellipses, and use horizontal scrolling when the tab list overflows.
+- The workspace tab overflow scrollbar is compact and scoped to the tab bar so it does not clip tab labels.
+- Tabs belonging to a colored connection use a subtle surface tint from that connection color.
 
 ### Sidebar Tree
 

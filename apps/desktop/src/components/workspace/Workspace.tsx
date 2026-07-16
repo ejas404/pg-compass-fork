@@ -1,4 +1,8 @@
-import { useEffect } from 'react';
+import {
+  useEffect,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+} from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -81,29 +85,45 @@ function WorkspaceTabBar({
   }
 
   return (
-    <div className="flex h-10 min-h-10 items-end gap-1 overflow-x-auto border-b border-border bg-card px-2 pt-1">
+    <div className="workspace-tab-scrollbar flex h-10 min-h-10 items-end gap-1 overflow-x-auto overflow-y-hidden border-b border-border bg-card px-2 pt-1">
       {tabs.map((tab) => {
         const isActive = tab.id === activeTabId;
+        const tabStyle = getTabStyle(tab.color, isActive);
+
+        function handleTabAuxClick(e: ReactMouseEvent<HTMLDivElement>) {
+          if (e.button !== 1) return;
+
+          e.preventDefault();
+          onCloseTab(tab.id);
+        }
+
+        function handleTabMouseDown(e: ReactMouseEvent<HTMLDivElement>) {
+          if (e.button === 1) {
+            e.preventDefault();
+          }
+        }
 
         return (
           <div
             key={tab.id}
+            title={tab.title}
             className={cn(
-              'group flex h-8 min-w-0 items-center gap-1 rounded-t-md border border-transparent px-2 text-xs',
+              'group flex h-7 w-44 min-w-32 max-w-44 shrink-0 items-center gap-1 rounded-t-md border border-transparent px-2 text-xs',
               isActive
                 ? 'border-border border-b-card bg-background text-foreground'
                 : 'text-muted-foreground hover:bg-accent hover:text-foreground',
             )}
-            style={tab.color ? { borderLeftColor: tab.color, borderLeftWidth: 2 } : undefined}
+            style={tabStyle}
+            onClick={() => onSelectTab(tab.id)}
+            onMouseDown={handleTabMouseDown}
+            onAuxClick={handleTabAuxClick}
           >
             <button
               type="button"
-              className="max-w-48 cursor-pointer truncate text-left"
-              onClick={() => onSelectTab(tab.id)}
-              onAuxClick={(e) => {
-                if (e.button === 1) { // MMB
-                  onCloseTab(tab.id);
-                }
+              className="h-full min-w-0 flex-1 cursor-pointer truncate text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelectTab(tab.id);
               }}
             >
               {tab.title}
@@ -112,9 +132,12 @@ function WorkspaceTabBar({
               type="button"
               variant="ghost"
               size="icon-sm"
-              className="size-5 opacity-0 group-hover:opacity-100"
+              className="size-5 shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
               aria-label={`Close ${tab.title}`}
-              onClick={() => onCloseTab(tab.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onCloseTab(tab.id);
+              }}
             >
               <X className="size-3" />
             </Button>
@@ -123,6 +146,17 @@ function WorkspaceTabBar({
       })}
     </div>
   );
+}
+
+function getTabStyle(color: string | undefined, isActive: boolean): CSSProperties | undefined {
+  if (!color) return undefined;
+
+  return {
+    backgroundColor: `color-mix(in oklab, ${color} ${isActive ? '20%' : '12%'}, transparent)`,
+    borderColor: isActive
+      ? `color-mix(in oklab, ${color} 55%, var(--border))`
+      : `color-mix(in oklab, ${color} 30%, transparent)`,
+  };
 }
 
 
