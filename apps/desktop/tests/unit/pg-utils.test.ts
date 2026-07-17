@@ -127,6 +127,55 @@ describe("buildPgConfig", () => {
     });
   });
 
+  it("uses pasted PEM contents for inline SSL CA", async () => {
+    const { utils } = await loadUtils();
+    const pem = [
+      "-----BEGIN CERTIFICATE-----",
+      "MIIB",
+      "-----END CERTIFICATE-----",
+    ].join("\n");
+
+    const config = utils.buildPgConfig({
+      ...fieldsConnection,
+      ssl: { enabled: true, caSource: "inline", ca: `\n${pem}\n` },
+    });
+
+    expect(config).toMatchObject({
+      ssl: { rejectUnauthorized: true, ca: pem },
+    });
+  });
+
+  it("decodes base64 PEM contents for inline SSL CA", async () => {
+    const { utils } = await loadUtils();
+    const pem = [
+      "-----BEGIN CERTIFICATE-----",
+      "MIIB",
+      "-----END CERTIFICATE-----",
+    ].join("\n");
+    const encoded = Buffer.from(pem, "utf8").toString("base64");
+
+    const config = utils.buildPgConfig({
+      ...fieldsConnection,
+      ssl: { enabled: true, caSource: "inline", ca: encoded },
+    });
+
+    expect(config).toMatchObject({
+      ssl: { rejectUnauthorized: true, ca: pem },
+    });
+  });
+
+  it("throws a clear error when inline SSL CA is invalid", async () => {
+    const { utils } = await loadUtils();
+    expect(() =>
+      utils.buildPgConfig({
+        ...fieldsConnection,
+        ssl: { enabled: true, caSource: "inline", ca: "not a certificate" },
+      }),
+    ).toThrow(
+      /Inline SSL CA must be PEM text or a base64-encoded PEM certificate/,
+    );
+  });
+
   it("throws a clear error when an SSL file path cannot be read", async () => {
     const { utils } = await loadUtils();
     expect(() =>

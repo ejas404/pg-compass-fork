@@ -33,7 +33,9 @@ export interface SSLConfig {
   enabled: boolean;
   /** Reject unauthorized certificates. Defaults to true. */
   rejectUnauthorized?: boolean;
-  /** Path to CA certificate file. */
+  /** Source for the CA certificate. Defaults to file for existing saved connections. */
+  caSource?: "file" | "inline";
+  /** Path to CA certificate file, pasted PEM contents, or base64-encoded PEM contents. */
   ca?: string;
   /** Path to client certificate file. */
   cert?: string;

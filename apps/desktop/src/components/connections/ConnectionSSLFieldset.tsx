@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -44,12 +45,12 @@ export function ConnectionSSLFieldset({
             />
             <Label htmlFor="ssl-reject">Reject unauthorized certificates</Label>
           </div>
-          <PathField
-            id="ssl-ca"
-            label="CA certificate file"
-            placeholder="Select a CA bundle, if required"
-            dialogTitle="Select CA certificate"
+          <CaField
+            source={value.caSource ?? "file"}
             value={value.ca ?? ""}
+            onSourceChange={(source) =>
+              onChange((s) => ({ ...s, caSource: source.type, ca: source.ca }))
+            }
             onChange={(v) => onChange((s) => ({ ...s, ca: v }))}
           />
           <PathField
@@ -74,6 +75,105 @@ export function ConnectionSSLFieldset({
   );
 }
 
+interface CaFieldProps {
+  source: "file" | "inline";
+  value: string;
+  onSourceChange: (source: { type: "file" | "inline"; ca: string }) => void;
+  onChange: (value: string) => void;
+}
+
+function CaField({
+  source,
+  value,
+  onSourceChange,
+  onChange,
+}: Readonly<CaFieldProps>) {
+  const [fileValue, setFileValue] = useState(source === "file" ? value : "");
+  const [inlineValue, setInlineValue] = useState(
+    source === "inline" ? value : "",
+  );
+
+  useEffect(() => {
+    if (source === "file") {
+      setFileValue(value);
+    } else {
+      setInlineValue(value);
+    }
+  }, [source, value]);
+
+  function handleSourceChange(nextSource: "file" | "inline") {
+    const nextValue = nextSource === "file" ? fileValue : inlineValue;
+    onSourceChange({ type: nextSource, ca: nextValue });
+  }
+
+  function handleValueChange(nextValue: string) {
+    if (source === "file") {
+      setFileValue(nextValue);
+    } else {
+      setInlineValue(nextValue);
+    }
+    onChange(nextValue);
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-3">
+        <Label htmlFor={source === "file" ? "ssl-ca-file" : "ssl-ca-inline"}>
+          CA certificate
+        </Label>
+        <div
+          role="group"
+          aria-label="CA certificate source"
+          className="inline-flex h-8 items-center rounded-lg bg-muted p-[3px]"
+        >
+          <Button
+            type="button"
+            size="sm"
+            variant={source === "file" ? "secondary" : "ghost"}
+            className="h-6 px-3 text-xs"
+            aria-pressed={source === "file"}
+            onClick={() => handleSourceChange("file")}
+          >
+            File
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={source === "inline" ? "secondary" : "ghost"}
+            className="h-6 px-3 text-xs"
+            aria-pressed={source === "inline"}
+            onClick={() => handleSourceChange("inline")}
+          >
+            Inline
+          </Button>
+        </div>
+      </div>
+
+      {source === "file" ? (
+        <PathInput
+          id="ssl-ca-file"
+          placeholder="Select a CA bundle, if required"
+          dialogTitle="Select CA certificate"
+          value={value}
+          onChange={handleValueChange}
+        />
+      ) : (
+        <textarea
+          id="ssl-ca-inline"
+          className="min-h-24 w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 font-mono text-xs shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+          placeholder="Paste PEM text or base64-encoded PEM contents"
+          value={value}
+          onChange={(e) => handleValueChange(e.target.value)}
+        />
+      )}
+      <p className="text-xs text-muted-foreground">
+        Use Inline to paste the value of provider variables like
+        POSTGRES_SSL_CA.
+      </p>
+    </div>
+  );
+}
+
 interface PathFieldProps {
   id: string;
   label: string;
@@ -91,6 +191,35 @@ function PathField({
   value,
   onChange,
 }: Readonly<PathFieldProps>) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <PathInput
+        id={id}
+        placeholder={placeholder}
+        dialogTitle={dialogTitle}
+        value={value}
+        onChange={onChange}
+      />
+    </div>
+  );
+}
+
+interface PathInputProps {
+  id: string;
+  placeholder: string;
+  dialogTitle: string;
+  value: string;
+  onChange: (value: string) => void;
+}
+
+function PathInput({
+  id,
+  placeholder,
+  dialogTitle,
+  value,
+  onChange,
+}: Readonly<PathInputProps>) {
   async function handleBrowse() {
     const result = await globalThis.window.connectionApi.showOpenFileDialog({
       title: dialogTitle,
@@ -109,26 +238,18 @@ function PathField({
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <div className="flex gap-2">
-        <Input
-          id={id}
-          className="font-mono text-xs"
-          placeholder={placeholder}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={handleBrowse}
-        >
-          <FileSearch className="size-4" />
-          Browse
-        </Button>
-      </div>
+    <div className="flex gap-2">
+      <Input
+        id={id}
+        className="font-mono text-xs"
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <Button type="button" variant="outline" size="sm" onClick={handleBrowse}>
+        <FileSearch className="size-4" />
+        Browse
+      </Button>
     </div>
   );
 }

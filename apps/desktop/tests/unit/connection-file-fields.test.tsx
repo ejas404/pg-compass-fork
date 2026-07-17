@@ -10,6 +10,7 @@ function SslHarness() {
   const [ssl, setSsl] = useState<SSLConfig>({
     enabled: true,
     rejectUnauthorized: true,
+    caSource: "file",
     ca: "",
     cert: "",
     key: "",
@@ -52,9 +53,68 @@ describe("connection file fields", () => {
     expect(window.connectionApi.showOpenFileDialog).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Select CA certificate" }),
     );
-    expect(screen.getByLabelText("CA certificate file")).toHaveValue(
+    expect(screen.getByLabelText("CA certificate")).toHaveValue(
       "C:\\certs\\selected.pem",
     );
+  });
+
+  it("accepts inline SSL CA contents without opening the file picker", async () => {
+    const user = userEvent.setup();
+    render(<SslHarness />);
+
+    await user.click(screen.getByRole("button", { name: "Inline" }));
+    await user.type(
+      screen.getByLabelText("CA certificate"),
+      "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t",
+    );
+
+    expect(window.connectionApi.showOpenFileDialog).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("CA certificate")).toHaveValue(
+      "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t",
+    );
+  });
+
+  it("preserves CA drafts when switching between file and inline sources", async () => {
+    const user = userEvent.setup();
+    render(<SslHarness />);
+
+    await user.click(screen.getAllByRole("button", { name: /browse/i })[0]!);
+    expect(screen.getByLabelText("CA certificate")).toHaveValue(
+      "C:\\certs\\selected.pem",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Inline" }));
+    await user.type(screen.getByLabelText("CA certificate"), "INLINE_CA");
+
+    await user.click(screen.getByRole("button", { name: "File" }));
+    expect(screen.getByLabelText("CA certificate")).toHaveValue(
+      "C:\\certs\\selected.pem",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Inline" }));
+    expect(screen.getByLabelText("CA certificate")).toHaveValue("INLINE_CA");
+  });
+
+  it("does not submit a surrounding form when changing SSL CA controls", async () => {
+    const user = userEvent.setup();
+    const handleSubmit = vi.fn();
+
+    render(
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          handleSubmit();
+        }}
+      >
+        <SslHarness />
+      </form>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Inline" }));
+    await user.click(screen.getByRole("button", { name: "File" }));
+    await user.click(screen.getAllByRole("button", { name: /browse/i })[0]!);
+
+    expect(handleSubmit).not.toHaveBeenCalled();
   });
 
   it("fills SSH private key paths from the file picker", async () => {

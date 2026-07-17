@@ -49,6 +49,7 @@ const defaultFields: ConnectionFields = {
 const defaultSSL: SSLConfig = {
   enabled: false,
   rejectUnauthorized: true,
+  caSource: 'file',
   ca: '',
   cert: '',
   key: '',

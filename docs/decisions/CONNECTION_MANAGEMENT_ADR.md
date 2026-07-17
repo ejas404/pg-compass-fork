@@ -30,6 +30,6 @@ Connection management is implemented using a layered architecture across Electro
 ## Consequences
 
 - All connection operations go through IPC — renderer has zero direct Node.js access.
-- SSL certificate/key paths are persisted as paths, then read in the main process before constructing `pg` clients because node-postgres expects the file contents.
+- SSL certificate/key paths are persisted as paths, then read in the main process before constructing `pg` clients because node-postgres expects the file contents. CA certificates may also be stored as explicit inline material for provider-supplied values such as base64 `POSTGRES_SSL_CA`.
 - Connection passwords are stored in plaintext in electron-store JSON. A future task should add encryption or use the OS keychain.
 - SSH tunnel support is persisted in the schema but not yet wired to an actual tunnelling library (e.g., `ssh2`).

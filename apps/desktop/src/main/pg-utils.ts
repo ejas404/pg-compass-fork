@@ -48,12 +48,50 @@ function buildPgSslConfig(
 
   return {
     rejectUnauthorized: ssl.rejectUnauthorized ?? true,
-    ...(ssl.ca ? { ca: readConnectionFile(ssl.ca, "SSL CA certificate") } : {}),
+    ...(ssl.ca ? { ca: resolveSslCa(ssl.ca, ssl.caSource ?? "file") } : {}),
     ...(ssl.cert
       ? { cert: readConnectionFile(ssl.cert, "SSL client certificate") }
       : {}),
     ...(ssl.key ? { key: readConnectionFile(ssl.key, "SSL client key") } : {}),
   };
+}
+
+function resolveSslCa(value: string, source: "file" | "inline"): string {
+  if (source === "file") {
+    return readConnectionFile(value, "SSL CA certificate");
+  }
+
+  return normalizeInlineCa(value);
+}
+
+function normalizeInlineCa(value: string): string {
+  const trimmed = value.trim();
+  if (isPemCertificate(trimmed)) {
+    return trimmed;
+  }
+
+  const compact = trimmed.replace(/\s+/g, "");
+  if (!looksLikeBase64(compact)) {
+    throw new Error(
+      "Inline SSL CA must be PEM text or a base64-encoded PEM certificate.",
+    );
+  }
+
+  const decoded = Buffer.from(compact, "base64").toString("utf8").trim();
+  if (!isPemCertificate(decoded)) {
+    throw new Error("Inline SSL CA must decode to a PEM certificate.");
+  }
+
+  return decoded;
+}
+
+function isPemCertificate(value: string): boolean {
+  return value.startsWith("-----BEGIN CERTIFICATE-----");
+}
+
+function looksLikeBase64(value: string): boolean {
+  if (!value || value.length % 4 === 1) return false;
+  return value.startsWith("LS0t") && /^[A-Za-z0-9+/]+={0,2}$/.test(value);
 }
 
 function readConnectionFile(filePath: string, label: string): string {
