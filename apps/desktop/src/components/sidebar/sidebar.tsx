@@ -68,7 +68,7 @@ export function Sidebar() {
             }}
             placeholder="Search connections and relations"
             aria-label="Search sidebar"
-            className="h-8 bg-sidebar-accent/30 pl-8 pr-8 text-xs"
+            className="h-8 bg-sidebar-accent/30 pl-8 pr-8 text-[13px]"
           />
           {search ? (
             <Button

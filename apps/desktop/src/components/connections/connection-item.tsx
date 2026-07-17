@@ -35,6 +35,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { deriveActiveSelection } from "@/components/sidebar/active-selection";
 import { useConnections } from "@/hooks/use-connections";
 import { useWorkspace } from "@/hooks/use-workspace";
 import type {
@@ -70,6 +71,8 @@ export function ConnectionItem({
     refreshSchemaTreeWithStatus,
     openTab,
     closeConnectionTabs,
+    tabs,
+    activeTabId,
   } = useWorkspace();
   const [connecting, setConnecting] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -82,6 +85,12 @@ export function ConnectionItem({
   const schemas: DatabaseSchema[] = searchActive
     ? (searchSchemas ?? [])
     : (schemaCache[connection.id] ?? []);
+
+  const selection = deriveActiveSelection(tabs, activeTabId);
+  const isConnectionActive = selection?.connectionId === connection.id;
+  const isConnectionLeaf = isConnectionActive && selection?.kind === "connection";
+  // Only project the selection onto this connection's tree when it owns it.
+  const treeSelection = isConnectionActive ? selection : null;
 
   async function handleConnect(): Promise<boolean> {
     setConnecting(true);
@@ -204,6 +213,8 @@ export function ConnectionItem({
         onOpenSchema={handleOpenSchemaViewer}
         onOpenTable={handleOpenTableViewer}
         onOpenView={handleOpenViewViewer}
+        selection={treeSelection}
+        accentColor={connection.color}
       />
     ));
   }
@@ -296,12 +307,19 @@ export function ConnectionItem({
   return (
     <div className="group/connection flex flex-col">
       {/* Connection row */}
-      <section className="relative flex items-center gap-2 rounded-md pl-2 pr-1 py-1.5 hover:bg-sidebar-accent">
-        {/* Color indicator */}
-        {connection.color && (
+      <section
+        className={cn(
+          "relative flex items-center gap-2 rounded-md pl-2 pr-1 py-1 transition-colors",
+          isConnectionLeaf ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/60",
+        )}
+      >
+        {/* Color / selection indicator */}
+        {(connection.color || isConnectionLeaf) && (
           <div
-            className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full"
-            style={{ backgroundColor: connection.color }}
+            className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-sidebar-primary"
+            style={
+              connection.color ? { backgroundColor: connection.color } : undefined
+            }
           />
         )}
 
@@ -336,21 +354,31 @@ export function ConnectionItem({
           }}
           aria-label={`Open ${connection.label}`}
         >
-          <Database className="size-4 shrink-0 text-muted-foreground" />
+          <Database
+            className={cn(
+              "size-4 shrink-0",
+              isConnectionActive
+                ? "text-sidebar-foreground"
+                : "text-muted-foreground",
+            )}
+          />
           <span
-            className="flex-1 truncate text-sm"
+            className={cn(
+              "flex-1 truncate text-sm",
+              isConnectionActive && "font-medium",
+            )}
             style={connection.color ? { color: connection.color } : undefined}
           >
             {connection.label}
           </span>
         </button>
 
-        <div className="relative flex h-8 w-18 shrink-0 items-center justify-end gap-0.5">
+        <div className="relative flex h-7 w-16 shrink-0 items-center justify-end gap-0.5">
           {connection.favourite && (
-            <Star className="text-primary fill-primary size-3 shrink-0 opacity-100 transition-opacity group-hover/connection:opacity-0" />
+            <Star className="text-primary fill-primary size-3 shrink-0 opacity-100 transition-opacity group-hover/connection:opacity-0 group-focus-within/connection:opacity-0" />
           )}
 
-          <div className="flex items-center justify-end gap-0.5 opacity-0 pointer-events-none transition-opacity group-hover/connection:opacity-100 group-hover/connection:pointer-events-auto">
+          <div className="flex items-center justify-end gap-0.5 opacity-0 pointer-events-none transition-opacity group-hover/connection:opacity-100 group-hover/connection:pointer-events-auto group-focus-within/connection:opacity-100 group-focus-within/connection:pointer-events-auto">
             {!connected && !connecting && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -378,7 +406,7 @@ export function ConnectionItem({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-8"
+                  className="size-7"
                   aria-label="More actions"
                   onClick={(event) => event.stopPropagation()}
                 >
@@ -437,7 +465,7 @@ export function ConnectionItem({
 
       {/* Expandable schema/table tree */}
       {((connected && expanded) || searchActive) && (
-        <div className="ml-6 flex min-w-0 flex-col gap-1 py-1 pl-4 pr-2.5">
+        <div className="ml-[18px] flex min-w-0 flex-col gap-px border-l border-sidebar-border py-1 pl-2 pr-1">
           {renderSchemaTree()}
         </div>
       )}
