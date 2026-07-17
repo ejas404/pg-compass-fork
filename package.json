@@ -8,6 +8,7 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
+    "version:bump": "node scripts/bump-version.mjs",
     "make": "turbo run make",
     "test": "turbo run test --filter @pg-compass/desktop",
     "test:unit": "turbo run test:unit --filter @pg-compass/desktop",

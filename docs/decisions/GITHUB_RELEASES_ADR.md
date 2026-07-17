@@ -27,5 +27,5 @@ A GitHub Actions workflow (`.github/workflows/release-desktop.yml`) automates bu
 ## Consequences
 
 - Every push to `main` consumes CI minutes on both `windows-latest` and `ubuntu-latest`.
-- Releases are only created for `v*` tags. To release, run: `git tag v0.x.0 && git push origin v0.x.0`.
+- Releases are only created for `v*` tags. To release, first run `pnpm version:bump <patch|minor|major|x.y.z>` to keep app version files in sync, then run `git tag v0.x.0 && git push origin v0.x.0`.
 - macOS can be added as another parallel job later.
