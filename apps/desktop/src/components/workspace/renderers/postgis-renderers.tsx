@@ -75,7 +75,7 @@ const geographyRenderer: TypeRenderer = {
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs text-blue-500 hover:underline"
+          className="text-xs text-primary hover:underline"
         >
           [open in map]
         </a>
@@ -85,9 +85,7 @@ const geographyRenderer: TypeRenderer = {
     return (
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-muted-foreground">
-            {geom.type}
-          </span>
+          <span className="text-[10px] text-muted-foreground">{geom.type}</span>
           {mapLink}
         </div>
 

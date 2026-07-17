@@ -5,19 +5,25 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { LICENSE_TEXT } from '@/shared/constants/help';
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { LICENSE_TEXT } from "@/shared/constants/help";
 
 interface LicenseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function LicenseDialog({ open, onOpenChange }: Readonly<LicenseDialogProps>) {
+export function LicenseDialog({
+  open,
+  onOpenChange,
+}: Readonly<LicenseDialogProps>) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-hidden sm:max-w-lg" showCloseButton>
+      <DialogContent
+        className="max-h-[85vh] overflow-hidden sm:max-w-lg"
+        showCloseButton
+      >
         <DialogHeader>
           <DialogTitle>License</DialogTitle>
           <DialogDescription>

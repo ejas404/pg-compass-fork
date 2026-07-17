@@ -1,8 +1,6 @@
-import { Toaster as Sonner } from "sonner"
+import { Toaster as Sonner } from "sonner";
 
-function Toaster({
-  ...props
-}: React.ComponentProps<typeof Sonner>) {
+function Toaster({ ...props }: React.ComponentProps<typeof Sonner>) {
   return (
     <Sonner
       className="toaster group"
@@ -19,7 +17,7 @@ function Toaster({
       }}
       {...props}
     />
-  )
+  );
 }
 
-export { Toaster }
+export { Toaster };

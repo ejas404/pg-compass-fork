@@ -7,8 +7,9 @@ import type {
   UpdateRowParams,
   UpdateRowResult,
 } from "../shared/types/table-data";
-import { quoteIdent, withPoolClient } from "./pg-utils";
+import { extendedQuery, quoteIdent, withPoolClient } from "./pg-utils";
 import { getSettings } from "./settings-store";
+import { resolvePrimaryKey } from "./table-data-rows";
 
 /**
  * Allow-listed Postgres type names that may appear as an explicit cast
@@ -293,11 +294,69 @@ export async function deleteRows(
   return withPoolClient(params.connectionId, async (client) => {
     const qualifiedTable = `${quoteIdent(params.schema)}.${quoteIdent(params.table)}`;
     const trimmedWhere = params.whereClause?.trim();
-    const whereFragment = trimmedWhere ? ` WHERE ${trimmedWhere}` : "";
-    const result = await client.query(
-      `DELETE FROM ${qualifiedTable}${whereFragment}`,
-    );
+    if (!trimmedWhere) {
+      const result = await client.query(`DELETE FROM ${qualifiedTable}`);
+      return { deletedCount: result.rowCount ?? 0 };
+    }
 
-    return { deletedCount: result.rowCount ?? 0 };
+    const primaryKey = await resolvePrimaryKey(
+      client,
+      params.schema,
+      params.table,
+    );
+    if (!primaryKey) {
+      throw new Error(
+        "Cannot delete filtered rows: the table has no primary key.",
+      );
+    }
+
+    const primaryKeySql = primaryKey.map(quoteIdent).join(", ");
+    let selectedRows: Record<string, unknown>[];
+    await client.query("BEGIN READ ONLY");
+    try {
+      const selected = await client.query<Record<string, unknown>>(
+        extendedQuery(
+          `SELECT ${primaryKeySql} FROM ${qualifiedTable} WHERE ${trimmedWhere}`,
+        ),
+      );
+      selectedRows = selected.rows;
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    }
+
+    if (selectedRows.length === 0) {
+      return { deletedCount: 0 };
+    }
+
+    let deletedCount = 0;
+    await client.query("BEGIN");
+    try {
+      const batchSize = 500;
+      for (let offset = 0; offset < selectedRows.length; offset += batchSize) {
+        const batch = selectedRows.slice(offset, offset + batchSize);
+        const values: unknown[] = [];
+        const tuples = batch.map((row) => {
+          const placeholders = primaryKey.map((column) => {
+            values.push(row[column]);
+            return `$${values.length}`;
+          });
+          return `(${placeholders.join(", ")})`;
+        });
+        const keyTuple = `(${primaryKeySql})`;
+        const result = await client.query(
+          `DELETE FROM ${qualifiedTable} WHERE ${keyTuple} IN (${tuples.join(", ")})`,
+          values,
+        );
+        deletedCount += result.rowCount ?? 0;
+      }
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    }
+
+    return { deletedCount };
   });
 }

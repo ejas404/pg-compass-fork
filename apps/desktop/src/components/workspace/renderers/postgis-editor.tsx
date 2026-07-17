@@ -53,7 +53,10 @@ function ClickCapture({
   return null;
 }
 
-function initialWkt(value: unknown, parsed: ReturnType<typeof extractPoint>): string {
+function initialWkt(
+  value: unknown,
+  parsed: ReturnType<typeof extractPoint>,
+): string {
   if (parsed) return pointToEWKT(parsed);
   if (typeof value === "string") {
     const trimmed = value.trim();
@@ -70,16 +73,14 @@ export function GeometryMapEditor({
   onCancel,
 }: Readonly<TypeEditorProps>) {
   const parsed = useMemo(() => extractPoint(initialValue), [initialValue]);
-  const [lat, setLat] = useState<string>(
-    parsed ? String(parsed.lat) : "",
-  );
-  const [lng, setLng] = useState<string>(
-    parsed ? String(parsed.lng) : "",
-  );
+  const [lat, setLat] = useState<string>(parsed ? String(parsed.lat) : "");
+  const [lng, setLng] = useState<string>(parsed ? String(parsed.lng) : "");
   const [srid, setSrid] = useState<string>(
     parsed ? String(parsed.srid) : "4326",
   );
-  const [wkt, setWkt] = useState<string>(() => initialWkt(initialValue, parsed));
+  const [wkt, setWkt] = useState<string>(() =>
+    initialWkt(initialValue, parsed),
+  );
   const [pointMode, setPointMode] = useState<boolean>(parsed !== null);
   const [error, setError] = useState<string | null>(null);
 
@@ -166,27 +167,30 @@ export function GeometryMapEditor({
       </div>
 
       <div className="grid grid-cols-3 gap-2">
-        <label className="flex flex-col gap-1">
+        <label className="flex flex-col gap-1" htmlFor="postgis-longitude">
           <span className="text-[10px] text-muted-foreground">Longitude</span>
           <Input
+            id="postgis-longitude"
             value={lng}
             onChange={(e) => handlePointFieldChange(setLng, e.target.value)}
             className="font-mono text-xs"
             data-testid="postgis-lng"
           />
         </label>
-        <label className="flex flex-col gap-1">
+        <label className="flex flex-col gap-1" htmlFor="postgis-latitude">
           <span className="text-[10px] text-muted-foreground">Latitude</span>
           <Input
+            id="postgis-latitude"
             value={lat}
             onChange={(e) => handlePointFieldChange(setLat, e.target.value)}
             className="font-mono text-xs"
             data-testid="postgis-lat"
           />
         </label>
-        <label className="flex flex-col gap-1">
+        <label className="flex flex-col gap-1" htmlFor="postgis-srid">
           <span className="text-[10px] text-muted-foreground">SRID</span>
           <Input
+            id="postgis-srid"
             value={srid}
             onChange={(e) => handlePointFieldChange(setSrid, e.target.value)}
             className="font-mono text-xs"

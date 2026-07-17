@@ -56,26 +56,30 @@ export function StructureTab({
 
   const fetch = useCallback(async () => {
     setLoading(true);
-    const request = await runLatestRequest(() => globalThis.window.tableDataApi.getStructure({
+    const request = await runLatestRequest(() =>
+      globalThis.window.tableDataApi.getStructure({
         connectionId,
         schema,
         table,
-    }));
+      }),
+    );
     if (request.status === "stale") return false;
     if (request.status === "error") {
-      toast.error("Failed to load structure", { description: (request.error as Error).message });
+      toast.error("Failed to load structure", {
+        description: (request.error as Error).message,
+      });
       setLoading(false);
       return false;
     }
     const result = request.value;
-      if (!result.success || !result.data) {
-        toast.error("Failed to load structure", { description: result.error });
-        setLoading(false);
-        return false;
-      }
-      setColumns(result.data);
+    if (!result.success || !result.data) {
+      toast.error("Failed to load structure", { description: result.error });
       setLoading(false);
-      return true;
+      return false;
+    }
+    setColumns(result.data);
+    setLoading(false);
+    return true;
   }, [connectionId, runLatestRequest, schema, table]);
 
   useEffect(

@@ -87,6 +87,10 @@ export function extractPoint(
   return null;
 }
 
-export function pointToEWKT(p: { lat: number; lng: number; srid: number }): string {
+export function pointToEWKT(p: {
+  lat: number;
+  lng: number;
+  srid: number;
+}): string {
   return `SRID=${p.srid};POINT(${p.lng} ${p.lat})`;
 }

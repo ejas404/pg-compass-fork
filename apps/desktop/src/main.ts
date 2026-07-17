@@ -1,5 +1,6 @@
-import { app, BrowserWindow, Menu, type Input } from "electron";
+import { app, BrowserWindow, Menu, session, type Input } from "electron";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import started from "electron-squirrel-startup";
 import { registerConnectionHandlers } from "./main/connection-ipc";
 import { registerSettingsHandlers } from "./main/settings-ipc";
@@ -8,8 +9,13 @@ import { registerClipboardHandlers } from "./main/clipboard-ipc";
 import { destroyAllPools } from "./main/pg-utils";
 import { getSettings } from "./main/settings-store";
 import { buildAppMenu } from "./main/app-menu";
-import { WorkspaceChannels } from "./shared/constants/workspace";
+import { WorkspaceChannels } from "./shared/constants/ipc-channels";
 import { matchesShortcut } from "./shared/constants/shortcuts";
+import {
+  configureContentSecurityPolicy,
+  configureWindowSecurity,
+} from "./main/window-security";
+import { configureIpcSecurity } from "./main/ipc-security";
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -35,9 +41,6 @@ app.commandLine.appendSwitch("disable-background-networking");
 app.commandLine.appendSwitch("disable-renderer-backgrounding");
 // Prevent JS timer throttling in background windows (same reason as above).
 app.commandLine.appendSwitch("disable-background-timer-throttling");
-// Remove the IPC message rate-limiter. Large result sets stream many rapid
-// main→renderer IPC messages; flooding protection adds latency for no gain.
-app.commandLine.appendSwitch("disable-ipc-flooding-protection");
 // Skip Chromium first-run initialization tasks.
 app.commandLine.appendSwitch("no-first-run");
 // No Chrome profile sync.
@@ -45,6 +48,13 @@ app.commandLine.appendSwitch("disable-sync");
 
 // Cache settings to avoid reading from disk on every keystroke.
 let cachedSettings = getSettings();
+
+const rendererUrl =
+  MAIN_WINDOW_VITE_DEV_SERVER_URL ??
+  pathToFileURL(
+    path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
+  ).toString();
+configureIpcSecurity(rendererUrl);
 
 // Register IPC handlers before window creation.
 registerConnectionHandlers();
@@ -79,7 +89,19 @@ const createWindow = () => {
     icon: path.join(__dirname, "../../resources/icon.png"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      sandbox: true,
+      nodeIntegration: false,
+      webviewTag: false,
+      allowRunningInsecureContent: false,
     },
+  });
+
+  configureWindowSecurity(mainWindow);
+  mainWindow.webContents.on("console-message", (details) => {
+    if (details.message === "[pg-compass] renderer-mounted") {
+      console.info(details.message);
+    }
   });
 
   // and load the index.html of the app.
@@ -139,6 +161,10 @@ const createWindow = () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on("ready", () => {
+  configureContentSecurityPolicy(
+    session.defaultSession,
+    MAIN_WINDOW_VITE_DEV_SERVER_URL,
+  );
   Menu.setApplicationMenu(buildAppMenu());
   createWindow();
 });

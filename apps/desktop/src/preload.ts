@@ -2,12 +2,14 @@
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
 
 import { contextBridge, ipcRenderer } from "electron";
-import { ConnectionChannels } from "./shared/types/connection";
-import { SettingsChannels } from "./shared/types/settings";
-import { TableDataChannels } from "./shared/types/table-data";
-import { HelpChannels } from "./shared/constants/help";
-import { WorkspaceChannels } from "./shared/constants/workspace";
-import { ClipboardChannels } from "./shared/constants/clipboard";
+import {
+  ClipboardChannels,
+  ConnectionChannels,
+  HelpChannels,
+  SettingsChannels,
+  TableDataChannels,
+  WorkspaceChannels,
+} from "./shared/constants/ipc-channels";
 import type {
   ConnectionConfig,
   ConnectionFileDialogOptions,
@@ -42,13 +44,15 @@ import type {
   SearchForeignKeyParams,
   SearchForeignKeyResult,
 } from "./shared/types/table-data";
-
-/** IPC result wrapper. */
-export interface IpcResult<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
+import type {
+  ClipboardApi,
+  ConnectionApi,
+  HelpApi,
+  IpcResult,
+  SettingsApi,
+  TableDataApi,
+  WorkspaceApi,
+} from "./shared/types/ipc";
 
 const connectionApi = {
   getAll: (): Promise<IpcResult<ConnectionConfig[]>> =>
@@ -85,7 +89,7 @@ const connectionApi = {
     options: ConnectionFileDialogOptions,
   ): Promise<IpcResult<string | null>> =>
     ipcRenderer.invoke(ConnectionChannels.SHOW_OPEN_FILE_DIALOG, options),
-};
+} satisfies ConnectionApi;
 
 const settingsApi = {
   get: (): Promise<IpcResult<AppSettings>> =>
@@ -93,7 +97,7 @@ const settingsApi = {
 
   update: (patch: AppSettingsPatch): Promise<IpcResult<AppSettings>> =>
     ipcRenderer.invoke(SettingsChannels.UPDATE, patch),
-};
+} satisfies SettingsApi;
 
 const tableDataApi = {
   getRows: (params: GetRowsParams): Promise<IpcResult<TableRowsResult>> =>
@@ -170,7 +174,7 @@ const tableDataApi = {
       ipcRenderer.removeListener(TableDataChannels.EXPORT_PROGRESS, handler);
     };
   },
-};
+} satisfies TableDataApi;
 
 const helpApi = {
   onShowLicense: (callback: () => void) => {
@@ -196,7 +200,7 @@ const helpApi = {
       ipcRenderer.removeListener(HelpChannels.SHOW_SHORTCUTS, listener);
     };
   },
-};
+} satisfies HelpApi;
 
 const workspaceApi = {
   onCloseTab: (callback: () => void) => {
@@ -222,12 +226,12 @@ const workspaceApi = {
       ipcRenderer.removeListener(WorkspaceChannels.PREV_TAB, listener);
     };
   },
-};
+} satisfies WorkspaceApi;
 
 const clipboardApi = {
   writeText: (text: string): Promise<IpcResult<void>> =>
     ipcRenderer.invoke(ClipboardChannels.WRITE_TEXT, text),
-};
+} satisfies ClipboardApi;
 
 contextBridge.exposeInMainWorld("connectionApi", connectionApi);
 contextBridge.exposeInMainWorld("settingsApi", settingsApi);

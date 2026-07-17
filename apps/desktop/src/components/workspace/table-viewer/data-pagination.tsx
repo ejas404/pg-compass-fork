@@ -38,9 +38,8 @@ export function DataPagination({
         <span className="text-muted-foreground/40">|</span>
         <label className="flex items-center gap-1">
           Rows per page
-          {/* eslint-disable-next-line jsx-a11y/no-onchange */}
           <select
-            className="h-6 rounded border border-input bg-background px-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            className="h-8 rounded border border-input bg-background px-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             value={pageSize}
             disabled={disabled}
             onChange={(e) => {
@@ -61,7 +60,7 @@ export function DataPagination({
           type="button"
           variant="ghost"
           size="icon-sm"
-          className="size-7"
+          className="size-8"
           disabled={disabled || page <= 1}
           onClick={() => onPageChange(1)}
           aria-label="First page"
@@ -72,7 +71,7 @@ export function DataPagination({
           type="button"
           variant="ghost"
           size="icon-sm"
-          className="size-7"
+          className="size-8"
           disabled={disabled || page <= 1}
           onClick={() => onPageChange(page - 1)}
           aria-label="Previous page"
@@ -86,7 +85,7 @@ export function DataPagination({
           type="button"
           variant="ghost"
           size="icon-sm"
-          className="size-7"
+          className="size-8"
           disabled={disabled || page >= totalPages}
           onClick={() => onPageChange(page + 1)}
           aria-label="Next page"
@@ -97,7 +96,7 @@ export function DataPagination({
           type="button"
           variant="ghost"
           size="icon-sm"
-          className="size-7"
+          className="size-8"
           disabled={disabled || page >= totalPages}
           onClick={() => onPageChange(totalPages)}
           aria-label="Last page"

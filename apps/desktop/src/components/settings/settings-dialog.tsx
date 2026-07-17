@@ -22,7 +22,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettings } from "@/hooks/use-settings";
 import { cn } from "@/lib/utils";
 import type { ThemePreference } from "@/shared/types/settings";
-import { KeyboardShortcutsDialog } from "@/components/help/KeyboardShortcutsDialog";
+import { KeyboardShortcutsDialog } from "@/components/help/keyboard-shortcuts-dialog";
 
 type SettingsCategory = "general" | "appearance" | "privacy";
 

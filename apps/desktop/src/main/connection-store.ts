@@ -1,18 +1,18 @@
-import Store from 'electron-store';
-import { randomUUID } from 'node:crypto';
-import { safeStorage } from 'electron';
+import Store from "electron-store";
+import { randomUUID } from "node:crypto";
+import { safeStorage } from "electron";
 import type {
   ConnectionConfig,
   ConnectionInput,
-} from '../shared/types/connection';
-import { resolveStoreOptions } from './store-config';
+} from "../shared/types/connection";
+import { resolveStoreOptions } from "./store-config";
 
 interface StoreSchema {
   connections: ConnectionConfig[];
 }
 
 const store = new Store<StoreSchema>({
-  ...resolveStoreOptions({ name: 'connections' }),
+  ...resolveStoreOptions({ name: "connections" }),
   defaults: {
     connections: [],
   },
@@ -22,19 +22,31 @@ const store = new Store<StoreSchema>({
 // Credential encryption helpers
 // ---------------------------------------------------------------------------
 
-const ENCRYPTED_PREFIX = 'esafe:';
+const ENCRYPTED_PREFIX = "esafe:";
+
+function isSecureEncryptionAvailable(): boolean {
+  if (!safeStorage.isEncryptionAvailable()) return false;
+  return !(
+    process.platform === "linux" &&
+    safeStorage.getSelectedStorageBackend() === "basic_text"
+  );
+}
 
 function encryptField(value: string | undefined): string | undefined {
-  if (!value || !safeStorage.isEncryptionAvailable()) return value;
+  if (!value || !isSecureEncryptionAvailable()) return value;
   const encrypted = safeStorage.encryptString(value);
-  return ENCRYPTED_PREFIX + encrypted.toString('base64');
+  return ENCRYPTED_PREFIX + encrypted.toString("base64");
 }
 
 function decryptField(value: string | undefined): string | undefined {
   if (!value?.startsWith(ENCRYPTED_PREFIX)) return value;
-  if (!safeStorage.isEncryptionAvailable()) return value;
+  if (!isSecureEncryptionAvailable()) {
+    throw new Error(
+      "Saved credentials cannot be decrypted because secure OS credential storage is unavailable.",
+    );
+  }
   const base64 = value.slice(ENCRYPTED_PREFIX.length);
-  return safeStorage.decryptString(Buffer.from(base64, 'base64'));
+  return safeStorage.decryptString(Buffer.from(base64, "base64"));
 }
 
 function encryptConnection(connection: ConnectionConfig): ConnectionConfig {
@@ -73,29 +85,25 @@ function decryptConnection(connection: ConnectionConfig): ConnectionConfig {
 
 /** Get all saved connections (with credentials decrypted). */
 export function getAllConnections(): ConnectionConfig[] {
-  return store.get('connections').map(decryptConnection);
+  return store.get("connections").map(decryptConnection);
 }
 
 /** Get a single connection by ID (with credentials decrypted). */
-export function getConnectionById(
-  id: string,
-): ConnectionConfig | undefined {
-  const connections = store.get('connections');
+export function getConnectionById(id: string): ConnectionConfig | undefined {
+  const connections = store.get("connections");
   const connection = connections.find((c) => c.id === id);
   return connection ? decryptConnection(connection) : undefined;
 }
 
 /** Create a new connection and return it (decrypted). */
-export function createConnection(
-  input: ConnectionInput,
-): ConnectionConfig {
+export function createConnection(input: ConnectionInput): ConnectionConfig {
   const connection: ConnectionConfig = {
     ...input,
     id: randomUUID(),
   };
-  const connections = store.get('connections');
+  const connections = store.get("connections");
   connections.push(encryptConnection(connection));
-  store.set('connections', connections);
+  store.set("connections", connections);
   return connection;
 }
 
@@ -104,35 +112,33 @@ export function updateConnection(
   id: string,
   input: ConnectionInput,
 ): ConnectionConfig | undefined {
-  const connections = store.get('connections');
+  const connections = store.get("connections");
   const index = connections.findIndex((c) => c.id === id);
   if (index === -1) return undefined;
 
   const updated: ConnectionConfig = { ...input, id };
   connections[index] = encryptConnection(updated);
-  store.set('connections', connections);
+  store.set("connections", connections);
   return updated;
 }
 
 /** Delete a connection by ID. Returns true if deleted. */
 export function deleteConnection(id: string): boolean {
-  const connections = store.get('connections');
+  const connections = store.get("connections");
   const filtered = connections.filter((c) => c.id !== id);
   if (filtered.length === connections.length) return false;
-  store.set('connections', filtered);
+  store.set("connections", filtered);
   return true;
 }
 
 /** Toggle the favourite status of a connection. Returns the updated connection or undefined. */
-export function toggleFavourite(
-  id: string,
-): ConnectionConfig | undefined {
-  const connections = store.get('connections');
+export function toggleFavourite(id: string): ConnectionConfig | undefined {
+  const connections = store.get("connections");
   const index = connections.findIndex((c) => c.id === id);
   if (index === -1) return undefined;
 
   const connection = connections[index]!;
   connection.favourite = !connection.favourite;
-  store.set('connections', connections);
-  return connection;
+  store.set("connections", connections);
+  return decryptConnection(connection);
 }

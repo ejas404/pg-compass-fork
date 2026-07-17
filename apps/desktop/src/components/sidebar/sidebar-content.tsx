@@ -3,7 +3,7 @@ import { Database, Loader2, SearchX } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useConnections } from "@/hooks/use-connections";
-import { ConnectionItem } from "@/components/connections/ConnectionItem";
+import { ConnectionItem } from "@/components/connections/connection-item";
 import type { ConnectionConfig } from "@/shared/types/connection";
 import type { DatabaseSchema } from "@/shared/types/connection";
 import { useWorkspace } from "@/hooks/use-workspace";

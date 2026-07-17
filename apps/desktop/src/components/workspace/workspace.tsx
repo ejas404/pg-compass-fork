@@ -22,21 +22,18 @@ import { matchesShortcut } from "@/shared/constants/shortcuts";
 
 export function Workspace() {
   const { tabs, activeTabId, setActiveTab, closeTab } = useWorkspace();
-  const activeTab = tabs.find((t) => t.id === activeTabId);
+  const activeTab = tabs.find((tab) => tab.id === activeTabId);
 
   useWorkspaceShortcuts(tabs, activeTabId, closeTab, setActiveTab);
 
-  // Ctrl+F / Cmd+F: focus the visible query editor (if any)
   useEffect(function setupGlobalSearchShortcut() {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (!matchesShortcut("editor-find", e)) return;
-
-      // Don't interfere if already inside a CodeMirror editor (let CM handle its own search)
+    function handleKeyDown(event: KeyboardEvent) {
+      if (!matchesShortcut("editor-find", event)) return;
       if (document.activeElement?.closest(".cm-editor")) return;
 
       const editor = document.querySelector("[data-query-editor] .cm-content");
       if (editor instanceof HTMLElement) {
-        e.preventDefault();
+        event.preventDefault();
         editor.focus();
       }
     }
@@ -46,14 +43,14 @@ export function Workspace() {
   }, []);
 
   useEffect(function setupRefreshShortcut() {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (!matchesShortcut("refresh", e)) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (!matchesShortcut("refresh", event)) return;
       if (document.activeElement?.closest(".cm-editor")) return;
       const button = document.querySelector(
         '[aria-hidden="false"] [data-view-refresh]',
       );
       if (button instanceof HTMLButtonElement && !button.disabled) {
-        e.preventDefault();
+        event.preventDefault();
         button.click();
       }
     }
@@ -104,16 +101,15 @@ function WorkspaceTabBar({
         const isActive = tab.id === activeTabId;
         const tabStyle = getTabStyle(tab.color, isActive);
 
-        function handleTabAuxClick(e: ReactMouseEvent<HTMLDivElement>) {
-          if (e.button !== 1) return;
-
-          e.preventDefault();
+        function handleTabAuxClick(event: ReactMouseEvent<HTMLButtonElement>) {
+          if (event.button !== 1) return;
+          event.preventDefault();
           onCloseTab(tab.id);
         }
 
-        function handleTabMouseDown(e: ReactMouseEvent<HTMLDivElement>) {
-          if (e.button === 1) {
-            e.preventDefault();
+        function handleTabMouseDown(event: ReactMouseEvent<HTMLButtonElement>) {
+          if (event.button === 1) {
+            event.preventDefault();
           }
         }
 
@@ -122,21 +118,20 @@ function WorkspaceTabBar({
             key={tab.id}
             title={tab.title}
             className={cn(
-              "group flex h-7 w-44 min-w-32 max-w-44 shrink-0 items-center gap-1 rounded-t-md border border-transparent px-2 text-xs",
+              "group flex h-8 w-44 min-w-32 max-w-44 shrink-0 items-center gap-1 rounded-t-md border border-transparent px-2 text-xs",
               isActive
                 ? "border-border border-b-card bg-background text-foreground"
                 : "text-muted-foreground hover:bg-accent hover:text-foreground",
             )}
             style={tabStyle}
-            onClick={() => onSelectTab(tab.id)}
-            onMouseDown={handleTabMouseDown}
-            onAuxClick={handleTabAuxClick}
           >
             <button
               type="button"
               className="h-full min-w-0 flex-1 cursor-pointer truncate text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              onClick={(e) => {
-                e.stopPropagation();
+              onMouseDown={handleTabMouseDown}
+              onAuxClick={handleTabAuxClick}
+              onClick={(event) => {
+                event.stopPropagation();
                 onSelectTab(tab.id);
               }}
             >
@@ -146,10 +141,10 @@ function WorkspaceTabBar({
               type="button"
               variant="ghost"
               size="icon-sm"
-              className="size-5 shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+              className="size-8 shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
               aria-label={`Close ${tab.title}`}
-              onClick={(e) => {
-                e.stopPropagation();
+              onClick={(event) => {
+                event.stopPropagation();
                 onCloseTab(tab.id);
               }}
             >
@@ -217,23 +212,18 @@ function TabViewRenderer({ tab }: Readonly<{ tab: WorkspaceTab }>) {
   if (view.type === "schema") {
     return <SchemaViewer path={view.path} />;
   }
-
   if (view.type === "schema-list") {
     return <SchemaListViewer path={view.path} />;
   }
-
   if (view.type === "table-list") {
     return <TableListViewer path={view.path} />;
   }
-
   if (view.type === "table-details") {
     return <TableDetailsViewer tabId={tab.id} path={view.path} />;
   }
-
   if (view.type === "view-list") {
     return <ViewListViewer path={view.path} />;
   }
-
   if (view.type === "view-details") {
     return <ViewDetailsViewer tabId={tab.id} path={view.path} />;
   }

@@ -6,12 +6,6 @@ export const FEATURE_REQUEST_URL =
 export const BUG_REPORT_URL =
   "https://github.com/waterrmalann/pg-compass/issues/new?template=bug_report.md";
 
-export const HelpChannels = {
-  SHOW_LICENSE: "help:show-license",
-  SHOW_ABOUT: "help:show-about",
-  SHOW_SHORTCUTS: "help:show-shortcuts",
-} as const;
-
 export const LICENSE_TEXT = `MIT License
 
 Copyright (c) 2026 Alan

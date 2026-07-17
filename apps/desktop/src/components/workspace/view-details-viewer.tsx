@@ -100,19 +100,19 @@ export function ViewDetailsViewer({
         className="flex h-full min-h-0 flex-col"
       >
         <TabsList variant="line" className="h-8 shrink-0">
-          <TabsTrigger value="data" className="h-7 px-3 text-xs">
+          <TabsTrigger value="data" className="h-8 px-3 text-xs">
             Data
           </TabsTrigger>
-          <TabsTrigger value="structure" className="h-7 px-3 text-xs">
+          <TabsTrigger value="structure" className="h-8 px-3 text-xs">
             Structure
           </TabsTrigger>
-          <TabsTrigger value="indexes" className="h-7 px-3 text-xs">
+          <TabsTrigger value="indexes" className="h-8 px-3 text-xs">
             Indexes
           </TabsTrigger>
-          <TabsTrigger value="constraints" className="h-7 px-3 text-xs">
+          <TabsTrigger value="constraints" className="h-8 px-3 text-xs">
             Constraints
           </TabsTrigger>
-          <TabsTrigger value="query" className="h-7 px-3 text-xs">
+          <TabsTrigger value="query" className="h-8 px-3 text-xs">
             Query
           </TabsTrigger>
         </TabsList>

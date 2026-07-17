@@ -171,6 +171,11 @@ export function useCodemirror(
 
   const viewRef = useRef<EditorView | null>(null);
   const sqlCompartment = useRef(new Compartment());
+  const readOnlyCompartment = useRef(new Compartment());
+  const placeholderCompartment = useRef(new Compartment());
+  const initialValueRef = useRef(value);
+  const initialPlaceholderRef = useRef(placeholder);
+  const initialReadOnlyRef = useRef(readOnly);
 
   const sqlNamespace = useMemo(() => buildSqlNamespace(schema), [schema]);
   const defaultTable = schema?.defaultTable;
@@ -218,10 +223,12 @@ export function useCodemirror(
           sql({
             dialect: PostgreSQL,
             upperCaseKeywords: true,
-            schema: sqlNamespace,
-            defaultTable,
-            defaultSchema,
           }),
+        ),
+        placeholderCompartment.current.of(
+          initialPlaceholderRef.current
+            ? cmPlaceholder(initialPlaceholderRef.current)
+            : [],
         ),
         sqlValueQuoteLinter,
         EditorView.updateListener.of((update) => {
@@ -230,19 +237,17 @@ export function useCodemirror(
             onChangeRef.current(doc);
           }
         }),
-        EditorState.readOnly.of(readOnly),
+        readOnlyCompartment.current.of(
+          EditorState.readOnly.of(initialReadOnlyRef.current),
+        ),
       ];
 
       if (!singleLine) {
         extensions.push(lineNumbers());
       }
 
-      if (placeholder) {
-        extensions.push(cmPlaceholder(placeholder));
-      }
-
       const state = EditorState.create({
-        doc: value,
+        doc: initialValueRef.current,
         extensions,
       });
 
@@ -259,7 +264,7 @@ export function useCodemirror(
       };
       // Only run on mount — value synced via separate effect
     },
-    [containerRef, singleLine, readOnly],
+    [containerRef, singleLine],
   );
 
   // Sync external value → CM state (only when value differs from CM doc)
@@ -299,6 +304,32 @@ export function useCodemirror(
       });
     },
     [sqlNamespace, defaultTable, defaultSchema],
+  );
+
+  useEffect(
+    function reconfigureReadOnly() {
+      const view = viewRef.current;
+      if (!view) return;
+      view.dispatch({
+        effects: readOnlyCompartment.current.reconfigure(
+          EditorState.readOnly.of(readOnly),
+        ),
+      });
+    },
+    [readOnly],
+  );
+
+  useEffect(
+    function reconfigurePlaceholder() {
+      const view = viewRef.current;
+      if (!view) return;
+      view.dispatch({
+        effects: placeholderCompartment.current.reconfigure(
+          placeholder ? cmPlaceholder(placeholder) : [],
+        ),
+      });
+    },
+    [placeholder],
   );
 
   return viewRef;

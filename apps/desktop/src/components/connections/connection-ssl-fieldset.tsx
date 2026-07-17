@@ -16,7 +16,10 @@ export function ConnectionSSLFieldset({
 }: Readonly<ConnectionSSLFieldsetProps>) {
   return (
     <fieldset className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 p-3">
-      <div className="flex items-center gap-2">
+      <Label
+        htmlFor="ssl-enabled"
+        className="flex min-h-8 cursor-pointer items-center gap-2"
+      >
         <input
           id="ssl-enabled"
           type="checkbox"
@@ -26,11 +29,14 @@ export function ConnectionSSLFieldset({
             onChange((s) => ({ ...s, enabled: e.target.checked }))
           }
         />
-        <Label htmlFor="ssl-enabled">Enable SSL</Label>
-      </div>
+        <span>Enable SSL</span>
+      </Label>
       {value.enabled && (
         <div className="flex flex-col gap-2 pl-6">
-          <div className="flex items-center gap-2">
+          <Label
+            htmlFor="ssl-reject"
+            className="flex min-h-8 cursor-pointer items-center gap-2"
+          >
             <input
               id="ssl-reject"
               type="checkbox"
@@ -43,8 +49,8 @@ export function ConnectionSSLFieldset({
                 }))
               }
             />
-            <Label htmlFor="ssl-reject">Reject unauthorized certificates</Label>
-          </div>
+            <span>Reject unauthorized certificates</span>
+          </Label>
           <CaField
             source={value.caSource ?? "file"}
             value={value.ca ?? ""}
@@ -130,7 +136,7 @@ function CaField({
             type="button"
             size="sm"
             variant={source === "file" ? "secondary" : "ghost"}
-            className="h-6 px-3 text-xs"
+            className="h-8 px-3 text-xs"
             aria-pressed={source === "file"}
             onClick={() => handleSourceChange("file")}
           >
@@ -140,7 +146,7 @@ function CaField({
             type="button"
             size="sm"
             variant={source === "inline" ? "secondary" : "ghost"}
-            className="h-6 px-3 text-xs"
+            className="h-8 px-3 text-xs"
             aria-pressed={source === "inline"}
             onClick={() => handleSourceChange("inline")}
           >

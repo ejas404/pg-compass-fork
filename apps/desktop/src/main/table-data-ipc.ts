@@ -1,19 +1,6 @@
 import path from "node:path";
-import { ipcMain, dialog, BrowserWindow } from "electron";
-import { TableDataChannels } from "../shared/types/table-data";
-import type {
-  DeleteRowsParams,
-  CancelQueryParams,
-  ExecuteQueryParams,
-  ExportDataParams,
-  GetRowsParams,
-  SqlDumpParams,
-  TableMetaParams,
-  ToggleTriggerParams,
-  UpdateCellParams,
-  UpdateRowParams,
-  SearchForeignKeyParams,
-} from "../shared/types/table-data";
+import { dialog, BrowserWindow } from "electron";
+import { TableDataChannels } from "../shared/constants/ipc-channels";
 import { cancelQuery, executeQuery, getRows } from "./table-data-rows";
 import {
   getConstraints,
@@ -26,6 +13,25 @@ import {
 import { exportData, sqlDump } from "./table-data-export";
 import { deleteRows, updateCell, updateRow } from "./table-data-write";
 import { searchForeignKey } from "./table-data-fk";
+import {
+  validateCancelQueryParams,
+  validateDeleteRowsParams,
+  validateExecuteQueryParams,
+  validateExportDataParams,
+  validateGetRowsParams,
+  validateSaveDialogOptions,
+  validateSearchForeignKeyParams,
+  validateSqlDumpParams,
+  validateTableMetaParams,
+  validateToggleTriggerParams,
+  validateUpdateCellParams,
+  validateUpdateRowParams,
+} from "./ipc-validation";
+import {
+  approveSavePath,
+  consumeApprovedSavePath,
+  registerIpcHandler,
+} from "./ipc-security";
 
 function resolveTestSaveDialogPath(
   options: Electron.SaveDialogOptions,
@@ -49,10 +55,11 @@ function resolveTestSaveDialogPath(
 // ---------------------------------------------------------------------------
 
 export function registerTableDataHandlers(): void {
-  ipcMain.handle(
+  registerIpcHandler(
     TableDataChannels.GET_ROWS,
-    async (_event, params: GetRowsParams) => {
+    async (_event, rawParams: unknown) => {
       try {
+        const params = validateGetRowsParams(rawParams);
         const data = await getRows(params);
         return { success: true, data };
       } catch (err) {
@@ -61,10 +68,11 @@ export function registerTableDataHandlers(): void {
     },
   );
 
-  ipcMain.handle(
+  registerIpcHandler(
     TableDataChannels.GET_STRUCTURE,
-    async (_event, params: TableMetaParams) => {
+    async (_event, rawParams: unknown) => {
       try {
+        const params = validateTableMetaParams(rawParams);
         const data = await getStructure(params);
         return { success: true, data };
       } catch (err) {
@@ -73,10 +81,11 @@ export function registerTableDataHandlers(): void {
     },
   );
 
-  ipcMain.handle(
+  registerIpcHandler(
     TableDataChannels.GET_INDEXES,
-    async (_event, params: TableMetaParams) => {
+    async (_event, rawParams: unknown) => {
       try {
+        const params = validateTableMetaParams(rawParams);
         const data = await getIndexes(params);
         return { success: true, data };
       } catch (err) {
@@ -85,10 +94,11 @@ export function registerTableDataHandlers(): void {
     },
   );
 
-  ipcMain.handle(
+  registerIpcHandler(
     TableDataChannels.GET_CONSTRAINTS,
-    async (_event, params: TableMetaParams) => {
+    async (_event, rawParams: unknown) => {
       try {
+        const params = validateTableMetaParams(rawParams);
         const data = await getConstraints(params);
         return { success: true, data };
       } catch (err) {
@@ -97,10 +107,11 @@ export function registerTableDataHandlers(): void {
     },
   );
 
-  ipcMain.handle(
+  registerIpcHandler(
     TableDataChannels.GET_TRIGGERS,
-    async (_event, params: TableMetaParams) => {
+    async (_event, rawParams: unknown) => {
       try {
+        const params = validateTableMetaParams(rawParams);
         const data = await getTriggers(params);
         return { success: true, data };
       } catch (err) {
@@ -109,10 +120,11 @@ export function registerTableDataHandlers(): void {
     },
   );
 
-  ipcMain.handle(
+  registerIpcHandler(
     TableDataChannels.GET_TYPES,
-    async (_event, params: TableMetaParams) => {
+    async (_event, rawParams: unknown) => {
       try {
+        const params = validateTableMetaParams(rawParams);
         const data = await getTypes(params);
         return { success: true, data };
       } catch (err) {
@@ -121,10 +133,11 @@ export function registerTableDataHandlers(): void {
     },
   );
 
-  ipcMain.handle(
+  registerIpcHandler(
     TableDataChannels.TOGGLE_TRIGGER,
-    async (_event, params: ToggleTriggerParams) => {
+    async (_event, rawParams: unknown) => {
       try {
+        const params = validateToggleTriggerParams(rawParams);
         const data = await toggleTrigger(params);
         return { success: true, data };
       } catch (err) {
@@ -133,10 +146,11 @@ export function registerTableDataHandlers(): void {
     },
   );
 
-  ipcMain.handle(
+  registerIpcHandler(
     TableDataChannels.EXECUTE_QUERY,
-    async (_event, params: ExecuteQueryParams) => {
+    async (_event, rawParams: unknown) => {
       try {
+        const params = validateExecuteQueryParams(rawParams);
         const data = await executeQuery(params);
         return { success: true, data };
       } catch (err) {
@@ -145,10 +159,11 @@ export function registerTableDataHandlers(): void {
     },
   );
 
-  ipcMain.handle(
+  registerIpcHandler(
     TableDataChannels.CANCEL_QUERY,
-    async (_event, params: CancelQueryParams) => {
+    async (_event, rawParams: unknown) => {
       try {
+        const params = validateCancelQueryParams(rawParams);
         const status = await cancelQuery(params.connectionId, params.queryId);
         return { success: true, data: { status } };
       } catch (err) {
@@ -157,33 +172,47 @@ export function registerTableDataHandlers(): void {
     },
   );
 
-  ipcMain.handle(
+  registerIpcHandler(
     TableDataChannels.SHOW_SAVE_DIALOG,
-    async (event, options: Electron.SaveDialogOptions) => {
+    async (event, rawOptions: unknown) => {
       try {
-        const testFilePath = resolveTestSaveDialogPath(options);
+        const options = validateSaveDialogOptions(rawOptions);
+        const { purpose, ...dialogOptions } = options;
+        const testFilePath = resolveTestSaveDialogPath(dialogOptions);
         if (testFilePath) {
-          return { success: true, data: testFilePath };
+          return {
+            success: true,
+            data: approveSavePath(event, testFilePath, purpose),
+          };
         }
 
         const win = BrowserWindow.fromWebContents(event.sender);
         const result = win
-          ? await dialog.showSaveDialog(win, options)
-          : await dialog.showSaveDialog(options);
+          ? await dialog.showSaveDialog(win, dialogOptions)
+          : await dialog.showSaveDialog(dialogOptions);
         if (result.canceled || !result.filePath)
           return { success: true, data: null };
-        return { success: true, data: result.filePath };
+        return {
+          success: true,
+          data: approveSavePath(event, result.filePath, purpose),
+        };
       } catch (err) {
         return { success: false, error: (err as Error).message };
       }
     },
   );
 
-  ipcMain.handle(
+  registerIpcHandler(
     TableDataChannels.EXPORT_DATA,
-    async (event, params: ExportDataParams) => {
+    async (event, rawParams: unknown) => {
       try {
-        const data = await exportData(params, event.sender);
+        const params = validateExportDataParams(rawParams);
+        const filePath = consumeApprovedSavePath(
+          event,
+          params.filePath,
+          "export",
+        );
+        const data = await exportData({ ...params, filePath }, event.sender);
         return { success: true, data };
       } catch (err) {
         return { success: false, error: (err as Error).message };
@@ -191,11 +220,17 @@ export function registerTableDataHandlers(): void {
     },
   );
 
-  ipcMain.handle(
+  registerIpcHandler(
     TableDataChannels.SQL_DUMP,
-    async (event, params: SqlDumpParams) => {
+    async (event, rawParams: unknown) => {
       try {
-        const data = await sqlDump(params, event.sender);
+        const params = validateSqlDumpParams(rawParams);
+        const filePath = consumeApprovedSavePath(
+          event,
+          params.filePath,
+          "sql-dump",
+        );
+        const data = await sqlDump({ ...params, filePath }, event.sender);
         return { success: true, data };
       } catch (err) {
         return { success: false, error: (err as Error).message };
@@ -203,10 +238,11 @@ export function registerTableDataHandlers(): void {
     },
   );
 
-  ipcMain.handle(
+  registerIpcHandler(
     TableDataChannels.UPDATE_CELL,
-    async (_event, params: UpdateCellParams) => {
+    async (_event, rawParams: unknown) => {
       try {
+        const params = validateUpdateCellParams(rawParams);
         const data = await updateCell(params);
         return { success: true, data };
       } catch (err) {
@@ -215,10 +251,11 @@ export function registerTableDataHandlers(): void {
     },
   );
 
-  ipcMain.handle(
+  registerIpcHandler(
     TableDataChannels.UPDATE_ROW,
-    async (_event, params: UpdateRowParams) => {
+    async (_event, rawParams: unknown) => {
       try {
+        const params = validateUpdateRowParams(rawParams);
         const data = await updateRow(params);
         return { success: true, data };
       } catch (err) {
@@ -227,10 +264,11 @@ export function registerTableDataHandlers(): void {
     },
   );
 
-  ipcMain.handle(
+  registerIpcHandler(
     TableDataChannels.DELETE_ROWS,
-    async (_event, params: DeleteRowsParams) => {
+    async (_event, rawParams: unknown) => {
       try {
+        const params = validateDeleteRowsParams(rawParams);
         const data = await deleteRows(params);
         return { success: true, data };
       } catch (err) {
@@ -239,10 +277,11 @@ export function registerTableDataHandlers(): void {
     },
   );
 
-  ipcMain.handle(
+  registerIpcHandler(
     TableDataChannels.SEARCH_FK,
-    async (_event, params: SearchForeignKeyParams) => {
+    async (_event, rawParams: unknown) => {
       try {
+        const params = validateSearchForeignKeyParams(rawParams);
         const data = await searchForeignKey(params);
         return { success: true, data };
       } catch (err) {

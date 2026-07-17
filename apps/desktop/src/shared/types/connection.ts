@@ -88,16 +88,3 @@ export interface DatabaseSchema {
 export interface SchemaTreeOptions {
   includeInternalSchemas?: boolean;
 }
-
-/** IPC channel names for connection management. */
-export const ConnectionChannels = {
-  GET_ALL: "connections:get-all",
-  GET_BY_ID: "connections:get-by-id",
-  CREATE: "connections:create",
-  UPDATE: "connections:update",
-  DELETE: "connections:delete",
-  TOGGLE_FAVOURITE: "connections:toggle-favourite",
-  TEST: "connections:test",
-  GET_SCHEMA_TREE: "connections:get-schema-tree",
-  SHOW_OPEN_FILE_DIALOG: "connections:show-open-file-dialog",
-} as const;

@@ -22,7 +22,7 @@ import {
 import {
   SqlEditor,
   type CompletionSchema,
-} from "@/components/sql-editor/SqlEditor";
+} from "@/components/sql-editor/sql-editor";
 import { DataPagination } from "@/components/workspace/table-viewer/data-pagination";
 import { TableDataView } from "@/components/workspace/table-viewer/table-data-view";
 import { CardDataView } from "@/components/workspace/table-viewer/card-data-view";
@@ -208,14 +208,14 @@ export function DataTab({
       }
       const result = request.value;
       if (!result.success || !result.data) {
-          const msg = result.error ?? "Unknown error";
-          setError(msg);
-          if (!background) {
-            setRows([]);
-            setTotalCount(0);
-            setLoading(false);
-          }
-          toast.error("Failed to load rows", { description: msg });
+        const msg = result.error ?? "Unknown error";
+        setError(msg);
+        if (!background) {
+          setRows([]);
+          setTotalCount(0);
+          setLoading(false);
+        }
+        toast.error("Failed to load rows", { description: msg });
         return false;
       }
       setColumns(result.data.columns);
@@ -368,7 +368,7 @@ export function DataTab({
               type="button"
               variant={viewMode === "table" ? "secondary" : "ghost"}
               size="icon-sm"
-              className="size-6"
+              className="size-8"
               onClick={() => setViewMode("table")}
               aria-label="Table view"
             >
@@ -378,7 +378,7 @@ export function DataTab({
               type="button"
               variant={viewMode === "card" ? "secondary" : "ghost"}
               size="icon-sm"
-              className="size-6"
+              className="size-8"
               onClick={() => setViewMode("card")}
               aria-label="Card view"
             >
@@ -408,7 +408,7 @@ export function DataTab({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-7 gap-1.5 text-xs"
+                    className="h-8 gap-1.5 text-xs"
                     disabled
                   >
                     <Plus className="size-3.5" />
@@ -431,7 +431,7 @@ export function DataTab({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-7 gap-1.5 text-xs"
+                className="h-8 gap-1.5 text-xs"
                 disabled
               >
                 <Pencil className="size-3.5" />
@@ -442,7 +442,7 @@ export function DataTab({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-7 gap-1.5 text-xs"
+                className="h-8 gap-1.5 text-xs"
                 disabled={loading || settings.general.readOnlyMode || !!error}
                 onClick={() => setDeleteDialogOpen(true)}
               >

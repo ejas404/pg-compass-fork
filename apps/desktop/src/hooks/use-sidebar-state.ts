@@ -1,10 +1,12 @@
-import { useState } from 'react';
-import type { ConnectionConfig } from '@/shared/types/connection';
+import { useState } from "react";
+import type { ConnectionConfig } from "@/shared/types/connection";
 
 export function useSidebarState() {
   const [formOpen, setFormOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [editingConnection, setEditingConnection] = useState<ConnectionConfig | undefined>(undefined);
+  const [editingConnection, setEditingConnection] = useState<
+    ConnectionConfig | undefined
+  >(undefined);
 
   function handleOpenCreate() {
     setEditingConnection(undefined);

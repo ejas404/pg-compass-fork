@@ -1,12 +1,14 @@
-import { clipboard, ipcMain } from "electron";
-import { ClipboardChannels } from "../shared/constants/clipboard";
+import { clipboard } from "electron";
+import { ClipboardChannels } from "../shared/constants/ipc-channels";
+import type { IpcResult } from "../shared/types/ipc";
+import { registerIpcHandler } from "./ipc-security";
 
 const MAX_CLIPBOARD_TEXT_LENGTH = 10_000_000;
 
 export function registerClipboardHandlers(): void {
-  ipcMain.handle(
+  registerIpcHandler(
     ClipboardChannels.WRITE_TEXT,
-    (_event, text: unknown): { success: boolean; error?: string } => {
+    (_event, text: unknown): IpcResult<void> => {
       if (typeof text !== "string") {
         return { success: false, error: "Clipboard text must be a string." };
       }
@@ -18,7 +20,7 @@ export function registerClipboardHandlers(): void {
       }
       try {
         clipboard.writeText(text);
-        return { success: true };
+        return { success: true, data: undefined };
       } catch (error) {
         return { success: false, error: (error as Error).message };
       }

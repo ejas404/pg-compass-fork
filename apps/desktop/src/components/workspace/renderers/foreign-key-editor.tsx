@@ -19,12 +19,7 @@
  * latest request id (no AbortController plumbing across IPC needed).
  */
 
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Search as SearchIcon, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -68,17 +63,15 @@ export function ForeignKeyPicker(props: Readonly<ForeignKeyPickerProps>) {
       setLoading(true);
       setError(null);
       try {
-        const response = await globalThis.window.tableDataApi.searchForeignKey(
-          {
-            connectionId: props.connectionId,
-            schema: props.foreignKey.schema,
-            table: props.foreignKey.table,
-            valueColumn: props.foreignKey.column,
-            labelColumn: props.foreignKey.labelColumn,
-            query: q,
-            limit: SEARCH_LIMIT,
-          },
-        );
+        const response = await globalThis.window.tableDataApi.searchForeignKey({
+          connectionId: props.connectionId,
+          schema: props.foreignKey.schema,
+          table: props.foreignKey.table,
+          valueColumn: props.foreignKey.column,
+          labelColumn: props.foreignKey.labelColumn,
+          query: q,
+          limit: SEARCH_LIMIT,
+        });
         // Stale response — a newer search has fired; drop this one.
         if (myId !== requestIdRef.current) return;
 
@@ -166,7 +159,9 @@ export function ForeignKeyPicker(props: Readonly<ForeignKeyPickerProps>) {
                 className="flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left font-mono text-xs italic text-muted-foreground hover:bg-muted/60"
               >
                 <span>(NULL)</span>
-                <span className="text-[10px] uppercase tracking-wide">no reference</span>
+                <span className="text-[10px] uppercase tracking-wide">
+                  no reference
+                </span>
               </button>
             </li>
           ) : null}
@@ -203,7 +198,9 @@ export function ForeignKeyPicker(props: Readonly<ForeignKeyPickerProps>) {
                     {opt.label !== null ? (
                       <span className="font-medium">{opt.label}</span>
                     ) : (
-                      <span className="text-muted-foreground italic">no label</span>
+                      <span className="text-muted-foreground italic">
+                        no label
+                      </span>
                     )}
                   </span>
                   <span className="font-mono text-[11px] text-muted-foreground">
@@ -217,7 +214,8 @@ export function ForeignKeyPicker(props: Readonly<ForeignKeyPickerProps>) {
 
         {hasMore ? (
           <div className="border-t border-border px-2 py-1 text-[10px] text-muted-foreground">
-            Showing {SEARCH_LIMIT} matches — refine your search to narrow further.
+            Showing {SEARCH_LIMIT} matches — refine your search to narrow
+            further.
           </div>
         ) : null}
       </div>
@@ -251,7 +249,8 @@ export function ForeignKeyPicker(props: Readonly<ForeignKeyPickerProps>) {
 
 function sameValue(a: unknown, b: unknown): boolean {
   if (a === b) return true;
-  if (a === null || a === undefined || b === null || b === undefined) return false;
+  if (a === null || a === undefined || b === null || b === undefined)
+    return false;
   return String(a) === String(b);
 }
 
@@ -295,7 +294,12 @@ export function ForeignKeyModalEditor(
         }}
       />
       <div className="flex justify-end">
-        <Button type="button" variant="outline" size="sm" onClick={props.onCancel}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={props.onCancel}
+        >
           Cancel
         </Button>
       </div>

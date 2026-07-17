@@ -120,10 +120,10 @@ export function SchemaViewer({ path }: Readonly<SchemaViewerProps>) {
         className="h-full min-h-0"
       >
         <TabsList variant="line" className="h-8">
-          <TabsTrigger value="tables" className="h-7 px-3 text-xs">
+          <TabsTrigger value="tables" className="h-8 px-3 text-xs">
             Tables
           </TabsTrigger>
-          <TabsTrigger value="views" className="h-7 px-3 text-xs">
+          <TabsTrigger value="views" className="h-8 px-3 text-xs">
             Views
           </TabsTrigger>
         </TabsList>

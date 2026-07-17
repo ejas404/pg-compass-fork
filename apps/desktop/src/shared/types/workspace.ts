@@ -7,7 +7,7 @@ export interface WorkspacePath extends DatabaseViewerPath {
   schemaName: string;
 }
 
-export interface SchemaViewerPath extends WorkspacePath {}
+export type SchemaViewerPath = WorkspacePath;
 
 export interface TableListViewerPath extends WorkspacePath {
   tableName: string;

@@ -5,7 +5,12 @@ import type {
   GetRowsParams,
   TableRowsResult,
 } from "../shared/types/table-data";
-import { quoteIdent, withDedicatedClient, withPoolClient } from "./pg-utils";
+import {
+  extendedQuery,
+  quoteIdent,
+  withDedicatedClient,
+  withPoolClient,
+} from "./pg-utils";
 import { buildEnumTypeMap, buildTypeMap } from "./table-data-utils";
 import { resolveForeignKeys } from "./table-data-fk";
 
@@ -119,7 +124,9 @@ export async function getRows(params: GetRowsParams): Promise<TableRowsResult> {
     // Use a read-only transaction so count and data are consistent.
     await client.query("BEGIN READ ONLY");
     try {
-      const countResult = await client.query<{ count: string }>(countSql);
+      const countResult = await client.query<{ count: string }>(
+        extendedQuery(countSql),
+      );
       const totalCount = parseCountRow(countResult.rows[0]?.count);
 
       const dataResult = await client.query(
@@ -257,7 +264,9 @@ export async function executeQuery(
         const { core, userLimit } = stripLimitOffset(trimmedSql);
 
         const countResult = await client.query<{ count: string }>(
-          `SELECT count(*) AS count FROM (${core}) AS __count_subquery`,
+          extendedQuery(
+            `SELECT count(*) AS count FROM (${core}) AS __count_subquery`,
+          ),
         );
         let totalCount = parseCountRow(countResult.rows[0]?.count);
 

@@ -1,15 +1,25 @@
 import { type WebContents } from "electron";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { to as copyTo } from "pg-copy-streams";
-import { TableDataChannels } from "../shared/types/table-data";
+import { TableDataChannels } from "../shared/constants/ipc-channels";
 import type {
   ExportDataParams,
   ExportResult,
   SqlDumpParams,
 } from "../shared/types/table-data";
-import { quoteIdent, withPoolClient } from "./pg-utils";
+import { extendedQuery, quoteIdent, withPoolClient } from "./pg-utils";
 import { isReadOnlyQuery } from "./table-data-rows";
+
+function createTemporaryExportPath(filePath: string): string {
+  return path.join(
+    path.dirname(filePath),
+    `.${path.basename(filePath)}.${randomUUID()}.tmp`,
+  );
+}
 
 // ---------------------------------------------------------------------------
 // EXPORT_DATA (CSV / JSON)
@@ -45,7 +55,14 @@ export function createProgressThrottle(sender: WebContents, intervalMs = 200) {
     sender.send(TableDataChannels.EXPORT_PROGRESS, rowCount);
   }
 
-  return { send, flush };
+  function cancel() {
+    if (pending) {
+      clearTimeout(pending);
+      pending = null;
+    }
+  }
+
+  return { send, flush, cancel };
 }
 
 /** Convert a row to a CSV line, properly quoting values. */
@@ -80,39 +97,12 @@ export function buildExportSql(params: ExportDataParams): string {
   return `SELECT * FROM ${qualifiedTable}`;
 }
 
-/** Write a batch of rows in CSV format. */
-function writeCsvBatch(
-  writeStream: fs.WriteStream,
-  columns: string[],
-  rows: Record<string, unknown>[],
-  isFirstBatch: boolean,
-): void {
-  if (isFirstBatch) {
-    writeStream.write(columns.map(csvEscapeValue).join(",") + "\n");
-  }
-  for (const row of rows) {
-    const line = columns.map((col) => csvEscapeValue(row[col])).join(",");
-    writeStream.write(line + "\n");
-  }
-}
-
-/** Write a batch of rows in JSON format. */
-function writeJsonBatch(
-  writeStream: fs.WriteStream,
-  rows: Record<string, unknown>[],
-  startIndex: number,
-): void {
-  for (let i = 0; i < rows.length; i++) {
-    const prefix = startIndex + i === 0 ? "  " : ",\n  ";
-    writeStream.write(prefix + JSON.stringify(rows[i]));
-  }
-}
-
 export async function exportData(
   params: ExportDataParams,
   sender: WebContents,
 ): Promise<ExportResult> {
   const { filePath } = params;
+  const temporaryPath = createTemporaryExportPath(filePath);
 
   return withPoolClient(params.connectionId, async (client) => {
     const sql = buildExportSql(params);
@@ -122,56 +112,63 @@ export async function exportData(
     await client.query("BEGIN READ ONLY");
     try {
       const cursorName = "__export_cursor";
-      await client.query(`DECLARE ${cursorName} CURSOR FOR ${sql}`);
+      await client.query(
+        extendedQuery(`DECLARE ${cursorName} CURSOR FOR ${sql}`),
+      );
 
-      const writeStream = fs.createWriteStream(filePath, { encoding: "utf-8" });
+      const writeStream = fs.createWriteStream(temporaryPath, {
+        encoding: "utf-8",
+      });
       let rowCount = 0;
       let columns: string[] | null = null;
       const batchSize = 1000;
 
-      if (params.format === "json") writeStream.write("[\n");
+      async function* generateExport(): AsyncGenerator<string> {
+        if (params.format === "json") yield "[\n";
 
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const batch = await client.query(
-          `FETCH ${batchSize} FROM ${cursorName}`,
-        );
-        if (batch.rows.length === 0) break;
+        while (true) {
+          const batch = await client.query(
+            `FETCH ${batchSize} FROM ${cursorName}`,
+          );
+          if (batch.rows.length === 0) break;
 
-        columns ??= batch.fields.map((f) => f.name);
+          columns ??= batch.fields.map((field) => field.name);
+          if (params.format === "csv" && rowCount === 0) {
+            yield columns.map(csvEscapeValue).join(",") + "\n";
+          }
 
-        if (params.format === "csv") {
-          writeCsvBatch(writeStream, columns, batch.rows, rowCount === 0);
-        } else {
-          writeJsonBatch(writeStream, batch.rows, rowCount);
+          for (const row of batch.rows) {
+            if (params.format === "csv") {
+              yield columns
+                .map((column) => csvEscapeValue(row[column]))
+                .join(",") + "\n";
+            } else {
+              const prefix = rowCount === 0 ? "  " : ",\n  ";
+              yield prefix + JSON.stringify(row);
+            }
+            rowCount += 1;
+          }
+          progress.send(rowCount);
         }
-        rowCount += batch.rows.length;
 
-        // Send throttled progress and yield the event loop so the renderer receives it
-        progress.send(rowCount);
-        await new Promise((r) => {
-          setImmediate(r);
-        });
+        if (params.format === "json") {
+          yield rowCount > 0 ? "\n]\n" : "]\n";
+        }
       }
 
-      if (params.format === "json") {
-        writeStream.write(rowCount > 0 ? "\n]\n" : "]\n");
-      }
-
+      await pipeline(Readable.from(generateExport()), writeStream);
       await client.query(`CLOSE ${cursorName}`);
       await client.query("COMMIT");
-
-      await new Promise<void>((resolve, reject) => {
-        writeStream.end(() => resolve());
-        writeStream.on("error", reject);
-      });
+      progress.flush(rowCount);
+      await fs.promises.rename(temporaryPath, filePath);
 
       return { filePath, rowCount };
     } catch (err) {
+      progress.cancel();
       await client.query("ROLLBACK").catch(() => undefined);
       // Clean up partial file
       try {
-        fs.unlinkSync(filePath);
+        fs.unlinkSync(temporaryPath);
       } catch {
         /* ignore */
       }
@@ -189,10 +186,13 @@ export async function sqlDump(
   sender: WebContents,
 ): Promise<ExportResult> {
   const { filePath } = params;
+  const temporaryPath = createTemporaryExportPath(filePath);
   const qualifiedTable = `${quoteIdent(params.schema)}.${quoteIdent(params.table)}`;
 
   return withPoolClient(params.connectionId, async (client) => {
-    const fileStream = fs.createWriteStream(filePath, { encoding: "utf-8" });
+    const fileStream = fs.createWriteStream(temporaryPath, {
+      encoding: "utf-8",
+    });
     const progress = createProgressThrottle(sender);
 
     const copyStream = client.query(
@@ -207,21 +207,28 @@ export async function sqlDump(
       progress.send(rowCount);
     });
 
-    await new Promise<void>((resolve, reject) => {
-      copyStream.pipe(fileStream);
-      fileStream.on("finish", () => {
-        progress.flush(rowCount);
-        resolve();
+    try {
+      await new Promise<void>((resolve, reject) => {
+        copyStream.pipe(fileStream);
+        fileStream.on("finish", () => {
+          progress.flush(rowCount);
+          resolve();
+        });
+        copyStream.on("error", (err) => {
+          fileStream.destroy();
+          reject(err);
+        });
+        fileStream.on("error", (err) => {
+          copyStream.destroy();
+          reject(err);
+        });
       });
-      copyStream.on("error", (err) => {
-        fileStream.destroy();
-        reject(err);
-      });
-      fileStream.on("error", (err) => {
-        copyStream.destroy();
-        reject(err);
-      });
-    });
+      await fs.promises.rename(temporaryPath, filePath);
+    } catch (error) {
+      progress.cancel();
+      await fs.promises.unlink(temporaryPath).catch(() => undefined);
+      throw error;
+    }
 
     return { filePath: path.resolve(filePath), rowCount };
   });

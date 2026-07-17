@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { ChevronRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useState } from "react";
+import { ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const ARRAY_COLLAPSE_THRESHOLD = 50;
 
@@ -14,23 +14,29 @@ export function JsonTree({ value, depth = 0 }: Readonly<JsonTreeProps>) {
     return <span className="italic text-muted-foreground/60">null</span>;
   }
 
-  if (typeof value === 'boolean') {
-    return <span className="text-blue-400">{value ? 'true' : 'false'}</span>;
+  if (typeof value === "boolean") {
+    return <span className="text-primary">{value ? "true" : "false"}</span>;
   }
 
-  if (typeof value === 'number') {
-    return <span className="tabular-nums text-emerald-400">{String(value)}</span>;
+  if (typeof value === "number") {
+    return (
+      <span className="tabular-nums text-foreground">{String(value)}</span>
+    );
   }
 
-  if (typeof value === 'string') {
-    return <span className="text-amber-400 break-all">"{value}"</span>;
+  if (typeof value === "string") {
+    return (
+      <span className="break-all text-muted-foreground">
+        {JSON.stringify(value)}
+      </span>
+    );
   }
 
   if (Array.isArray(value)) {
     return <JsonArray items={value} depth={depth} />;
   }
 
-  if (typeof value === 'object') {
+  if (typeof value === "object") {
     return <JsonObject obj={value as Record<string, unknown>} depth={depth} />;
   }
 
@@ -45,7 +51,7 @@ function JsonObject({
   const entries = Object.entries(obj);
 
   if (entries.length === 0) {
-    return <span className="text-muted-foreground">{'{}'}</span>;
+    return <span className="text-muted-foreground">{"{}"}</span>;
   }
 
   if (!expanded) {
@@ -56,9 +62,11 @@ function JsonObject({
         onClick={() => setExpanded(true)}
       >
         <ChevronRight className="size-3" />
-        <span>{'{'}</span>
-        <span className="text-muted-foreground/60">{entries.length} fields</span>
-        <span>{'}'}</span>
+        <span>{"{"}</span>
+        <span className="text-muted-foreground/60">
+          {entries.length} fields
+        </span>
+        <span>{"}"}</span>
       </button>
     );
   }
@@ -70,8 +78,10 @@ function JsonObject({
         className="inline-flex items-center gap-0.5 text-muted-foreground hover:text-foreground"
         onClick={() => setExpanded(false)}
       >
-        <ChevronRight className={cn('size-3 transition-transform', 'rotate-90')} />
-        <span>{'{'}</span>
+        <ChevronRight
+          className={cn("size-3 transition-transform", "rotate-90")}
+        />
+        <span>{"{"}</span>
       </button>
       <div className="ml-4 border-l border-border/50 pl-2">
         {entries.map(([key, val]) => (
@@ -81,7 +91,7 @@ function JsonObject({
           </div>
         ))}
       </div>
-      <span className="text-muted-foreground">{'}'}</span>
+      <span className="text-muted-foreground">{"}"}</span>
     </div>
   );
 }
@@ -112,9 +122,10 @@ function JsonArray({
     );
   }
 
-  const displayItems = showAll || items.length <= ARRAY_COLLAPSE_THRESHOLD
-    ? items
-    : items.slice(0, ARRAY_COLLAPSE_THRESHOLD);
+  const displayItems =
+    showAll || items.length <= ARRAY_COLLAPSE_THRESHOLD
+      ? items
+      : items.slice(0, ARRAY_COLLAPSE_THRESHOLD);
   const hiddenCount = items.length - displayItems.length;
 
   return (
@@ -124,7 +135,9 @@ function JsonArray({
         className="inline-flex items-center gap-0.5 text-muted-foreground hover:text-foreground"
         onClick={() => setExpanded(false)}
       >
-        <ChevronRight className={cn('size-3 transition-transform', 'rotate-90')} />
+        <ChevronRight
+          className={cn("size-3 transition-transform", "rotate-90")}
+        />
         <span>[</span>
       </button>
       <div className="ml-4 border-l border-border/50 pl-2">
@@ -132,7 +145,9 @@ function JsonArray({
           const key = `arr-${String(index)}`;
           return (
             <div key={key} className="flex gap-1 py-0.5">
-              <span className="shrink-0 tabular-nums text-muted-foreground/60">{index}:</span>
+              <span className="shrink-0 tabular-nums text-muted-foreground/60">
+                {index}:
+              </span>
               <JsonTree value={item} depth={depth + 1} />
             </div>
           );
@@ -140,7 +155,7 @@ function JsonArray({
         {hiddenCount > 0 && (
           <button
             type="button"
-            className="py-0.5 text-blue-400 hover:underline"
+            className="py-0.5 text-primary hover:underline"
             onClick={() => setShowAll(true)}
           >
             [ …{hiddenCount} more items ]

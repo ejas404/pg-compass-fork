@@ -34,26 +34,30 @@ export function IndexesTab({
 
   const fetch = useCallback(async () => {
     setLoading(true);
-    const request = await runLatestRequest(() => globalThis.window.tableDataApi.getIndexes({
+    const request = await runLatestRequest(() =>
+      globalThis.window.tableDataApi.getIndexes({
         connectionId,
         schema,
         table,
-    }));
+      }),
+    );
     if (request.status === "stale") return false;
     if (request.status === "error") {
-      toast.error("Failed to load indexes", { description: (request.error as Error).message });
+      toast.error("Failed to load indexes", {
+        description: (request.error as Error).message,
+      });
       setLoading(false);
       return false;
     }
     const result = request.value;
-      if (!result.success || !result.data) {
-        toast.error("Failed to load indexes", { description: result.error });
-        setLoading(false);
-        return false;
-      }
-      setIndexes(result.data);
+    if (!result.success || !result.data) {
+      toast.error("Failed to load indexes", { description: result.error });
       setLoading(false);
-      return true;
+      return false;
+    }
+    setIndexes(result.data);
+    setLoading(false);
+    return true;
   }, [connectionId, runLatestRequest, schema, table]);
 
   useEffect(

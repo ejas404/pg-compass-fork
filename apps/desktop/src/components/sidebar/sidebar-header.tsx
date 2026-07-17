@@ -1,10 +1,10 @@
-import { Database, Settings } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Database, Settings } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from "@/components/ui/tooltip";
 
 export function SidebarHeader({
   onOpenSettings,
@@ -14,7 +14,9 @@ export function SidebarHeader({
   return (
     <div className="flex items-center gap-2 px-4 py-3">
       <Database className="size-4 text-sidebar-primary" />
-      <h1 className="flex-1 text-sm font-semibold tracking-tight">PG Compass</h1>
+      <h1 className="flex-1 text-sm font-semibold tracking-tight">
+        PG Compass
+      </h1>
       <Tooltip>
         <TooltipTrigger asChild>
           <Button

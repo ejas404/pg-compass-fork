@@ -9,12 +9,15 @@ export type LatestRequestResult<T> =
 export function useLatestRequest() {
   const currentRequestRef = useRef(0);
 
-  useEffect(() => () => {
-    currentRequestRef.current += 1;
-  }, []);
+  useEffect(
+    () => () => {
+      currentRequestRef.current += 1;
+    },
+    [],
+  );
 
   return useCallback(
-    async <T,>(request: () => Promise<T>): Promise<LatestRequestResult<T>> => {
+    async <T>(request: () => Promise<T>): Promise<LatestRequestResult<T>> => {
       const requestId = ++currentRequestRef.current;
       try {
         const value = await request();

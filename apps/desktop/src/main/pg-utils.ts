@@ -1,10 +1,20 @@
 import { Client, Pool } from "pg";
-import type { PoolClient } from "pg";
+import type { PoolClient, QueryConfig } from "pg";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { ConnectionConfig } from "../shared/types/connection";
 import { getConnectionById } from "./connection-store";
+
+type ExtendedQueryConfig = QueryConfig & { queryMode: "extended" };
+
+/**
+ * Force PostgreSQL's extended protocol for SQL that contains a renderer-
+ * authored fragment. Extended parsing rejects stacked statements.
+ */
+export function extendedQuery(text: string): ExtendedQueryConfig {
+  return { text, queryMode: "extended" };
+}
 
 // ---------------------------------------------------------------------------
 // Connection config

@@ -4,14 +4,11 @@ import {
   Copy,
   Database,
   Edit,
-  Eye,
-  Folder,
   Loader2,
   Plug,
   PlugZap,
   RefreshCw,
   Star,
-  Table2,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -44,6 +41,10 @@ import type {
   ConnectionConfig,
   DatabaseSchema,
 } from "@/shared/types/connection";
+import { buildConnectionString } from "./connection-string";
+import { SchemaTreeNode } from "./schema-tree-node";
+
+export { buildConnectionString } from "./connection-string";
 
 interface ConnectionItemProps {
   connection: ConnectionConfig;
@@ -52,117 +53,6 @@ interface ConnectionItemProps {
   onConnectedChange: (connected: boolean) => void;
   searchSchemas?: DatabaseSchema[];
   searchActive?: boolean;
-}
-
-export function buildConnectionString(
-  connection: ConnectionConfig,
-): string | null {
-  if (connection.mode === "uri") {
-    return connection.uri?.trim() || null;
-  }
-
-  const fields = connection.fields;
-  if (!fields) {
-    return null;
-  }
-
-  const url = new URL("postgresql://localhost");
-  url.hostname = fields.host;
-  url.port = String(fields.port);
-  url.pathname = `/${encodeURIComponent(fields.database)}`;
-  url.username = fields.user;
-  url.password = fields.password;
-
-  return url.toString();
-}
-
-interface SchemaTreeNodeProps {
-  schema: DatabaseSchema;
-  schemaExpanded: boolean;
-  onToggleSchema: (schemaName: string) => void;
-  onOpenSchema: (schemaName: string) => void;
-  onOpenTable: (schemaName: string, tableName: string) => void;
-  onOpenView: (schemaName: string, viewName: string) => void;
-}
-
-function SchemaTreeNode({
-  schema,
-  schemaExpanded,
-  onToggleSchema,
-  onOpenSchema,
-  onOpenTable,
-  onOpenView,
-}: Readonly<SchemaTreeNodeProps>) {
-  const schemaCount = schema.tables.length + schema.views.length;
-  const schemaCountText = String(schemaCount);
-
-  return (
-    <div className="min-w-0 flex flex-col gap-0.5">
-      <button
-        type="button"
-        className="grid w-full min-w-0 grid-cols-[auto_auto_minmax(0,1fr)_minmax(4ch,auto)] items-center gap-1 rounded-sm px-1 py-0.5 text-left text-xs hover:bg-sidebar-accent"
-        onClick={() => {
-          onOpenSchema(schema.name);
-          onToggleSchema(schema.name);
-        }}
-        aria-label={
-          schemaExpanded
-            ? `Collapse schema ${schema.name}`
-            : `Expand schema ${schema.name}`
-        }
-      >
-        <ChevronRight
-          className={cn(
-            "size-3 text-muted-foreground transition-transform duration-200",
-            schemaExpanded && "rotate-90",
-          )}
-        />
-        <Folder className="size-3 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 truncate" title={schema.name}>
-          {schema.name}
-        </span>
-        <span
-          className="min-w-[4ch] shrink-0 pl-1 pr-1.5 text-right text-[10px] tabular-nums text-muted-foreground"
-          title={`${schemaCountText} relations`}
-        >
-          {schemaCountText}
-        </span>
-      </button>
-
-      {schemaExpanded && (
-        <div className="ml-3 flex flex-col gap-0.5 border-l border-sidebar-border pl-2">
-          {schema.tables.map((tableName) => (
-            <button
-              key={`${schema.name}.${tableName}`}
-              type="button"
-              className="flex min-w-0 items-center gap-1 rounded-sm px-1 py-0.5 text-left text-xs text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-              onClick={() => onOpenTable(schema.name, tableName)}
-              aria-label={`Table ${tableName}`}
-            >
-              <Table2 className="size-3 shrink-0" />
-              <span className="min-w-0 flex-1 truncate" title={tableName}>
-                {tableName}
-              </span>
-            </button>
-          ))}
-          {schema.views.map((view) => (
-            <button
-              key={`${schema.name}.${view.name}`}
-              type="button"
-              className="flex min-w-0 items-center gap-1 rounded-sm px-1 py-0.5 text-left text-xs text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-              onClick={() => onOpenView(schema.name, view.name)}
-              aria-label={`View ${view.name}`}
-            >
-              <Eye className="size-3 shrink-0" />
-              <span className="min-w-0 flex-1 truncate" title={view.name}>
-                {view.name}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 export function ConnectionItem({
@@ -455,9 +345,9 @@ export function ConnectionItem({
           </span>
         </button>
 
-        <div className="relative flex h-6 w-14 shrink-0 items-center justify-end gap-0.5">
+        <div className="relative flex h-8 w-18 shrink-0 items-center justify-end gap-0.5">
           {connection.favourite && (
-            <Star className="size-3 shrink-0 fill-yellow-500 text-yellow-500 opacity-100 transition-opacity group-hover/connection:opacity-0" />
+            <Star className="text-primary fill-primary size-3 shrink-0 opacity-100 transition-opacity group-hover/connection:opacity-0" />
           )}
 
           <div className="flex items-center justify-end gap-0.5 opacity-0 pointer-events-none transition-opacity group-hover/connection:opacity-100 group-hover/connection:pointer-events-auto">
@@ -467,7 +357,7 @@ export function ConnectionItem({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="size-6"
+                    className="size-8"
                     onClick={(event) => {
                       event.stopPropagation();
                       handleConnect().catch(() => undefined);
@@ -488,7 +378,7 @@ export function ConnectionItem({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-6"
+                  className="size-8"
                   aria-label="More actions"
                   onClick={(event) => event.stopPropagation()}
                 >

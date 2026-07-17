@@ -1,10 +1,10 @@
-import { Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from "@/components/ui/tooltip";
 
 export function SidebarFooter({
   onNewConnection,

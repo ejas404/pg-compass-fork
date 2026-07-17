@@ -6,13 +6,13 @@ import {
   useMemo,
   useState,
   type ReactNode,
-} from 'react';
+} from "react";
 import type {
   ConnectionConfig,
   ConnectionInput,
   DatabaseSchema,
   SchemaTreeOptions,
-} from '@/shared/types/connection';
+} from "@/shared/types/connection";
 
 interface ConnectionContextValue {
   connections: ConnectionConfig[];
@@ -22,7 +22,10 @@ interface ConnectionContextValue {
   /** Create a new connection and refresh the list. */
   create: (input: ConnectionInput) => Promise<ConnectionConfig | null>;
   /** Update an existing connection and refresh the list. */
-  update: (id: string, input: ConnectionInput) => Promise<ConnectionConfig | null>;
+  update: (
+    id: string,
+    input: ConnectionInput,
+  ) => Promise<ConnectionConfig | null>;
   /** Delete a connection and refresh the list. */
   remove: (id: string) => Promise<boolean>;
   /** Toggle favourite status and refresh the list. */
@@ -38,7 +41,9 @@ interface ConnectionContextValue {
 
 const ConnectionContext = createContext<ConnectionContextValue | null>(null);
 
-export function ConnectionProvider({ children }: Readonly<{ children: ReactNode }>) {
+export function ConnectionProvider({
+  children,
+}: Readonly<{ children: ReactNode }>) {
   const [connections, setConnections] = useState<ConnectionConfig[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -50,9 +55,12 @@ export function ConnectionProvider({ children }: Readonly<{ children: ReactNode 
     setLoading(false);
   }, []);
 
-  useEffect(function loadConnections() {
-    refresh();
-  }, [refresh]);
+  useEffect(
+    function loadConnections() {
+      refresh();
+    },
+    [refresh],
+  );
 
   const create = useCallback(
     async (input: ConnectionInput): Promise<ConnectionConfig | null> => {
@@ -67,7 +75,10 @@ export function ConnectionProvider({ children }: Readonly<{ children: ReactNode 
   );
 
   const update = useCallback(
-    async (id: string, input: ConnectionInput): Promise<ConnectionConfig | null> => {
+    async (
+      id: string,
+      input: ConnectionInput,
+    ): Promise<ConnectionConfig | null> => {
       const result = await globalThis.window.connectionApi.update(id, input);
       if (result.success && result.data) {
         await refresh();
@@ -156,6 +167,7 @@ export function ConnectionProvider({ children }: Readonly<{ children: ReactNode 
 
 export function useConnections(): ConnectionContextValue {
   const ctx = useContext(ConnectionContext);
-  if (!ctx) throw new Error('useConnections must be used within ConnectionProvider');
+  if (!ctx)
+    throw new Error("useConnections must be used within ConnectionProvider");
   return ctx;
 }

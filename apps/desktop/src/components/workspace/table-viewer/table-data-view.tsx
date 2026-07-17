@@ -70,7 +70,7 @@ export function TableDataView({
                     label={`Copy column name ${col.name}`}
                     text={col.name}
                     successMessage="Column name copied"
-                    className="size-6 opacity-0 group-hover/header:opacity-100 focus-visible:opacity-100"
+                    className="size-8 opacity-0 group-hover/header:opacity-100 focus-visible:opacity-100"
                   />
                 </div>
               </TableHead>
@@ -132,7 +132,7 @@ export function TableDataView({
                         label={`Copy ${col.name} value`}
                         text={serializeCellValue(row[col.name])}
                         successMessage="Cell value copied"
-                        className="size-6 shrink-0 opacity-0 group-hover/cell:opacity-100 focus-visible:opacity-100"
+                        className="size-8 shrink-0 opacity-0 group-hover/cell:opacity-100 focus-visible:opacity-100"
                       />
                     </div>
                   </TableCell>

@@ -29,7 +29,10 @@ export function ConnectionSSHFieldset({
 
   return (
     <fieldset className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 p-3">
-      <div className="flex items-center gap-2">
+      <Label
+        htmlFor="ssh-enabled"
+        className="flex min-h-8 cursor-pointer items-center gap-2"
+      >
         <input
           id="ssh-enabled"
           type="checkbox"
@@ -39,8 +42,8 @@ export function ConnectionSSHFieldset({
             onChange((s) => ({ ...s, enabled: e.target.checked }))
           }
         />
-        <Label htmlFor="ssh-enabled">Enable SSH Tunnel</Label>
-      </div>
+        <span>Enable SSH Tunnel</span>
+      </Label>
       {value.enabled && (
         <div className="grid grid-cols-2 gap-2 pl-6">
           <div className="flex flex-col gap-1.5">

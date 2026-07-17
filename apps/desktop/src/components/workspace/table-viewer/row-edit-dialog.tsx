@@ -8,15 +8,13 @@
  * mutation.
  */
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import {
-  editRegistry,
-  type EditValidation,
-  type TypeEditor,
+import type {
+  EditValidation,
+  TypeEditor,
 } from "@/components/workspace/renderers/edit-registry";
-import { ForeignKeyPicker } from "@/components/workspace/renderers/foreign-key-editor";
 import {
   Dialog,
   DialogContent,
@@ -26,37 +24,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type {
   ColumnInfo,
   UpdateRowFieldChange,
 } from "@/shared/types/table-data";
 import {
-  DateTimeEditor,
-  isDateTimeType,
-} from "@/components/workspace/renderers/date-time-editor";
-import {
-  isStructuredEditType,
-  StructuredValueEditor,
-} from "@/components/workspace/renderers/structured-value-editor";
-
-const MULTILINE_TYPES = new Set([
-  "json",
-  "jsonb",
-  "xml",
-  "text",
-  "_text",
-  "_varchar",
-  "_int2",
-  "_int4",
-  "_int8",
-  // Phase 2 keeps modal-kind editors (geometry, geography) as plain WKT
-  // textareas — the map editor remains the inline-cell entry point.
-  "geometry",
-  "geography",
-]);
+  editorFor,
+  FieldEditor,
+  formatPrimaryKeyValue,
+  PrimaryKeyValue,
+  type FieldDraft,
+} from "./row-field-editor";
 
 export interface RowEditDialogProps {
   columns: ColumnInfo[];
@@ -68,61 +47,6 @@ export interface RowEditDialogProps {
   connectionId: string;
   onRowUpdated: (row: Record<string, unknown>) => void;
   onClose: () => void;
-}
-
-interface FieldDraft {
-  /** What the user has typed so far; absent in `drafts` means unchanged. */
-  raw: string;
-  /** When true, save with `setNull: true` regardless of `raw`. */
-  setNull: boolean;
-}
-
-function makeEnumEditor(labels: string[], pgCast: string): TypeEditor {
-  const labelSet = new Set(labels);
-  return {
-    kind: "inline",
-    toInput(value) {
-      if (value === null || value === undefined) return labels[0] ?? "";
-      return String(value);
-    },
-    validate(raw) {
-      if (!labelSet.has(raw)) {
-        return { ok: false, error: `Not a valid value for ${pgCast}: ${raw}` };
-      }
-      return { ok: true, result: { value: raw, pgCast } };
-    },
-  };
-}
-
-/**
- * For FK columns the row-editor renders a dedicated picker (see `FieldEditor`),
- * but we still need a `TypeEditor` for `toInput` / `validate` / `pgCast` so
- * the diff machinery and Save path stay uniform.  This editor is a thin
- * adapter — it never round-trips through the picker.
- */
-function makeFkRowEditor(pgCast: string): TypeEditor {
-  return {
-    kind: "inline",
-    toInput: (value) =>
-      value === null || value === undefined ? "" : String(value),
-    validate: (raw) => {
-      // The picker only ever writes well-typed strings into `raw`; we
-      // forward them and let Postgres do the cast.  An empty raw means
-      // "no pick yet" and is handled by the caller (it cannot become a
-      // change because raw === initialInput).
-      return { ok: true, result: { value: raw, pgCast } };
-    },
-  };
-}
-
-function editorFor(col: ColumnInfo): TypeEditor {
-  if (col.foreignKey) {
-    return makeFkRowEditor(col.foreignKey.valuePgCast);
-  }
-  if (col.enumLabels && col.enumLabels.length > 0) {
-    return makeEnumEditor(col.enumLabels, col.enumPgCast ?? col.dataType);
-  }
-  return editRegistry.get(col.dataType);
 }
 
 export function RowEditDialog(props: Readonly<RowEditDialogProps>) {
@@ -291,7 +215,10 @@ export function RowEditDialog(props: Readonly<RowEditDialogProps>) {
           </DialogTitle>
           <DialogDescription className="font-mono text-xs">
             {props.primaryKey
-              .map((col, i) => `${col} = ${formatPkValue(props.pkValues[i])}`)
+              .map(
+                (col, index) =>
+                  `${col} = ${formatPrimaryKeyValue(props.pkValues[index])}`,
+              )
               .join(", ")}
           </DialogDescription>
         </DialogHeader>
@@ -329,10 +256,10 @@ export function RowEditDialog(props: Readonly<RowEditDialogProps>) {
                   </div>
                   <div className="min-w-0">
                     {isPk ? (
-                      <PkValueDisplay value={props.row[col.name]} />
+                      <PrimaryKeyValue value={props.row[col.name]} />
                     ) : (
                       <FieldEditor
-                        col={col}
+                        column={col}
                         rawValue={draft?.raw ?? original ?? ""}
                         setNull={draft?.setNull ?? false}
                         disabled={saving}
@@ -353,7 +280,7 @@ export function RowEditDialog(props: Readonly<RowEditDialogProps>) {
                           type="button"
                           variant="ghost"
                           size="icon-sm"
-                          className="size-7"
+                          className="size-8"
                           disabled={saving || !changed}
                           onClick={() => revertField(col.name)}
                           aria-label={`Revert ${col.name}`}
@@ -366,7 +293,7 @@ export function RowEditDialog(props: Readonly<RowEditDialogProps>) {
                             type="button"
                             variant={draft?.setNull ? "secondary" : "ghost"}
                             size="sm"
-                            className="h-7 px-2 text-[10px]"
+                            className="h-8 px-2 text-[10px]"
                             disabled={saving}
                             onClick={() => setDraftNull(col.name)}
                             data-testid={`setnull-${col.name}`}
@@ -412,220 +339,5 @@ export function RowEditDialog(props: Readonly<RowEditDialogProps>) {
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function formatPkValue(value: unknown): string {
-  if (value === null || value === undefined) return "NULL";
-  if (typeof value === "string") return JSON.stringify(value);
-  return String(value);
-}
-
-function PkValueDisplay({ value }: Readonly<{ value: unknown }>) {
-  if (value === null || value === undefined) {
-    return (
-      <span className="font-mono text-xs italic text-muted-foreground">
-        NULL
-      </span>
-    );
-  }
-  return (
-    <span className="block truncate font-mono text-xs text-muted-foreground">
-      {String(value)}
-    </span>
-  );
-}
-
-interface FieldEditorProps {
-  col: ColumnInfo;
-  rawValue: string;
-  setNull: boolean;
-  disabled: boolean;
-  connectionId: string;
-  onChange: (raw: string) => void;
-}
-
-function FieldEditor(props: Readonly<FieldEditorProps>): ReactNode {
-  if (props.setNull) {
-    return (
-      <div
-        data-testid={`null-pill-${props.col.name}`}
-        className="rounded-md border border-dashed border-muted-foreground/40 px-2 py-1 text-center font-mono text-xs italic text-muted-foreground"
-      >
-        NULL
-      </div>
-    );
-  }
-
-  if (props.col.foreignKey) {
-    return (
-      <FkFieldEditor
-        col={props.col}
-        rawValue={props.rawValue}
-        connectionId={props.connectionId}
-        disabled={props.disabled}
-        onChange={props.onChange}
-      />
-    );
-  }
-
-  const enumLabels = props.col.enumLabels;
-  if (enumLabels && enumLabels.length > 0) {
-    return (
-      <select
-        value={props.rawValue}
-        onChange={(e) => props.onChange(e.target.value)}
-        disabled={props.disabled}
-        data-testid={`row-enum-${props.col.name}`}
-        className="h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-xs text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
-      >
-        {enumLabels.map((label) => (
-          <option
-            key={label}
-            value={label}
-            className="bg-popover text-popover-foreground"
-          >
-            {label}
-          </option>
-        ))}
-      </select>
-    );
-  }
-
-  if (props.col.dataType === "bool") {
-    const checked = props.rawValue.trim().toLowerCase() === "true";
-    return (
-      <div className="flex h-8 items-center justify-between rounded-md border border-input bg-muted/30 px-2">
-        <span className="font-mono text-xs">{checked ? "True" : "False"}</span>
-        <Switch
-          checked={checked}
-          onCheckedChange={(next) => props.onChange(next ? "true" : "false")}
-          disabled={props.disabled}
-          aria-label={`Toggle ${props.col.name}`}
-        />
-      </div>
-    );
-  }
-
-  if (MULTILINE_TYPES.has(props.col.dataType)) {
-    if (isStructuredEditType(props.col.dataType)) {
-      return (
-        <StructuredValueEditor
-          value={props.rawValue}
-          onChange={props.onChange}
-          disabled={props.disabled}
-          ariaLabel={`${props.col.name} structured value`}
-        />
-      );
-    }
-    return (
-      <textarea
-        value={props.rawValue}
-        onChange={(e) => props.onChange(e.target.value)}
-        disabled={props.disabled}
-        className="min-h-16 w-full resize-y rounded-md border border-input bg-transparent px-2 py-1 font-mono text-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
-        spellCheck={false}
-      />
-    );
-  }
-
-  if (isDateTimeType(props.col.dataType)) {
-    return (
-      <DateTimeEditor
-        pgType={props.col.dataType}
-        value={props.rawValue}
-        onChange={props.onChange}
-        disabled={props.disabled}
-      />
-    );
-  }
-
-  return (
-    <Input
-      value={props.rawValue}
-      onChange={(e) => props.onChange(e.target.value)}
-      disabled={props.disabled}
-      className="h-8 font-mono text-xs"
-      spellCheck={false}
-    />
-  );
-}
-
-// ---------------------------------------------------------------------------
-// FK field editor — used when `col.foreignKey` is present.
-//
-// Renders a compact trigger ("<label> · <value>") that opens a nested Dialog
-// containing the searchable picker.  The trigger always shows the *current
-// draft* value so the row's "X fields changed" indicator and the per-field
-// changed-state highlight stay in sync without any extra wiring.
-// ---------------------------------------------------------------------------
-
-interface FkFieldEditorProps {
-  col: ColumnInfo;
-  rawValue: string;
-  disabled: boolean;
-  connectionId: string;
-  onChange: (raw: string) => void;
-}
-
-function FkFieldEditor(props: Readonly<FkFieldEditorProps>) {
-  const fk = props.col.foreignKey!;
-  const [open, setOpen] = useState(false);
-  // The picked label is purely cosmetic — we cache the most recent label
-  // from the picker so the trigger doesn't say "no label" right after
-  // the user picked a labelled row.
-  const [lastLabel, setLastLabel] = useState<string | null>(null);
-
-  const display = props.rawValue === "" ? "(unset)" : props.rawValue;
-
-  return (
-    <>
-      <button
-        type="button"
-        disabled={props.disabled}
-        onClick={() => setOpen(true)}
-        data-testid={`fk-trigger-${props.col.name}`}
-        className="flex h-8 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-2 text-left text-xs hover:bg-muted/40 disabled:opacity-50"
-      >
-        <span className="truncate">
-          {lastLabel ? <span className="font-medium">{lastLabel}</span> : null}
-        </span>
-        <span className="font-mono text-[11px] text-muted-foreground">
-          {display}
-        </span>
-      </button>
-      <Dialog
-        open={open}
-        onOpenChange={(next) => {
-          if (!next) setOpen(false);
-        }}
-      >
-        <DialogContent
-          data-testid={`fk-picker-dialog-${props.col.name}`}
-          className="sm:max-w-lg"
-        >
-          <DialogHeader>
-            <DialogTitle className="text-sm">Pick {props.col.name}</DialogTitle>
-            <DialogDescription className="font-mono text-[11px]">
-              References {fk.schema}.{fk.table}.{fk.column}
-            </DialogDescription>
-          </DialogHeader>
-          <ForeignKeyPicker
-            currentValue={props.rawValue === "" ? null : props.rawValue}
-            currentLabel={lastLabel}
-            foreignKey={fk}
-            connectionId={props.connectionId}
-            allowNull={false}
-            onPick={(value, label) => {
-              props.onChange(
-                value === null || value === undefined ? "" : String(value),
-              );
-              setLastLabel(label);
-              setOpen(false);
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-    </>
   );
 }

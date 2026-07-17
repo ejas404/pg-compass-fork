@@ -1,9 +1,7 @@
-import { BrowserWindow, dialog, ipcMain } from "electron";
+import { BrowserWindow, dialog } from "electron";
 import { Client } from "pg";
-import { ConnectionChannels } from "../shared/types/connection";
+import { ConnectionChannels } from "../shared/constants/ipc-channels";
 import type {
-  ConnectionFileDialogOptions,
-  ConnectionInput,
   DatabaseView,
   DatabaseSchema,
   SchemaTreeOptions,
@@ -18,6 +16,13 @@ import {
   toggleFavourite,
 } from "./connection-store";
 import { buildPgConfig, withPoolClient, destroyPool } from "./pg-utils";
+import {
+  validateConnectionId,
+  validateConnectionInput,
+  validateOpenDialogOptions,
+  validateSchemaTreeOptions,
+} from "./ipc-validation";
+import { registerIpcHandler } from "./ipc-security";
 
 interface PgTableRow {
   schema_name: string;
@@ -193,7 +198,7 @@ export async function getSchemaTree(
 
 /** Register all connection-related IPC handlers. */
 export function registerConnectionHandlers(): void {
-  ipcMain.handle(ConnectionChannels.GET_ALL, () => {
+  registerIpcHandler(ConnectionChannels.GET_ALL, () => {
     try {
       return { success: true, data: getAllConnections() };
     } catch (err) {
@@ -201,8 +206,9 @@ export function registerConnectionHandlers(): void {
     }
   });
 
-  ipcMain.handle(ConnectionChannels.GET_BY_ID, (_event, id: string) => {
+  registerIpcHandler(ConnectionChannels.GET_BY_ID, (_event, rawId: unknown) => {
     try {
+      const id = validateConnectionId(rawId);
       const connection = getConnectionById(id);
       if (!connection)
         return { success: false, error: "Connection not found." };
@@ -212,22 +218,22 @@ export function registerConnectionHandlers(): void {
     }
   });
 
-  ipcMain.handle(
-    ConnectionChannels.CREATE,
-    (_event, input: ConnectionInput) => {
-      try {
-        const connection = createConnection(input);
-        return { success: true, data: connection };
-      } catch (err) {
-        return { success: false, error: (err as Error).message };
-      }
-    },
-  );
+  registerIpcHandler(ConnectionChannels.CREATE, (_event, rawInput: unknown) => {
+    try {
+      const input = validateConnectionInput(rawInput);
+      const connection = createConnection(input);
+      return { success: true, data: connection };
+    } catch (err) {
+      return { success: false, error: (err as Error).message };
+    }
+  });
 
-  ipcMain.handle(
+  registerIpcHandler(
     ConnectionChannels.UPDATE,
-    async (_event, id: string, input: ConnectionInput) => {
+    async (_event, rawId: unknown, rawInput: unknown) => {
       try {
+        const id = validateConnectionId(rawId);
+        const input = validateConnectionInput(rawInput);
         await destroyPool(id);
         const connection = updateConnection(id, input);
         if (!connection)
@@ -239,51 +245,65 @@ export function registerConnectionHandlers(): void {
     },
   );
 
-  ipcMain.handle(ConnectionChannels.DELETE, async (_event, id: string) => {
-    try {
-      await destroyPool(id);
-      const deleted = deleteConnection(id);
-      if (!deleted) return { success: false, error: "Connection not found." };
-      return { success: true, data: true };
-    } catch (err) {
-      return { success: false, error: (err as Error).message };
-    }
-  });
-
-  ipcMain.handle(ConnectionChannels.TOGGLE_FAVOURITE, (_event, id: string) => {
-    try {
-      const connection = toggleFavourite(id);
-      if (!connection)
-        return { success: false, error: "Connection not found." };
-      return { success: true, data: connection };
-    } catch (err) {
-      return { success: false, error: (err as Error).message };
-    }
-  });
-
-  ipcMain.handle(ConnectionChannels.TEST, async (_event, id: string) => {
-    try {
-      const connection = getConnectionById(id);
-      if (!connection)
-        return { success: false, error: "Connection not found." };
-
-      const pgConfig = buildPgConfig(connection);
-      const client = new Client(pgConfig);
-
-      await client.connect();
-      await client.query("SELECT 1");
-      await client.end();
-
-      return { success: true, data: true };
-    } catch (err) {
-      return { success: false, error: (err as Error).message };
-    }
-  });
-
-  ipcMain.handle(
-    ConnectionChannels.GET_SCHEMA_TREE,
-    async (_event, id: string, options?: SchemaTreeOptions) => {
+  registerIpcHandler(
+    ConnectionChannels.DELETE,
+    async (_event, rawId: unknown) => {
       try {
+        const id = validateConnectionId(rawId);
+        await destroyPool(id);
+        const deleted = deleteConnection(id);
+        if (!deleted) return { success: false, error: "Connection not found." };
+        return { success: true, data: true };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  registerIpcHandler(
+    ConnectionChannels.TOGGLE_FAVOURITE,
+    (_event, rawId: unknown) => {
+      try {
+        const id = validateConnectionId(rawId);
+        const connection = toggleFavourite(id);
+        if (!connection)
+          return { success: false, error: "Connection not found." };
+        return { success: true, data: connection };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  registerIpcHandler(
+    ConnectionChannels.TEST,
+    async (_event, rawId: unknown) => {
+      try {
+        const id = validateConnectionId(rawId);
+        const connection = getConnectionById(id);
+        if (!connection)
+          return { success: false, error: "Connection not found." };
+
+        const pgConfig = buildPgConfig(connection);
+        const client = new Client(pgConfig);
+
+        await client.connect();
+        await client.query("SELECT 1");
+        await client.end();
+
+        return { success: true, data: true };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  registerIpcHandler(
+    ConnectionChannels.GET_SCHEMA_TREE,
+    async (_event, rawId: unknown, rawOptions?: unknown) => {
+      try {
+        const id = validateConnectionId(rawId);
+        const options = validateSchemaTreeOptions(rawOptions);
         const schemas = await getSchemaTree(id, options);
         return { success: true, data: schemas };
       } catch (err) {
@@ -292,10 +312,11 @@ export function registerConnectionHandlers(): void {
     },
   );
 
-  ipcMain.handle(
+  registerIpcHandler(
     ConnectionChannels.SHOW_OPEN_FILE_DIALOG,
-    async (event, options: ConnectionFileDialogOptions) => {
+    async (event, rawOptions: unknown) => {
       try {
+        const options = validateOpenDialogOptions(rawOptions);
         const dialogOptions: Electron.OpenDialogOptions = {
           title: options.title,
           defaultPath: options.defaultPath,

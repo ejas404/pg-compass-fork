@@ -1,4 +1,4 @@
-export type ThemePreference = 'light' | 'dark' | 'system';
+export type ThemePreference = "light" | "dark" | "system";
 
 export interface GeneralSettings {
   readOnlyMode: boolean;
@@ -36,15 +36,10 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
     hideInternalSchemas: true,
   },
   appearance: {
-    theme: 'dark',
+    theme: "dark",
     sidebarWidth: 256,
   },
   privacy: {
     automaticUpdates: true,
   },
 };
-
-export const SettingsChannels = {
-  GET: 'settings:get',
-  UPDATE: 'settings:update',
-} as const;

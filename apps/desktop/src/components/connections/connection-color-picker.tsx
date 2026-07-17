@@ -1,15 +1,15 @@
-import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 export const COLOR_OPTIONS = [
-  '#ef4444',
-  '#f97316',
-  '#eab308',
-  '#22c55e',
-  '#06b6d4',
-  '#3b82f6',
-  '#8b5cf6',
-  '#ec4899',
+  "#ef4444",
+  "#f97316",
+  "#eab308",
+  "#22c55e",
+  "#06b6d4",
+  "#3b82f6",
+  "#8b5cf6",
+  "#ec4899",
 ];
 
 interface ConnectionColorPickerProps {
@@ -30,10 +30,10 @@ export function ConnectionColorPicker({
             key={c}
             type="button"
             className={cn(
-              'size-6 rounded-full border-2 transition-transform hover:scale-110',
+              "size-8 rounded-full border-2 transition-transform hover:scale-110",
               value === c
-                ? 'border-foreground scale-110'
-                : 'border-transparent',
+                ? "border-foreground scale-110"
+                : "border-transparent",
             )}
             style={{ backgroundColor: c }}
             onClick={() => onChange(value === c ? undefined : c)}

@@ -5,8 +5,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { cn } from '@/lib/utils';
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 export interface RelationListRow {
   name: string;
@@ -57,16 +57,20 @@ export function RelationListTable({
             return (
               <TableRow
                 key={row.name}
-                data-state={isSelected ? 'selected' : undefined}
-                className={cn(clickable && 'cursor-pointer')}
+                data-state={isSelected ? "selected" : undefined}
+                className={cn(clickable && "cursor-pointer")}
                 onClick={onOpenRow ? () => onOpenRow(row) : undefined}
               >
                 <TableCell className="font-medium">{row.name}</TableCell>
-                <TableCell className="text-muted-foreground">{row.rowCount}</TableCell>
-                <TableCell className="text-muted-foreground">{row.sizeOnDisk}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {row.rowCount}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {row.sizeOnDisk}
+                </TableCell>
                 {includeDefinition && (
                   <TableCell className="max-w-[36ch] truncate font-mono text-xs text-muted-foreground">
-                    {row.definition ?? 'N/A'}
+                    {row.definition ?? "N/A"}
                   </TableCell>
                 )}
               </TableRow>

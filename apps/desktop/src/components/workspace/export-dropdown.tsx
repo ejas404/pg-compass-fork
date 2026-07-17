@@ -1,15 +1,15 @@
-import { useState } from 'react';
-import { Download, FileDown, FileSpreadsheet, Database } from 'lucide-react';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import { useState } from "react";
+import { Download, FileDown, FileSpreadsheet, Database } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { ExportDialog } from '@/components/workspace/export-dialog';
+} from "@/components/ui/dropdown-menu";
+import { ExportDialog } from "@/components/workspace/export-dialog";
 
 interface ExportDropdownProps {
   connectionId: string;
@@ -21,7 +21,7 @@ interface ExportDropdownProps {
   whereClause?: string;
   /** Whether query-based export is available (query tab has results). */
   hasQueryResults?: boolean;
-  /** Use a thinner button (h-7 instead of h-8). */
+  /** Keep the compact 32px toolbar height. */
   thin?: boolean;
 }
 
@@ -32,24 +32,25 @@ export function ExportDropdown({
   sql,
   whereClause,
   hasQueryResults,
-  thin,
 }: Readonly<ExportDropdownProps>) {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [exportMode, setExportMode] = useState<'all' | 'query'>('all');
+  const [exportMode, setExportMode] = useState<"all" | "query">("all");
 
   // Build the effective SQL for a query/filter export
-  const effectiveSql = sql ?? (whereClause
-    ? `SELECT * FROM "${schema}"."${table}" WHERE ${whereClause}`
-    : undefined);
+  const effectiveSql =
+    sql ??
+    (whereClause
+      ? `SELECT * FROM "${schema}"."${table}" WHERE ${whereClause}`
+      : undefined);
   const canExportQuery = hasQueryResults ?? !!whereClause;
 
   function handleExportAll() {
-    setExportMode('all');
+    setExportMode("all");
     setDialogOpen(true);
   }
 
   function handleExportQuery() {
-    setExportMode('query');
+    setExportMode("query");
     setDialogOpen(true);
   }
 
@@ -57,13 +58,14 @@ export function ExportDropdown({
     try {
       // 1. Pick save location first
       const dialogResult = await globalThis.window.tableDataApi.showSaveDialog({
-        title: 'SQL Dump',
+        purpose: "sql-dump",
+        title: "SQL Dump",
         defaultPath: `${table}.sql`,
-        filters: [{ name: 'SQL Files', extensions: ['sql'] }],
+        filters: [{ name: "SQL Files", extensions: ["sql"] }],
       });
 
       if (!dialogResult.success) {
-        toast.error('SQL dump failed', { description: dialogResult.error });
+        toast.error("SQL dump failed", { description: dialogResult.error });
         return;
       }
       if (!dialogResult.data) return; // user cancelled
@@ -71,10 +73,14 @@ export function ExportDropdown({
       const filePath = dialogResult.data;
 
       // 2. File chosen — now show progress toast and start dump
-      const toastId = toast.loading('SQL dump… 0 rows');
-      const cleanup = globalThis.window.tableDataApi.onExportProgress((rowCount) => {
-        toast.loading(`SQL dump… ${rowCount.toLocaleString()} rows`, { id: toastId });
-      });
+      const toastId = toast.loading("SQL dump… 0 rows");
+      const cleanup = globalThis.window.tableDataApi.onExportProgress(
+        (rowCount) => {
+          toast.loading(`SQL dump… ${rowCount.toLocaleString()} rows`, {
+            id: toastId,
+          });
+        },
+      );
 
       try {
         const result = await globalThis.window.tableDataApi.sqlDump({
@@ -85,19 +91,22 @@ export function ExportDropdown({
         });
 
         if (!result.success || !result.data) {
-          toast.error('SQL dump failed', { description: result.error ?? 'Unknown error', id: toastId });
+          toast.error("SQL dump failed", {
+            description: result.error ?? "Unknown error",
+            id: toastId,
+          });
           return;
         }
 
         toast.success(
-          `Dumped ${result.data.rowCount.toLocaleString()} row${result.data.rowCount === 1 ? '' : 's'}`,
+          `Dumped ${result.data.rowCount.toLocaleString()} row${result.data.rowCount === 1 ? "" : "s"}`,
           { description: result.data.filePath, id: toastId },
         );
       } finally {
         cleanup();
       }
     } catch (err) {
-      toast.error('SQL dump failed', { description: (err as Error).message });
+      toast.error("SQL dump failed", { description: (err as Error).message });
     }
   }
 
@@ -109,7 +118,7 @@ export function ExportDropdown({
             type="button"
             variant="outline"
             size="sm"
-            className={`${thin ? 'h-7' : 'h-8'} gap-1.5 text-xs`}
+            className="h-8 gap-1.5 text-xs"
           >
             <Download className="size-3.5" />
             Export
@@ -138,9 +147,9 @@ export function ExportDropdown({
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         connectionId={connectionId}
-        schema={exportMode === 'all' ? schema : undefined}
-        table={exportMode === 'all' ? table : undefined}
-        sql={exportMode === 'query' ? effectiveSql : undefined}
+        schema={exportMode === "all" ? schema : undefined}
+        table={exportMode === "all" ? table : undefined}
+        sql={exportMode === "query" ? effectiveSql : undefined}
       />
     </>
   );

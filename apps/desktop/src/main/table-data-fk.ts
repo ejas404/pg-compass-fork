@@ -196,9 +196,7 @@ export async function searchForeignKey(
       ? `${valueIdent} AS value, ${labelIdent} AS label`
       : `${valueIdent} AS value, NULL::text AS label`;
 
-    const orderBy = labelIdent
-      ? `${labelIdent}, ${valueIdent}`
-      : valueIdent;
+    const orderBy = labelIdent ? `${labelIdent}, ${valueIdent}` : valueIdent;
 
     let sql: string;
     let values: unknown[];

@@ -8,12 +8,12 @@ import {
   SIDEBAR_MIN_WIDTH,
 } from "@/hooks/use-sidebar-resize";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
-import { ConnectionFormDialog } from "@/components/connections/ConnectionFormDialog";
-import { SettingsDialog } from "@/components/settings/SettingsDialog";
+import { ConnectionFormDialog } from "@/components/connections/connection-form-dialog";
+import { SettingsDialog } from "@/components/settings/settings-dialog";
 import { matchesShortcut } from "@/shared/constants/shortcuts";
-import { SidebarHeader } from "./SidebarHeader";
-import { SidebarContent } from "./SidebarContent";
-import { SidebarFooter } from "./SidebarFooter";
+import { SidebarHeader } from "./sidebar-header";
+import { SidebarContent } from "./sidebar-content";
+import { SidebarFooter } from "./sidebar-footer";
 
 export function Sidebar() {
   const [search, setSearch] = useState("");
@@ -75,7 +75,7 @@ export function Sidebar() {
               type="button"
               variant="ghost"
               size="icon-sm"
-              className="absolute right-4 top-1/2 size-6 -translate-y-1/2"
+              className="absolute right-4 top-1/2 size-8 -translate-y-1/2"
               aria-label="Clear sidebar search"
               onClick={() => {
                 setSearch("");

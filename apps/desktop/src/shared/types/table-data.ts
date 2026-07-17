@@ -224,6 +224,7 @@ export interface SqlDumpParams {
 
 /** Options for the native save-file dialog. */
 export interface SaveDialogOptions {
+  purpose: "export" | "sql-dump";
   title?: string;
   defaultPath?: string;
   filters?: { name: string; extensions: string[] }[];
@@ -346,24 +347,3 @@ export interface SearchForeignKeyResult {
   /** True when more rows exist past `limit` (caller can prompt for refinement). */
   hasMore: boolean;
 }
-
-/** IPC channel names for table data operations. */
-export const TableDataChannels = {
-  GET_ROWS: "table-data:get-rows",
-  GET_STRUCTURE: "table-data:get-structure",
-  GET_INDEXES: "table-data:get-indexes",
-  GET_CONSTRAINTS: "table-data:get-constraints",
-  GET_TRIGGERS: "table-data:get-triggers",
-  GET_TYPES: "table-data:get-types",
-  TOGGLE_TRIGGER: "table-data:toggle-trigger",
-  EXECUTE_QUERY: "table-data:execute-query",
-  CANCEL_QUERY: "table-data:cancel-query",
-  SHOW_SAVE_DIALOG: "table-data:show-save-dialog",
-  EXPORT_DATA: "table-data:export-data",
-  EXPORT_PROGRESS: "table-data:export-progress",
-  SQL_DUMP: "table-data:sql-dump",
-  UPDATE_CELL: "table-data:update-cell",
-  UPDATE_ROW: "table-data:update-row",
-  DELETE_ROWS: "table-data:delete-rows",
-  SEARCH_FK: "table-data:search-fk",
-} as const;

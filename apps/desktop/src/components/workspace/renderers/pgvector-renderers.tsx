@@ -9,16 +9,16 @@ import { useState } from "react";
 function parseVector(value: unknown): number[] | null {
   if (Array.isArray(value)) return value as number[];
 
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const trimmed = value.trim();
 
-    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
       const inner = trimmed.slice(1, -1);
 
       return inner
-        .split(',')
-        .map(v => Number(v.trim()))
-        .filter(v => !Number.isNaN(v));
+        .split(",")
+        .map((v) => Number(v.trim()))
+        .filter((v) => !Number.isNaN(v));
     }
   }
 
@@ -28,16 +28,19 @@ function parseVector(value: unknown): number[] | null {
 function ExpandableVector({ vector }: { vector: number[] }) {
   const [expanded, setExpanded] = useState(false);
 
-  const preview = vector.slice(0, 3).map(v => v.toFixed(3)).join(', ');
+  const preview = vector
+    .slice(0, 3)
+    .map((v) => v.toFixed(3))
+    .join(", ");
   const dims = vector.length;
 
   if (!expanded) {
     return (
       <span className="font-mono text-xs">
-        [{preview}, …{' '}
+        [{preview}, …{" "}
         <button
           onClick={() => setExpanded(true)}
-          className="text-blue-500 hover:underline"
+          className="text-primary hover:underline"
         >
           {dims} dimensions
         </button>
@@ -53,7 +56,7 @@ function ExpandableVector({ vector }: { vector: number[] }) {
       </span>
 
       <pre className="font-mono text-xs whitespace-pre-wrap break-all max-h-48 overflow-auto">
-        [{vector.join(', ')}]
+        [{vector.join(", ")}]
       </pre>
     </div>
   );
@@ -63,10 +66,14 @@ const vectorRenderer: TypeRenderer = {
   renderCell(value: unknown) {
     const vec = parseVector(value);
     if (vec) {
-      const preview = vec.slice(0, 4).map(v => v.toFixed(3)).join(', ');
+      const preview = vec
+        .slice(0, 4)
+        .map((v) => v.toFixed(3))
+        .join(", ");
       return (
         <span className="font-mono text-xs">
-          [{preview}{vec.length > 4 ? `…${vec.length} dims` : ''}]
+          [{preview}
+          {vec.length > 4 ? `…${vec.length} dims` : ""}]
         </span>
       );
     }
@@ -84,7 +91,6 @@ const vectorRenderer: TypeRenderer = {
   },
 
   renderCard(value: unknown) {
-
     const vec = parseVector(value);
     if (vec) {
       return <ExpandableVector vector={vec} />;
@@ -98,7 +104,6 @@ const vectorRenderer: TypeRenderer = {
   },
 };
 
-
 export function registerPgVectorRenderers(): void {
-    typeRegistry.register('vector', vectorRenderer);
+  typeRegistry.register("vector", vectorRenderer);
 }

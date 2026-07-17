@@ -1,11 +1,11 @@
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import type { ConnectionFields } from '@/shared/types/connection';
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import type { ConnectionFields } from "@/shared/types/connection";
 
 interface ConnectionBasicFieldsProps {
-  mode: 'uri' | 'fields';
-  onModeChange: (mode: 'uri' | 'fields') => void;
+  mode: "uri" | "fields";
+  onModeChange: (mode: "uri" | "fields") => void;
   uri: string;
   onUriChange: (uri: string) => void;
   fields: ConnectionFields;
@@ -29,24 +29,24 @@ export function ConnectionBasicFields({
         <div className="flex gap-2">
           <Button
             type="button"
-            variant={mode === 'uri' ? 'default' : 'outline'}
+            variant={mode === "uri" ? "default" : "outline"}
             size="sm"
-            onClick={() => onModeChange('uri')}
+            onClick={() => onModeChange("uri")}
           >
             URI
           </Button>
           <Button
             type="button"
-            variant={mode === 'fields' ? 'default' : 'outline'}
+            variant={mode === "fields" ? "default" : "outline"}
             size="sm"
-            onClick={() => onModeChange('fields')}
+            onClick={() => onModeChange("fields")}
           >
             Individual Fields
           </Button>
         </div>
       </div>
 
-      {mode === 'uri' && (
+      {mode === "uri" && (
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="conn-uri">Connection URI</Label>
           <Input
@@ -56,11 +56,13 @@ export function ConnectionBasicFields({
             value={uri}
             onChange={(e) => onUriChange(e.target.value)}
           />
-          {errors.uri && <p className="text-xs text-destructive">{errors.uri}</p>}
+          {errors.uri && (
+            <p className="text-xs text-destructive">{errors.uri}</p>
+          )}
         </div>
       )}
 
-      {mode === 'fields' && (
+      {mode === "fields" && (
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2 flex flex-col gap-1.5">
             <Label htmlFor="conn-host">Host</Label>
@@ -68,9 +70,13 @@ export function ConnectionBasicFields({
               id="conn-host"
               placeholder="localhost"
               value={fields.host}
-              onChange={(e) => onFieldsChange((f) => ({ ...f, host: e.target.value }))}
+              onChange={(e) =>
+                onFieldsChange((f) => ({ ...f, host: e.target.value }))
+              }
             />
-            {errors.host && <p className="text-xs text-destructive">{errors.host}</p>}
+            {errors.host && (
+              <p className="text-xs text-destructive">{errors.host}</p>
+            )}
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="conn-port">Port</Label>
@@ -86,7 +92,9 @@ export function ConnectionBasicFields({
                 }))
               }
             />
-            {errors.port && <p className="text-xs text-destructive">{errors.port}</p>}
+            {errors.port && (
+              <p className="text-xs text-destructive">{errors.port}</p>
+            )}
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="conn-database">Database</Label>
@@ -94,7 +102,9 @@ export function ConnectionBasicFields({
               id="conn-database"
               placeholder="postgres"
               value={fields.database}
-              onChange={(e) => onFieldsChange((f) => ({ ...f, database: e.target.value }))}
+              onChange={(e) =>
+                onFieldsChange((f) => ({ ...f, database: e.target.value }))
+              }
             />
             {errors.database && (
               <p className="text-xs text-destructive">{errors.database}</p>
@@ -106,7 +116,9 @@ export function ConnectionBasicFields({
               id="conn-user"
               placeholder="postgres"
               value={fields.user}
-              onChange={(e) => onFieldsChange((f) => ({ ...f, user: e.target.value }))}
+              onChange={(e) =>
+                onFieldsChange((f) => ({ ...f, user: e.target.value }))
+              }
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -115,7 +127,9 @@ export function ConnectionBasicFields({
               id="conn-password"
               type="password"
               value={fields.password}
-              onChange={(e) => onFieldsChange((f) => ({ ...f, password: e.target.value }))}
+              onChange={(e) =>
+                onFieldsChange((f) => ({ ...f, password: e.target.value }))
+              }
             />
           </div>
         </div>

@@ -165,7 +165,7 @@ export function DeleteDataDialog({
             />
           </div>
 
-          <div className="flex min-w-0 gap-2 rounded-md border border-yellow-500/40 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-700 dark:text-yellow-300">
+          <div className="border-destructive/40 bg-destructive/10 text-destructive flex min-w-0 gap-2 rounded-md border px-3 py-2 text-xs">
             <CircleAlert className="mt-0.5 size-4 shrink-0" />
             <p className="min-w-0">
               Unintended documents may be deleted if new documents are added or
@@ -183,7 +183,7 @@ export function DeleteDataDialog({
                 type="button"
                 variant={previewMode === "table" ? "secondary" : "ghost"}
                 size="icon-sm"
-                className="size-6"
+                className="size-8"
                 onClick={() => setPreviewMode("table")}
                 aria-label="Table preview"
               >
@@ -193,7 +193,7 @@ export function DeleteDataDialog({
                 type="button"
                 variant={previewMode === "json" ? "secondary" : "ghost"}
                 size="icon-sm"
-                className="size-6"
+                className="size-8"
                 onClick={() => setPreviewMode("json")}
                 aria-label="JSON preview"
               >

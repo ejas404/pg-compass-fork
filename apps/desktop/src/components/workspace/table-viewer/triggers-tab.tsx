@@ -51,26 +51,30 @@ export function TriggersTab({
 
   const fetch = useCallback(async () => {
     setLoading(true);
-    const request = await runLatestRequest(() => globalThis.window.tableDataApi.getTriggers({
+    const request = await runLatestRequest(() =>
+      globalThis.window.tableDataApi.getTriggers({
         connectionId,
         schema,
         table,
-    }));
+      }),
+    );
     if (request.status === "stale") return false;
     if (request.status === "error") {
-      toast.error("Failed to load triggers", { description: (request.error as Error).message });
+      toast.error("Failed to load triggers", {
+        description: (request.error as Error).message,
+      });
       setLoading(false);
       return false;
     }
     const result = request.value;
-      if (!result.success || !result.data) {
-        toast.error("Failed to load triggers", { description: result.error });
-        setLoading(false);
-        return false;
-      }
-      setTriggers(result.data);
+    if (!result.success || !result.data) {
+      toast.error("Failed to load triggers", { description: result.error });
       setLoading(false);
-      return true;
+      return false;
+    }
+    setTriggers(result.data);
+    setLoading(false);
+    return true;
   }, [connectionId, runLatestRequest, schema, table]);
 
   useEffect(

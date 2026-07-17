@@ -1,12 +1,15 @@
-import { app, BrowserWindow, Menu, shell } from "electron";
+import { app, BrowserWindow, Menu } from "electron";
 import {
   BUG_REPORT_URL,
   FEATURE_REQUEST_URL,
   GITHUB_REPO_URL,
-  HelpChannels,
 } from "../shared/constants/help";
-import { WorkspaceChannels } from "../shared/constants/workspace";
+import {
+  HelpChannels,
+  WorkspaceChannels,
+} from "../shared/constants/ipc-channels";
 import { getShortcut } from "../shared/constants/shortcuts";
+import { openAllowedExternalUrl } from "./window-security";
 
 function sendToFocusedWindow(channel: string) {
   const win = BrowserWindow.getFocusedWindow();
@@ -98,15 +101,15 @@ export function buildAppMenu(): Menu {
         { type: "separator" },
         {
           label: "View Source on GitHub",
-          click: () => void shell.openExternal(GITHUB_REPO_URL),
+          click: () => void openAllowedExternalUrl(GITHUB_REPO_URL),
         },
         {
           label: "Suggest a Feature",
-          click: () => void shell.openExternal(FEATURE_REQUEST_URL),
+          click: () => void openAllowedExternalUrl(FEATURE_REQUEST_URL),
         },
         {
           label: "Report a Bug",
-          click: () => void shell.openExternal(BUG_REPORT_URL),
+          click: () => void openAllowedExternalUrl(BUG_REPORT_URL),
         },
         { type: "separator" },
         {

@@ -1,4 +1,4 @@
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -6,9 +6,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
-import { GITHUB_REPO_URL } from '@/shared/constants/help';
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import { GITHUB_REPO_URL } from "@/shared/constants/help";
 
 interface AboutDialogProps {
   open: boolean;
@@ -16,11 +16,14 @@ interface AboutDialogProps {
 }
 
 const APP_DESCRIPTION =
-  'A lightweight, fast, and intuitive database viewer for PostgreSQL — inspired by MongoDB Compass.';
+  "A lightweight, fast, and intuitive database viewer for PostgreSQL — inspired by MongoDB Compass.";
 
-const WEBSITE_URL = 'https://github.com/waterrmalann/pg-compass';
+const WEBSITE_URL = "https://github.com/waterrmalann/pg-compass";
 
-export function AboutDialog({ open, onOpenChange }: Readonly<AboutDialogProps>) {
+export function AboutDialog({
+  open,
+  onOpenChange,
+}: Readonly<AboutDialogProps>) {
   const appVersion = __APP_VERSION__;
 
   return (

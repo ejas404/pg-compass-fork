@@ -110,7 +110,7 @@ export function CardDataView({
                         label={`Copy column name ${col.name}`}
                         text={col.name}
                         successMessage="Column name copied"
-                        className="size-6 shrink-0 opacity-0 group-hover/label:opacity-100 focus-visible:opacity-100"
+                        className="size-8 shrink-0 opacity-0 group-hover/label:opacity-100 focus-visible:opacity-100"
                       />
                     </div>
                     <div className="group/value flex min-w-0 flex-1 items-start gap-1 font-mono text-xs">
@@ -138,7 +138,7 @@ export function CardDataView({
                         label={`Copy ${col.name} value`}
                         text={serializeCellValue(row[col.name])}
                         successMessage="Cell value copied"
-                        className="size-6 shrink-0 opacity-0 group-hover/value:opacity-100 focus-visible:opacity-100"
+                        className="size-8 shrink-0 opacity-0 group-hover/value:opacity-100 focus-visible:opacity-100"
                       />
                     </div>
                   </div>

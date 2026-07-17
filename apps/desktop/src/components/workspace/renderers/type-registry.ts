@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode } from "react";
 
 /**
  * A renderer for a specific PostgreSQL data type.
@@ -50,12 +50,12 @@ class TypeRendererRegistry {
 const defaultFallback: TypeRenderer = {
   renderCell(value: unknown) {
     if (value === null || value === undefined) return null;
-    if (typeof value === 'object') return JSON.stringify(value);
+    if (typeof value === "object") return JSON.stringify(value);
     return String(value as string | number | boolean);
   },
   renderCard(value: unknown) {
     if (value === null || value === undefined) return null;
-    if (typeof value === 'object') return JSON.stringify(value);
+    if (typeof value === "object") return JSON.stringify(value);
     return String(value as string | number | boolean);
   },
 };

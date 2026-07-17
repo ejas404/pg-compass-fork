@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
-import { Sidebar } from "@/components/sidebar/Sidebar";
-import { Workspace } from "@/components/workspace/Workspace";
+import { Sidebar } from "@/components/sidebar/sidebar";
+import { Workspace } from "@/components/workspace/workspace";
 import { ConnectionProvider } from "@/hooks/use-connections";
 import { SettingsProvider } from "@/hooks/use-settings";
 import { WorkspaceProvider } from "@/hooks/use-workspace";
 import { Toaster } from "@/components/ui/sonner";
-import { LicenseDialog } from "@/components/help/LicenseDialog";
-import { AboutDialog } from "@/components/help/AboutDialog";
-import { KeyboardShortcutsDialog } from "@/components/help/KeyboardShortcutsDialog";
+import { LicenseDialog } from "@/components/help/license-dialog";
+import { AboutDialog } from "@/components/help/about-dialog";
+import { KeyboardShortcutsDialog } from "@/components/help/keyboard-shortcuts-dialog";
 
 export function App() {
   const [licenseOpen, setLicenseOpen] = useState(false);

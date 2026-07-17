@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   SqlEditor,
   type CompletionSchema,
-} from "@/components/sql-editor/SqlEditor";
+} from "@/components/sql-editor/sql-editor";
 import { DataPagination } from "@/components/workspace/table-viewer/data-pagination";
 import { TableDataView } from "@/components/workspace/table-viewer/table-data-view";
 import { CardDataView } from "@/components/workspace/table-viewer/card-data-view";
@@ -147,15 +147,15 @@ export function QueryTab({
       }
       const result = request.value;
       if (!result.success || !result.data) {
-          const message = result.error ?? "Unknown error";
-          setError(message);
-          if (message === "Query cancelled.") {
-            toast.info("Query cancelled", {
-              description: "The last successful result is still available.",
-            });
-          } else {
-            toast.error("Query failed", { description: message });
-          }
+        const message = result.error ?? "Unknown error";
+        setError(message);
+        if (message === "Query cancelled.") {
+          toast.info("Query cancelled", {
+            description: "The last successful result is still available.",
+          });
+        } else {
+          toast.error("Query failed", { description: message });
+        }
         if (activeQueryIdRef.current === queryId) {
           activeQueryIdRef.current = null;
           setLoading(false);
@@ -319,7 +319,7 @@ export function QueryTab({
                   type="button"
                   variant={viewMode === "table" ? "secondary" : "ghost"}
                   size="icon-sm"
-                  className="size-6"
+                  className="size-8"
                   onClick={() => setViewMode("table")}
                   aria-label="Table view"
                 >
@@ -329,7 +329,7 @@ export function QueryTab({
                   type="button"
                   variant={viewMode === "card" ? "secondary" : "ghost"}
                   size="icon-sm"
-                  className="size-6"
+                  className="size-8"
                   onClick={() => setViewMode("card")}
                   aria-label="Card view"
                 >
