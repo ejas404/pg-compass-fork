@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ViewerShell } from "@/components/workspace/viewer-shell";
 import { DataTab } from "@/components/workspace/table-viewer/data-tab";
@@ -10,20 +11,46 @@ import { TypesTab } from "@/components/workspace/table-viewer/types-tab";
 import { QueryTab } from "@/components/workspace/table-viewer/query-tab";
 import { useWorkspace } from "@/hooks/use-workspace";
 import type { TableListViewerPath } from "@/shared/types/workspace";
+import { DEFAULT_RELATION_SESSION } from "@/shared/types/workspace";
 
 interface TableDetailsViewerProps {
   path: TableListViewerPath;
+  tabId: string;
 }
 
 export function TableDetailsViewer({
   path,
+  tabId,
 }: Readonly<TableDetailsViewerProps>) {
-  const { refreshSchemaTree, navigateToView } = useWorkspace();
-  const [activeTab, setActiveTab] = useState("data");
+  const {
+    refreshSchemaTreeWithStatus,
+    navigateToView,
+    relationSessions,
+    updateRelationSession,
+  } = useWorkspace();
+  const session = relationSessions[tabId] ?? DEFAULT_RELATION_SESSION;
+  const activeTab = session.activeSubTab;
+  const [refreshSignal, setRefreshSignal] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
+  const metadataRefreshOkRef = useRef(true);
 
-  function handleRefresh() {
-    refreshSchemaTree(path.connectionId, true).catch(() => undefined);
+  async function handleRefresh() {
+    setRefreshing(true);
+    const result = await refreshSchemaTreeWithStatus(path.connectionId, true);
+    metadataRefreshOkRef.current = result.ok;
+    setRefreshSignal((current) => current + 1);
   }
+
+  const handleRefreshComplete = useCallback((success: boolean) => {
+    setRefreshing(false);
+    if (success && metadataRefreshOkRef.current) {
+      setLastRefreshedAt(new Date());
+      toast.success("Table view refreshed");
+    }
+  }, []);
+
+  const signalFor = (tab: string) => (activeTab === tab ? refreshSignal : 0);
 
   return (
     <ViewerShell
@@ -61,10 +88,17 @@ export function TableDetailsViewer({
         navigateToView(view).catch(() => undefined);
       }}
       onRefresh={handleRefresh}
+      refreshing={refreshing}
+      lastRefreshedAt={lastRefreshedAt}
+      refreshLabel={`Refresh ${activeTab} and table metadata`}
     >
       <Tabs
         value={activeTab}
-        onValueChange={setActiveTab}
+        onValueChange={(value) =>
+          updateRelationSession(tabId, {
+            activeSubTab: value as typeof session.activeSubTab,
+          })
+        }
         className="flex h-full min-h-0 flex-col"
       >
         <TabsList variant="line" className="h-8 shrink-0">
@@ -97,6 +131,10 @@ export function TableDetailsViewer({
             schema={path.schemaName}
             table={path.tableName}
             relationType="table"
+            session={session}
+            onSessionChange={(patch) => updateRelationSession(tabId, patch)}
+            refreshSignal={signalFor("data")}
+            onRefreshComplete={handleRefreshComplete}
           />
         </TabsContent>
 
@@ -105,6 +143,8 @@ export function TableDetailsViewer({
             connectionId={path.connectionId}
             schema={path.schemaName}
             table={path.tableName}
+            refreshSignal={signalFor("structure")}
+            onRefreshComplete={handleRefreshComplete}
           />
         </TabsContent>
 
@@ -113,6 +153,8 @@ export function TableDetailsViewer({
             connectionId={path.connectionId}
             schema={path.schemaName}
             table={path.tableName}
+            refreshSignal={signalFor("indexes")}
+            onRefreshComplete={handleRefreshComplete}
           />
         </TabsContent>
 
@@ -121,6 +163,8 @@ export function TableDetailsViewer({
             connectionId={path.connectionId}
             schema={path.schemaName}
             table={path.tableName}
+            refreshSignal={signalFor("constraints")}
+            onRefreshComplete={handleRefreshComplete}
           />
         </TabsContent>
 
@@ -129,6 +173,8 @@ export function TableDetailsViewer({
             connectionId={path.connectionId}
             schema={path.schemaName}
             table={path.tableName}
+            refreshSignal={signalFor("triggers")}
+            onRefreshComplete={handleRefreshComplete}
           />
         </TabsContent>
 
@@ -137,6 +183,8 @@ export function TableDetailsViewer({
             connectionId={path.connectionId}
             schema={path.schemaName}
             table={path.tableName}
+            refreshSignal={signalFor("types")}
+            onRefreshComplete={handleRefreshComplete}
           />
         </TabsContent>
 
@@ -145,6 +193,8 @@ export function TableDetailsViewer({
             connectionId={path.connectionId}
             schema={path.schemaName}
             table={path.tableName}
+            refreshSignal={signalFor("query")}
+            onRefreshComplete={handleRefreshComplete}
           />
         </TabsContent>
       </Tabs>

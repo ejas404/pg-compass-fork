@@ -69,6 +69,12 @@ test("explores, queries, exports, and updates settings in the real Electron app"
     page.getByRole("button", { name: "Open E2E Database" }),
   ).toBeVisible();
 
+  const sidebarSearch = page.getByRole("textbox", { name: "Search sidebar" });
+  await sidebarSearch.fill("users");
+  await expect(page.getByRole("button", { name: "Table users" })).toBeVisible();
+  await sidebarSearch.press("Escape");
+  await expect(sidebarSearch).toHaveValue("");
+
   await page.getByRole("button", { name: "Open E2E Database" }).hover();
   await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("menuitem", { name: "Favourite" }).click();
@@ -80,6 +86,17 @@ test("explores, queries, exports, and updates settings in the real Electron app"
 
   await page.getByRole("row", { name: /users/i }).click();
   await expect(page.getByRole("tab", { name: "Query" })).toBeVisible();
+
+  await page
+    .getByRole("button", { name: /refresh data and table metadata/i })
+    .click();
+  await expect(page.getByText(/Updated \d/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Card view" }).click();
+  await expect(page.getByText("Document 1")).toBeVisible();
+  await page.getByRole("tab", { name: "Structure" }).click();
+  await page.getByRole("tab", { name: "Data" }).click();
+  await expect(page.getByText("Document 1")).toBeVisible();
 
   await page.getByRole("tab", { name: "Types" }).click();
   await expect(page.getByRole("row", { name: /user_role/i })).toBeVisible();
@@ -105,6 +122,17 @@ test("explores, queries, exports, and updates settings in the real Electron app"
   await page.getByRole("button", { name: "Run Query" }).click();
   await expect(page.getByText(/rows returned/)).toBeVisible();
 
+  const queryEditor = page.locator("[data-query-editor] .cm-content");
+  await queryEditor.click();
+  await page.keyboard.press(
+    process.platform === "darwin" ? "Meta+A" : "Control+A",
+  );
+  await page.keyboard.type("SELECT pg_sleep(10)");
+  await page.getByRole("button", { name: "Run Query" }).click();
+  await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByText("Query cancelled.")).toBeVisible();
+
   await page.getByRole("button", { name: "Export" }).click();
   await page.getByRole("menuitem", { name: "Export selected query" }).click();
   await page.getByRole("button", { name: "Export" }).click();
@@ -117,6 +145,11 @@ test("explores, queries, exports, and updates settings in the real Electron app"
   await page.getByRole("button", { name: "Appearance" }).click();
   await page.getByRole("tab", { name: "Light" }).click();
   await expect(page.locator("html")).not.toHaveClass(/dark/);
+  await page.getByRole("button", { name: "General" }).click();
+  await page.getByRole("button", { name: "View" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Keyboard Shortcuts" }),
+  ).toBeVisible();
 
   await app.close();
 });

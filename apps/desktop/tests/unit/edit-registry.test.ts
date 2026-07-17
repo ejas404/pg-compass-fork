@@ -225,17 +225,12 @@ describe("jsonb editor", () => {
     },
   );
 
-  it.each([
-    "",
-    "{a:1}",
-    "{'a':1}",
-    "[1,2,]",
-    "hello",
-    "undefined",
-    "NaN",
-  ])("rejects %s", (raw) => {
-    expect(ed().validate(raw).ok).toBe(false);
-  });
+  it.each(["", "{a:1}", "{'a':1}", "[1,2,]", "hello", "undefined", "NaN"])(
+    "rejects %s",
+    (raw) => {
+      expect(ed().validate(raw).ok).toBe(false);
+    },
+  );
 
   it("rejects strings containing NUL in jsonb (cannot be stored)", () => {
     const r = ed().validate('"with\u0000null"');
@@ -261,12 +256,9 @@ describe("_int4 array editor", () => {
     expect(ed().validate("[]").ok).toBe(true);
   });
 
-  it.each(["[1,\"x\"]", "[1.5]", "1,2,3", "{1,2,3}", ""])(
-    "rejects %s",
-    (raw) => {
-      expect(ed().validate(raw).ok).toBe(false);
-    },
-  );
+  it.each(['[1,"x"]', "[1.5]", "1,2,3", "{1,2,3}", ""])("rejects %s", (raw) => {
+    expect(ed().validate(raw).ok).toBe(false);
+  });
 });
 
 describe("_text array editor", () => {
@@ -279,7 +271,29 @@ describe("_text array editor", () => {
   });
 
   it("rejects an array containing non-strings", () => {
-    expect(ed().validate("[1,\"b\"]").ok).toBe(false);
+    expect(ed().validate('[1,"b"]').ok).toBe(false);
+  });
+});
+
+describe("array cast preservation", () => {
+  it.each([
+    ["_int2", "[1,2]"],
+    ["_int4", "[1,2]"],
+    ["_int8", '["9223372036854775807"]'],
+    ["_text", '["a"]'],
+    ["_varchar", '["a"]'],
+  ])("returns the source cast for %s", (pgType, raw) => {
+    const result = editRegistry.get(pgType).validate(raw);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.result.pgCast).toBe(pgType);
+  });
+});
+
+describe("timetz editor", () => {
+  it("accepts an explicit offset and preserves the timetz cast", () => {
+    const result = editRegistry.get("timetz").validate("12:30:00+05:30");
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.result.pgCast).toBe("timetz");
   });
 });
 

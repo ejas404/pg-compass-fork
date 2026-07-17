@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   ChevronRight,
   Copy,
@@ -13,34 +13,51 @@ import {
   Star,
   Table2,
   Trash2,
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+} from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
-import { useConnections } from '@/hooks/use-connections';
-import { useWorkspace } from '@/hooks/use-workspace';
-import type { ConnectionConfig, DatabaseSchema } from '@/shared/types/connection';
+} from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
+import { useConnections } from "@/hooks/use-connections";
+import { useWorkspace } from "@/hooks/use-workspace";
+import type {
+  ConnectionConfig,
+  DatabaseSchema,
+} from "@/shared/types/connection";
 
 interface ConnectionItemProps {
   connection: ConnectionConfig;
   onEdit: (connection: ConnectionConfig) => void;
+  connected: boolean;
+  onConnectedChange: (connected: boolean) => void;
+  searchSchemas?: DatabaseSchema[];
+  searchActive?: boolean;
 }
 
-export function buildConnectionString(connection: ConnectionConfig): string | null {
-  if (connection.mode === 'uri') {
+export function buildConnectionString(
+  connection: ConnectionConfig,
+): string | null {
+  if (connection.mode === "uri") {
     return connection.uri?.trim() || null;
   }
 
@@ -49,7 +66,7 @@ export function buildConnectionString(connection: ConnectionConfig): string | nu
     return null;
   }
 
-  const url = new URL('postgresql://localhost');
+  const url = new URL("postgresql://localhost");
   url.hostname = fields.host;
   url.port = String(fields.port);
   url.pathname = `/${encodeURIComponent(fields.database)}`;
@@ -88,12 +105,16 @@ function SchemaTreeNode({
           onOpenSchema(schema.name);
           onToggleSchema(schema.name);
         }}
-        aria-label={schemaExpanded ? `Collapse schema ${schema.name}` : `Expand schema ${schema.name}`}
+        aria-label={
+          schemaExpanded
+            ? `Collapse schema ${schema.name}`
+            : `Expand schema ${schema.name}`
+        }
       >
         <ChevronRight
           className={cn(
-            'size-3 text-muted-foreground transition-transform duration-200',
-            schemaExpanded && 'rotate-90',
+            "size-3 text-muted-foreground transition-transform duration-200",
+            schemaExpanded && "rotate-90",
           )}
         />
         <Folder className="size-3 shrink-0 text-muted-foreground" />
@@ -119,7 +140,9 @@ function SchemaTreeNode({
               aria-label={`Table ${tableName}`}
             >
               <Table2 className="size-3 shrink-0" />
-              <span className="min-w-0 flex-1 truncate" title={tableName}>{tableName}</span>
+              <span className="min-w-0 flex-1 truncate" title={tableName}>
+                {tableName}
+              </span>
             </button>
           ))}
           {schema.views.map((view) => (
@@ -131,7 +154,9 @@ function SchemaTreeNode({
               aria-label={`View ${view.name}`}
             >
               <Eye className="size-3 shrink-0" />
-              <span className="min-w-0 flex-1 truncate" title={view.name}>{view.name}</span>
+              <span className="min-w-0 flex-1 truncate" title={view.name}>
+                {view.name}
+              </span>
             </button>
           ))}
         </div>
@@ -140,19 +165,33 @@ function SchemaTreeNode({
   );
 }
 
-export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemProps>) {
+export function ConnectionItem({
+  connection,
+  onEdit,
+  connected,
+  onConnectedChange,
+  searchSchemas,
+  searchActive = false,
+}: Readonly<ConnectionItemProps>) {
   const { remove, toggleFavourite, testConnection } = useConnections();
   const {
     schemaCache,
     refreshSchemaTree,
+    refreshSchemaTreeWithStatus,
     openTab,
+    closeConnectionTabs,
   } = useWorkspace();
   const [connecting, setConnecting] = useState(false);
-  const [connected, setConnected] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [schemasLoading, setSchemasLoading] = useState(false);
-  const [expandedSchemas, setExpandedSchemas] = useState<Record<string, boolean>>({});
-  const schemas: DatabaseSchema[] = schemaCache[connection.id] ?? [];
+  const [expandedSchemas, setExpandedSchemas] = useState<
+    Record<string, boolean>
+  >({});
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const schemas: DatabaseSchema[] = searchActive
+    ? (searchSchemas ?? [])
+    : (schemaCache[connection.id] ?? []);
 
   async function handleConnect(): Promise<boolean> {
     setConnecting(true);
@@ -161,7 +200,7 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
     setConnecting(false);
 
     if (result.ok) {
-      setConnected(true);
+      onConnectedChange(true);
       toast.success(`Connected to "${connection.label}"`);
       return true;
     } else {
@@ -204,7 +243,7 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
     const connectionLabel = getDatabaseName();
     openTab(
       {
-        type: 'schema',
+        type: "schema",
         path: {
           connectionId: connection.id,
           connectionLabel,
@@ -219,7 +258,7 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
     const connectionLabel = getDatabaseName();
     openTab(
       {
-        type: 'table-details',
+        type: "table-details",
         path: {
           connectionId: connection.id,
           connectionLabel,
@@ -235,7 +274,7 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
     const connectionLabel = getDatabaseName();
     openTab(
       {
-        type: 'view-details',
+        type: "view-details",
         path: {
           connectionId: connection.id,
           connectionLabel,
@@ -270,7 +309,7 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
       <SchemaTreeNode
         key={schema.name}
         schema={schema}
-        schemaExpanded={expandedSchemas[schema.name] ?? false}
+        schemaExpanded={searchActive || (expandedSchemas[schema.name] ?? false)}
         onToggleSchema={toggleSchema}
         onOpenSchema={handleOpenSchemaViewer}
         onOpenTable={handleOpenTableViewer}
@@ -279,11 +318,18 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
     ));
   }
 
-  async function handleDelete() {
+  async function handleConfirmDelete() {
+    setDeleting(true);
     const ok = await remove(connection.id);
     if (ok) {
+      onConnectedChange(false);
+      closeConnectionTabs(connection.id);
       toast.success(`Deleted "${connection.label}"`);
+      setDeleteOpen(false);
+    } else {
+      toast.error(`Failed to delete "${connection.label}"`);
     }
+    setDeleting(false);
   }
 
   async function handleCopyConnectionString() {
@@ -294,15 +340,19 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
     }
 
     try {
-      await navigator.clipboard.writeText(connectionString);
-      toast.success('Connection string copied');
+      const result =
+        await globalThis.window.clipboardApi.writeText(connectionString);
+      if (!result.success) {
+        throw new Error(result.error ?? "Clipboard write failed.");
+      }
+      toast.success("Connection string copied");
     } catch {
-      toast.error('Failed to copy connection string');
+      toast.error("Failed to copy connection string");
     }
   }
 
   async function handleDatabaseClick() {
-    const isConnected = connected || await handleConnect();
+    const isConnected = connected || (await handleConnect());
     if (!isConnected) {
       return;
     }
@@ -319,7 +369,7 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
 
     openTab(
       {
-        type: 'schema-list',
+        type: "schema-list",
         path: {
           connectionId: connection.id,
           connectionLabel: connection.label,
@@ -330,20 +380,24 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
   }
 
   async function handleRefresh() {
-    const isConnected = connected || await handleConnect();
+    const isConnected = connected || (await handleConnect());
     if (!isConnected) {
       return;
     }
 
     setSchemasLoading(true);
-    await refreshSchemaTree(connection.id, true);
+    const result = await refreshSchemaTreeWithStatus(connection.id, true);
     setSchemasLoading(false);
+    if (!result.ok) return;
     setExpanded(true);
     setExpandedSchemas({});
+    toast.success(`Refreshed "${connection.label}"`, {
+      description: "Schema tree and relation counts updated.",
+    });
   }
 
   function handleDisconnect() {
-    setConnected(false);
+    onConnectedChange(false);
     setExpanded(false);
     setExpandedSchemas({});
     toast.info(`Disconnected from "${connection.label}"`);
@@ -352,9 +406,7 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
   return (
     <div className="group/connection flex flex-col">
       {/* Connection row */}
-      <section
-        className="relative flex items-center gap-2 rounded-md pl-2 pr-1 py-1.5 hover:bg-sidebar-accent"
-      >
+      <section className="relative flex items-center gap-2 rounded-md pl-2 pr-1 py-1.5 hover:bg-sidebar-accent">
         {/* Color indicator */}
         {connection.color && (
           <div
@@ -367,21 +419,21 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
         <button
           type="button"
           className={cn(
-            'flex size-4 shrink-0 items-center justify-center',
+            "flex size-4 shrink-0 items-center justify-center",
             connected
-              ? 'cursor-pointer text-muted-foreground hover:text-foreground'
-              : 'invisible',
+              ? "cursor-pointer text-muted-foreground hover:text-foreground"
+              : "invisible",
           )}
           onClick={(event) => {
             event.stopPropagation();
             handleExpand().catch(() => undefined);
           }}
-          aria-label={expanded ? 'Collapse' : 'Expand'}
+          aria-label={expanded ? "Collapse" : "Expand"}
         >
           <ChevronRight
             className={cn(
-              'size-3 transition-transform duration-200',
-              expanded && 'rotate-90',
+              "size-3 transition-transform duration-200",
+              expanded && "rotate-90",
             )}
           />
         </button>
@@ -456,9 +508,11 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
                   <Copy className="mr-2 size-3" />
                   Copy Connection String
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toggleFavourite(connection.id)}>
+                <DropdownMenuItem
+                  onClick={() => toggleFavourite(connection.id)}
+                >
                   <Star className="mr-2 size-3" />
-                  {connection.favourite ? 'Unfavourite' : 'Favourite'}
+                  {connection.favourite ? "Unfavourite" : "Favourite"}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
@@ -466,8 +520,10 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
                   }}
                   disabled={connecting || schemasLoading}
                 >
-                  <RefreshCw className="mr-2 size-3" />
-                  Refresh
+                  <RefreshCw
+                    className={`mr-2 size-3 ${schemasLoading ? "animate-spin" : ""}`}
+                  />
+                  {schemasLoading ? "Refreshing" : "Refresh"}
                 </DropdownMenuItem>
                 {connected && (
                   <DropdownMenuItem onClick={handleDisconnect}>
@@ -478,7 +534,7 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"
-                  onClick={handleDelete}
+                  onClick={() => setDeleteOpen(true)}
                 >
                   <Trash2 className="mr-2 size-3" />
                   Delete
@@ -490,11 +546,45 @@ export function ConnectionItem({ connection, onEdit }: Readonly<ConnectionItemPr
       </section>
 
       {/* Expandable schema/table tree */}
-      {connected && expanded && (
+      {((connected && expanded) || searchActive) && (
         <div className="ml-6 flex min-w-0 flex-col gap-1 py-1 pl-4 pr-2.5">
           {renderSchemaTree()}
         </div>
       )}
+      <Dialog
+        open={deleteOpen}
+        onOpenChange={(open) => !deleting && setDeleteOpen(open)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete saved connection?</DialogTitle>
+            <DialogDescription>
+              Remove &quot;{connection.label}&quot; from PG Compass? This only
+              deletes the local saved configuration. It does not delete or
+              modify the PostgreSQL database.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deleting}
+              onClick={() => setDeleteOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleting}
+              onClick={() => void handleConfirmDelete()}
+            >
+              {deleting ? <Loader2 className="size-4 animate-spin" /> : null}
+              Delete saved connection
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

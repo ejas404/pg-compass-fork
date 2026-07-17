@@ -1,10 +1,15 @@
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { typeRegistry } from '@/components/workspace/renderers/type-registry';
-import { JsonTree } from '@/components/workspace/table-viewer/json-tree';
-import { EditableCell } from '@/components/workspace/table-viewer/editable-cell';
-import { RowEditButton } from '@/components/workspace/table-viewer/row-edit-button';
-import type { ColumnInfo } from '@/shared/types/table-data';
-import type { EditContext } from '@/components/workspace/table-viewer/data-tab';
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { typeRegistry } from "@/components/workspace/renderers/type-registry";
+import { JsonTree } from "@/components/workspace/table-viewer/json-tree";
+import { EditableCell } from "@/components/workspace/table-viewer/editable-cell";
+import { RowEditButton } from "@/components/workspace/table-viewer/row-edit-button";
+import type { ColumnInfo } from "@/shared/types/table-data";
+import type { EditContext } from "@/components/workspace/table-viewer/data-tab";
+import {
+  DataCopyButton,
+  serializeCellValue,
+  serializeRow,
+} from "@/components/workspace/table-viewer/data-copy";
 
 interface CardDataViewProps {
   columns: ColumnInfo[];
@@ -14,15 +19,15 @@ interface CardDataViewProps {
 
 function isStructuredValue(value: unknown): boolean {
   if (value === null || value === undefined) return false;
-  return typeof value === 'object';
+  return typeof value === "object";
 }
 
 function renderCardDisplay(col: ColumnInfo, value: unknown) {
   const isNull = value === null || value === undefined;
   if (isNull) {
-    return typeRegistry.get('__null__').renderCard(value);
+    return typeRegistry.get("__null__").renderCard(value);
   }
-  const isJson = col.dataType === 'json' || col.dataType === 'jsonb';
+  const isJson = col.dataType === "json" || col.dataType === "jsonb";
   const isStructured = isJson || isStructuredValue(value);
   if (isStructured) {
     return <JsonTree value={value} />;
@@ -30,7 +35,10 @@ function renderCardDisplay(col: ColumnInfo, value: unknown) {
   return typeRegistry.get(col.dataType).renderCard(value);
 }
 
-function pkValuesFor(row: Record<string, unknown>, primaryKey: string[] | null): unknown[] {
+function pkValuesFor(
+  row: Record<string, unknown>,
+  primaryKey: string[] | null,
+): unknown[] {
   if (!primaryKey) return [];
   return primaryKey.map((col) => row[col]);
 }
@@ -64,6 +72,11 @@ export function CardDataView({
                   Document {rowIndex + 1}
                 </span>
                 <div className="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                  <DataCopyButton
+                    label={`Copy document ${String(rowIndex + 1)}`}
+                    text={serializeRow(columns, row)}
+                    successMessage="Row copied as JSON"
+                  />
                   <RowEditButton
                     columns={columns}
                     row={row}
@@ -80,26 +93,52 @@ export function CardDataView({
               </div>
               <div className="px-3 py-2">
                 {columns.map((col) => (
-                  <div key={col.name} className="flex gap-2 border-b border-border/30 py-1.5 last:border-b-0">
-                    <div className="flex flex-col w-36 shrink-0 items-start gap-1.5">
-                      <span className="text-xs font-medium text-foreground/80">{col.name}</span>
-                      <span className="text-[10px] text-muted-foreground/50">{col.dataType}</span>
+                  <div
+                    key={col.name}
+                    className="flex gap-2 border-b border-border/30 py-1.5 last:border-b-0"
+                  >
+                    <div className="group/label flex w-36 shrink-0 items-start gap-1">
+                      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                        <span className="text-xs font-medium text-foreground/80">
+                          {col.name}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground/50">
+                          {col.dataType}
+                        </span>
+                      </div>
+                      <DataCopyButton
+                        label={`Copy column name ${col.name}`}
+                        text={col.name}
+                        successMessage="Column name copied"
+                        className="size-6 shrink-0 opacity-0 group-hover/label:opacity-100 focus-visible:opacity-100"
+                      />
                     </div>
-                    <div className="min-w-0 flex-1 font-mono text-xs">
-                      <EditableCell
-                        col={col}
-                        value={row[col.name]}
-                        readOnly={editContext.readOnly}
-                        primaryKey={editContext.primaryKey}
-                        pkValues={pkValues}
-                        schema={editContext.schema}
-                        table={editContext.table}
-                        connectionId={editContext.connectionId}
-                        variant="card"
-                        displayOverride={renderCardDisplay(col, row[col.name])}
-                        onRowUpdated={(updated) =>
-                          editContext.onRowUpdated(rowIndex, updated)
-                        }
+                    <div className="group/value flex min-w-0 flex-1 items-start gap-1 font-mono text-xs">
+                      <div className="min-w-0 flex-1">
+                        <EditableCell
+                          col={col}
+                          value={row[col.name]}
+                          readOnly={editContext.readOnly}
+                          primaryKey={editContext.primaryKey}
+                          pkValues={pkValues}
+                          schema={editContext.schema}
+                          table={editContext.table}
+                          connectionId={editContext.connectionId}
+                          variant="card"
+                          displayOverride={renderCardDisplay(
+                            col,
+                            row[col.name],
+                          )}
+                          onRowUpdated={(updated) =>
+                            editContext.onRowUpdated(rowIndex, updated)
+                          }
+                        />
+                      </div>
+                      <DataCopyButton
+                        label={`Copy ${col.name} value`}
+                        text={serializeCellValue(row[col.name])}
+                        successMessage="Cell value copied"
+                        className="size-6 shrink-0 opacity-0 group-hover/value:opacity-100 focus-visible:opacity-100"
                       />
                     </div>
                   </div>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Loader2,
   LayoutList,
@@ -31,6 +31,7 @@ import { ExportDropdown } from "@/components/workspace/export-dropdown";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { useSettings } from "@/hooks/use-settings";
 import type { ColumnInfo } from "@/shared/types/table-data";
+import type { RelationSessionState } from "@/shared/types/workspace";
 
 type ViewMode = "table" | "card";
 
@@ -77,7 +78,7 @@ function DataContent({
   error: string | null;
   editContext: EditContext;
 }>) {
-  if (error) {
+  if (error && rows.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center">
         <CircleAlert className="size-5 text-destructive" />
@@ -87,12 +88,21 @@ function DataContent({
     );
   }
   return (
-    <DataViewContent
-      viewMode={viewMode}
-      columns={columns}
-      rows={rows}
-      editContext={editContext}
-    />
+    <div className="flex h-full min-h-0 flex-col">
+      {error ? (
+        <div className="shrink-0 border-b border-destructive/30 bg-destructive/10 px-3 py-1.5 text-xs text-destructive">
+          Refresh failed: {error}. Showing the last successful result.
+        </div>
+      ) : null}
+      <div className="min-h-0 flex-1">
+        <DataViewContent
+          viewMode={viewMode}
+          columns={columns}
+          rows={rows}
+          editContext={editContext}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -101,6 +111,10 @@ interface DataTabProps {
   schema: string;
   table: string;
   relationType: "table" | "view";
+  session?: RelationSessionState;
+  onSessionChange?: (patch: Partial<RelationSessionState>) => void;
+  refreshSignal?: number;
+  onRefreshComplete?: (success: boolean) => void;
 }
 
 export function DataTab({
@@ -108,6 +122,10 @@ export function DataTab({
   schema,
   table,
   relationType,
+  session,
+  onSessionChange,
+  refreshSignal = 0,
+  onRefreshComplete,
 }: Readonly<DataTabProps>) {
   const { schemaCache } = useWorkspace();
   const { settings } = useSettings();
@@ -116,13 +134,21 @@ export function DataTab({
   const [primaryKey, setPrimaryKey] = useState<string[] | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
-  const [whereClause, setWhereClause] = useState("");
-  const [pendingWhere, setPendingWhere] = useState("");
+  const [pageSize, setPageSizeState] = useState(session?.dataPageSize ?? 50);
+  const [whereClause, setWhereClauseState] = useState(
+    session?.dataWhereClause ?? "",
+  );
+  const [pendingWhere, setPendingWhere] = useState(
+    session?.dataWhereClause ?? "",
+  );
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [viewMode, setViewModeState] = useState<ViewMode>(
+    session?.dataViewMode ?? "table",
+  );
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
+  const seenRefreshSignal = useRef(refreshSignal);
   const isTable = relationType === "table";
 
   const completionSchema = useMemo<CompletionSchema>(() => {
@@ -134,10 +160,7 @@ export function DataTab({
       if (connId !== connectionId) continue;
       for (const s of dbSchemas) {
         schemas.push(s.name);
-        tables[s.name] = [
-          ...s.tables,
-          ...s.views.map((view) => view.name),
-        ];
+        tables[s.name] = [...s.tables, ...s.views.map((view) => view.name)];
       }
     }
 
@@ -156,8 +179,8 @@ export function DataTab({
   }, [schemaCache, connectionId, schema, table, columns]);
 
   const fetchRows = useCallback(
-    async (p: number, ps: number, where: string) => {
-      setLoading(true);
+    async (p: number, ps: number, where: string, background = false) => {
+      if (!background) setLoading(true);
       setError(null);
       try {
         const result = await globalThis.window.tableDataApi.getRows({
@@ -171,28 +194,66 @@ export function DataTab({
         if (!result.success || !result.data) {
           const msg = result.error ?? "Unknown error";
           setError(msg);
-          setRows([]);
-          setTotalCount(0);
+          if (!background) {
+            setRows([]);
+            setTotalCount(0);
+          }
           toast.error("Failed to load rows", { description: msg });
-          return;
+          return false;
         }
 
         setColumns(result.data.columns);
         setRows(result.data.rows);
         setPrimaryKey(result.data.primaryKey);
         setTotalCount(result.data.totalCount);
+        setLastRefreshedAt(new Date());
+        return true;
       } catch (err) {
         const msg = (err as Error).message;
         setError(msg);
-        setRows([]);
-        setTotalCount(0);
+        if (!background) {
+          setRows([]);
+          setTotalCount(0);
+        }
         toast.error("Failed to load rows", { description: msg });
+        return false;
       } finally {
-        setLoading(false);
+        if (!background) setLoading(false);
       }
     },
     [connectionId, schema, table],
   );
+
+  useEffect(() => {
+    if (seenRefreshSignal.current === refreshSignal) return;
+    seenRefreshSignal.current = refreshSignal;
+    void fetchRows(page, pageSize, whereClause, true).then((success) =>
+      onRefreshComplete?.(success),
+    );
+  }, [
+    fetchRows,
+    onRefreshComplete,
+    page,
+    pageSize,
+    refreshSignal,
+    whereClause,
+  ]);
+
+  function setPageSize(next: number) {
+    setPageSizeState(next);
+    setPage(1);
+    onSessionChange?.({ dataPageSize: next });
+  }
+
+  function setWhereClause(next: string) {
+    setWhereClauseState(next);
+    onSessionChange?.({ dataWhereClause: next });
+  }
+
+  function setViewMode(next: ViewMode) {
+    setViewModeState(next);
+    onSessionChange?.({ dataViewMode: next });
+  }
 
   useEffect(
     function fetchTableData() {
@@ -323,6 +384,17 @@ export function DataTab({
 
         {/* Row 2: Action buttons */}
         <div className="flex items-center gap-1.5">
+          <span
+            className="mr-auto text-[10px] text-muted-foreground"
+            title={lastRefreshedAt?.toLocaleString()}
+          >
+            {lastRefreshedAt
+              ? `Updated ${lastRefreshedAt.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}`
+              : ""}
+          </span>
           {isTable && (
             <>
               <DropdownMenu>
@@ -409,6 +481,7 @@ export function DataTab({
         totalCount={totalCount}
         onPageChange={setPage}
         onPageSizeChange={setPageSize}
+        disabled={loading}
       />
 
       {isTable && (

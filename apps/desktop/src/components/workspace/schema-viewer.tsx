@@ -1,12 +1,12 @@
-import { useMemo, useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ViewerShell } from '@/components/workspace/viewer-shell';
+import { useMemo, useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ViewerShell } from "@/components/workspace/viewer-shell";
 import {
   RelationListTable,
   type RelationListRow,
-} from '@/components/workspace/relation-list-table';
-import { useWorkspace } from '@/hooks/use-workspace';
-import type { SchemaViewerPath } from '@/shared/types/workspace';
+} from "@/components/workspace/relation-list-table";
+import { useWorkspace } from "@/hooks/use-workspace";
+import type { SchemaViewerPath } from "@/shared/types/workspace";
 
 interface SchemaViewerProps {
   path: SchemaViewerPath;
@@ -14,23 +14,24 @@ interface SchemaViewerProps {
 
 function formatEstimatedRowCount(value: number | null | undefined): string {
   if (value == null) {
-    return 'Unknown';
+    return "Unknown";
   }
 
   return new Intl.NumberFormat().format(value);
 }
 
 export function SchemaViewer({ path }: Readonly<SchemaViewerProps>) {
-  const {
-    schemaCache,
-    refreshSchemaTree,
-    openTab,
-    navigateToView,
-  } = useWorkspace();
-  const [activeTab, setActiveTab] = useState('tables');
+  const { schemaCache, refreshSchemaTreeWithStatus, openTab, navigateToView } =
+    useWorkspace();
+  const [activeTab, setActiveTab] = useState("tables");
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
 
   const schemaNode = useMemo(
-    () => schemaCache[path.connectionId]?.find((schema) => schema.name === path.schemaName),
+    () =>
+      schemaCache[path.connectionId]?.find(
+        (schema) => schema.name === path.schemaName,
+      ),
     [schemaCache, path.connectionId, path.schemaName],
   );
 
@@ -45,7 +46,7 @@ export function SchemaViewer({ path }: Readonly<SchemaViewerProps>) {
       return {
         name: tableName,
         rowCount: formatEstimatedRowCount(stats?.estimatedRowCount),
-        sizeOnDisk: stats?.sizeOnDisk ?? 'Unknown',
+        sizeOnDisk: stats?.sizeOnDisk ?? "Unknown",
       };
     });
   }, [schemaNode]);
@@ -57,26 +58,29 @@ export function SchemaViewer({ path }: Readonly<SchemaViewerProps>) {
 
     return schemaNode.views.map((view) => ({
       name: view.name,
-      rowCount: 'Unknown',
-      sizeOnDisk: 'Unknown',
+      rowCount: "Unknown",
+      sizeOnDisk: "Unknown",
       definition: view.definition ?? undefined,
     }));
   }, [schemaNode]);
 
-  function handleRefresh() {
-    refreshSchemaTree(path.connectionId, true).catch(() => undefined);
+  async function handleRefresh() {
+    setRefreshing(true);
+    const result = await refreshSchemaTreeWithStatus(path.connectionId, true);
+    if (result.ok) setLastRefreshedAt(new Date());
+    setRefreshing(false);
   }
 
   function handleOpenTable(name: string) {
     openTab({
-      type: 'table-details',
+      type: "table-details",
       path: { ...path, tableName: name },
     }).catch(() => undefined);
   }
 
   function handleOpenView(name: string) {
     openTab({
-      type: 'view-details',
+      type: "view-details",
       path: { ...path, viewName: name },
     }).catch(() => undefined);
   }
@@ -87,7 +91,7 @@ export function SchemaViewer({ path }: Readonly<SchemaViewerProps>) {
         {
           label: path.connectionLabel,
           view: {
-            type: 'schema-list',
+            type: "schema-list",
             path: {
               connectionId: path.connectionId,
               connectionLabel: path.connectionLabel,
@@ -97,7 +101,7 @@ export function SchemaViewer({ path }: Readonly<SchemaViewerProps>) {
         {
           label: path.schemaName,
           view: {
-            type: 'schema',
+            type: "schema",
             path,
           },
         },
@@ -106,8 +110,15 @@ export function SchemaViewer({ path }: Readonly<SchemaViewerProps>) {
         navigateToView(view).catch(() => undefined);
       }}
       onRefresh={handleRefresh}
+      refreshing={refreshing}
+      lastRefreshedAt={lastRefreshedAt}
+      refreshLabel={`Refresh schema ${path.schemaName} and visible relation list`}
     >
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full min-h-0">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="h-full min-h-0"
+      >
         <TabsList variant="line" className="h-8">
           <TabsTrigger value="tables" className="h-7 px-3 text-xs">
             Tables

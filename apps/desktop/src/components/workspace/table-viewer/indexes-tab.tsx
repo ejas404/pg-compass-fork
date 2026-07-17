@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { useCallback, useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import {
   Table,
   TableBody,
@@ -8,17 +8,25 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import type { IndexInfo } from '@/shared/types/table-data';
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import type { IndexInfo } from "@/shared/types/table-data";
 
 interface IndexesTabProps {
   connectionId: string;
   schema: string;
   table: string;
+  refreshSignal?: number;
+  onRefreshComplete?: (success: boolean) => void;
 }
 
-export function IndexesTab({ connectionId, schema, table }: Readonly<IndexesTabProps>) {
+export function IndexesTab({
+  connectionId,
+  schema,
+  table,
+  refreshSignal = 0,
+  onRefreshComplete,
+}: Readonly<IndexesTabProps>) {
   const [indexes, setIndexes] = useState<IndexInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -31,22 +39,31 @@ export function IndexesTab({ connectionId, schema, table }: Readonly<IndexesTabP
         table,
       });
       if (!result.success || !result.data) {
-        toast.error('Failed to load indexes', { description: result.error });
-        return;
+        toast.error("Failed to load indexes", { description: result.error });
+        return false;
       }
       setIndexes(result.data);
+      return true;
     } catch (err) {
-      toast.error('Failed to load indexes', { description: (err as Error).message });
+      toast.error("Failed to load indexes", {
+        description: (err as Error).message,
+      });
+      return false;
     } finally {
       setLoading(false);
     }
   }, [connectionId, schema, table]);
 
-  useEffect(function loadIndexes() {
-    fetch();
-  }, [fetch]);
+  useEffect(
+    function loadIndexes() {
+      void fetch().then((success) => {
+        if (refreshSignal > 0) onRefreshComplete?.(success);
+      });
+    },
+    [fetch, onRefreshComplete, refreshSignal],
+  );
 
-  if (loading) {
+  if (loading && indexes.length === 0) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loader2 className="size-5 animate-spin text-muted-foreground" />
@@ -89,12 +106,18 @@ export function IndexesTab({ connectionId, schema, table }: Readonly<IndexesTabP
               <TableCell>
                 <div className="flex gap-1">
                   {idx.isPrimary && (
-                    <Badge variant="default" className="text-[10px] px-1.5 py-0">
+                    <Badge
+                      variant="default"
+                      className="text-[10px] px-1.5 py-0"
+                    >
                       PK
                     </Badge>
                   )}
                   {idx.isUnique && !idx.isPrimary && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] px-1.5 py-0"
+                    >
                       Unique
                     </Badge>
                   )}

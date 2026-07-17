@@ -18,9 +18,7 @@
 import { useState, useEffect, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  typeRegistry,
-} from "@/components/workspace/renderers/type-registry";
+import { typeRegistry } from "@/components/workspace/renderers/type-registry";
 import {
   editRegistry,
   type EditResult,
@@ -40,6 +38,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import type { ColumnInfo } from "@/shared/types/table-data";
+import {
+  DateTimeEditor,
+  isDateTimeType,
+} from "@/components/workspace/renderers/date-time-editor";
+import {
+  isStructuredEditType,
+  StructuredValueEditor,
+} from "@/components/workspace/renderers/structured-value-editor";
 
 export interface EditableCellProps {
   col: ColumnInfo;
@@ -65,12 +71,18 @@ export interface EditableCellProps {
   displayOverride?: ReactNode;
 }
 
-function renderDisplay(col: ColumnInfo, value: unknown, variant: "cell" | "card"): ReactNode {
+function renderDisplay(
+  col: ColumnInfo,
+  value: unknown,
+  variant: "cell" | "card",
+): ReactNode {
   const isNull = value === null || value === undefined;
   const renderer = isNull
     ? typeRegistry.get("__null__")
     : typeRegistry.get(col.dataType);
-  return variant === "cell" ? renderer.renderCell(value) : renderer.renderCard(value);
+  return variant === "cell"
+    ? renderer.renderCell(value)
+    : renderer.renderCard(value);
 }
 
 // Types where a multi-line textarea is a meaningfully better input than
@@ -97,7 +109,8 @@ export function EditableCell(props: Readonly<EditableCellProps>) {
     !props.primaryKey.includes(props.col.name);
 
   const display =
-    props.displayOverride ?? renderDisplay(props.col, props.value, props.variant);
+    props.displayOverride ??
+    renderDisplay(props.col, props.value, props.variant);
 
   if (!editable) {
     // No wrapper — the display is rendered bare, identical to the pre-edit
@@ -129,8 +142,10 @@ export function EditableCell(props: Readonly<EditableCellProps>) {
 // EditDialog — rendered only while `isEditing` is true.
 // ---------------------------------------------------------------------------
 
-interface EditDialogProps
-  extends Omit<EditableCellProps, "readOnly" | "primaryKey"> {
+interface EditDialogProps extends Omit<
+  EditableCellProps,
+  "readOnly" | "primaryKey"
+> {
   primaryKey: string[];
   onClose: () => void;
 }
@@ -182,10 +197,7 @@ function EditDialog(props: Readonly<EditDialogProps>) {
         ),
       }
     : enumLabels && enumLabels.length > 0
-      ? makeEnumEditor(
-          enumLabels,
-          props.col.enumPgCast ?? props.col.dataType,
-        )
+      ? makeEnumEditor(enumLabels, props.col.enumPgCast ?? props.col.dataType)
       : editRegistry.get(props.col.dataType);
   const initialInput = editor.toInput(props.value);
   const [raw, setRaw] = useState(initialInput);
@@ -300,9 +312,7 @@ function EditDialog(props: Readonly<EditDialogProps>) {
           />
         )}
 
-        {error ? (
-          <p className="text-xs text-destructive">{error}</p>
-        ) : null}
+        {error ? <p className="text-xs text-destructive">{error}</p> : null}
 
         {!isModal || !ModalComponent ? (
           <DialogFooter className="gap-2">
@@ -402,6 +412,16 @@ function EditorBody({
     );
   }
   if (MULTILINE_TYPES.has(pgType)) {
+    if (isStructuredEditType(pgType)) {
+      return (
+        <StructuredValueEditor
+          value={raw}
+          onChange={onChange}
+          disabled={disabled}
+          ariaLabel={`${pgType} value editor`}
+        />
+      );
+    }
     return (
       <textarea
         autoFocus
@@ -410,6 +430,16 @@ function EditorBody({
         disabled={disabled}
         className="min-h-32 w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 font-mono text-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
         spellCheck={false}
+      />
+    );
+  }
+  if (isDateTimeType(pgType)) {
+    return (
+      <DateTimeEditor
+        pgType={pgType}
+        value={raw}
+        onChange={onChange}
+        disabled={disabled}
       />
     );
   }

@@ -1,13 +1,15 @@
-import { app, BrowserWindow, Menu, type Input } from 'electron';
-import path from 'node:path';
-import started from 'electron-squirrel-startup';
-import { registerConnectionHandlers } from './main/connection-ipc';
-import { registerSettingsHandlers } from './main/settings-ipc';
-import { registerTableDataHandlers } from './main/table-data-ipc';
-import { destroyAllPools } from './main/pg-utils';
-import { getSettings } from './main/settings-store';
-import { buildAppMenu } from './main/app-menu';
-import { WorkspaceChannels } from './shared/constants/workspace';
+import { app, BrowserWindow, Menu, type Input } from "electron";
+import path from "node:path";
+import started from "electron-squirrel-startup";
+import { registerConnectionHandlers } from "./main/connection-ipc";
+import { registerSettingsHandlers } from "./main/settings-ipc";
+import { registerTableDataHandlers } from "./main/table-data-ipc";
+import { registerClipboardHandlers } from "./main/clipboard-ipc";
+import { destroyAllPools } from "./main/pg-utils";
+import { getSettings } from "./main/settings-store";
+import { buildAppMenu } from "./main/app-menu";
+import { WorkspaceChannels } from "./shared/constants/workspace";
+import { matchesShortcut } from "./shared/constants/shortcuts";
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -15,31 +17,31 @@ if (started) {
 }
 
 app.commandLine.appendSwitch(
-  'disable-features',
+  "disable-features",
   // No Chromecast routing, no Google Translate, no cloud autofill,
   // no media-key interception, no Windows occlusion-check CPU overhead,
   // no BFCache memory overhead (SPA — no navigation history to cache).
-  'MediaRouter,TranslateUI,AutofillServerCommunication,HardwareMediaKeyHandling,CalculateNativeWinOcclusion,BackForwardCache',
+  "MediaRouter,TranslateUI,AutofillServerCommunication,HardwareMediaKeyHandling,CalculateNativeWinOcclusion,BackForwardCache",
 );
 // No auto-updating Chromium components at runtime.
-app.commandLine.appendSwitch('disable-component-update');
+app.commandLine.appendSwitch("disable-component-update");
 // No domain reliability telemetry pings.
-app.commandLine.appendSwitch('disable-domain-reliability');
+app.commandLine.appendSwitch("disable-domain-reliability");
 // Disables all background network activity: translate, safe-browsing,
 // autofill-server, reporting — none of which apply to a local DB tool.
-app.commandLine.appendSwitch('disable-background-networking');
+app.commandLine.appendSwitch("disable-background-networking");
 // Keep the renderer at full priority when the window is backgrounded.
 // Critical for long-running queries the user starts then alt-tabs away from.
-app.commandLine.appendSwitch('disable-renderer-backgrounding');
+app.commandLine.appendSwitch("disable-renderer-backgrounding");
 // Prevent JS timer throttling in background windows (same reason as above).
-app.commandLine.appendSwitch('disable-background-timer-throttling');
+app.commandLine.appendSwitch("disable-background-timer-throttling");
 // Remove the IPC message rate-limiter. Large result sets stream many rapid
 // main→renderer IPC messages; flooding protection adds latency for no gain.
-app.commandLine.appendSwitch('disable-ipc-flooding-protection');
+app.commandLine.appendSwitch("disable-ipc-flooding-protection");
 // Skip Chromium first-run initialization tasks.
-app.commandLine.appendSwitch('no-first-run');
+app.commandLine.appendSwitch("no-first-run");
 // No Chrome profile sync.
-app.commandLine.appendSwitch('disable-sync');
+app.commandLine.appendSwitch("disable-sync");
 
 // Cache settings to avoid reading from disk on every keystroke.
 let cachedSettings = getSettings();
@@ -47,6 +49,7 @@ let cachedSettings = getSettings();
 // Register IPC handlers before window creation.
 registerConnectionHandlers();
 registerTableDataHandlers();
+registerClipboardHandlers();
 registerSettingsHandlers((settings) => {
   cachedSettings = settings;
   if (!settings.general.enableDevTools) {
@@ -61,11 +64,11 @@ registerSettingsHandlers((settings) => {
 function isDevToolsShortcut(input: Input): boolean {
   const key = input.key.toLowerCase();
 
-  if (process.platform === 'darwin') {
-    return input.meta && input.alt && key === 'i';
+  if (process.platform === "darwin") {
+    return input.meta && input.alt && key === "i";
   }
 
-  return input.control && input.shift && key === 'i';
+  return input.control && input.shift && key === "i";
 }
 
 const createWindow = () => {
@@ -73,9 +76,9 @@ const createWindow = () => {
   const mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
-    icon: path.join(__dirname, '../../resources/icon.png'),
+    icon: path.join(__dirname, "../../resources/icon.png"),
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, "preload.js"),
     },
   });
 
@@ -88,7 +91,7 @@ const createWindow = () => {
     );
   }
 
-  mainWindow.webContents.on('before-input-event', (event, input) => {
+  mainWindow.webContents.on("before-input-event", (event, input) => {
     if (isDevToolsShortcut(input)) {
       event.preventDefault();
       const devToolsEnabled = cachedSettings.general.enableDevTools;
@@ -100,15 +103,31 @@ const createWindow = () => {
       if (mainWindow.webContents.isDevToolsOpened()) {
         mainWindow.webContents.closeDevTools();
       } else {
-        mainWindow.webContents.openDevTools({ mode: 'detach' });
+        mainWindow.webContents.openDevTools({ mode: "detach" });
       }
       return;
     }
 
-    // Ctrl+Tab / Ctrl+Shift+Tab: switch between workspace tabs
-    if (input.type === 'keyDown' && input.control && input.key === 'Tab') {
+    const shortcutInput = {
+      key: input.key,
+      ctrlKey: input.control,
+      metaKey: input.meta,
+      shiftKey: input.shift,
+    };
+    const shortcutPlatform = process.platform === "darwin" ? "mac" : "windows";
+    const nextTab = matchesShortcut(
+      "next-tab",
+      shortcutInput,
+      shortcutPlatform,
+    );
+    const previousTab = matchesShortcut(
+      "previous-tab",
+      shortcutInput,
+      shortcutPlatform,
+    );
+    if (input.type === "keyDown" && (nextTab || previousTab)) {
       event.preventDefault();
-      const channel = input.shift
+      const channel = previousTab
         ? WorkspaceChannels.PREV_TAB
         : WorkspaceChannels.NEXT_TAB;
       mainWindow.webContents.send(channel);
@@ -119,25 +138,25 @@ const createWindow = () => {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', () => {
+app.on("ready", () => {
   Menu.setApplicationMenu(buildAppMenu());
   createWindow();
 });
 
-app.on('will-quit', () => {
+app.on("will-quit", () => {
   destroyAllPools();
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
     app.quit();
   }
 });
 
-app.on('activate', () => {
+app.on("activate", () => {
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) {

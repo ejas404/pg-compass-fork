@@ -3,6 +3,7 @@ import { ipcMain, dialog, BrowserWindow } from "electron";
 import { TableDataChannels } from "../shared/types/table-data";
 import type {
   DeleteRowsParams,
+  CancelQueryParams,
   ExecuteQueryParams,
   ExportDataParams,
   GetRowsParams,
@@ -13,7 +14,7 @@ import type {
   UpdateRowParams,
   SearchForeignKeyParams,
 } from "../shared/types/table-data";
-import { executeQuery, getRows } from "./table-data-rows";
+import { cancelQuery, executeQuery, getRows } from "./table-data-rows";
 import {
   getConstraints,
   getIndexes,
@@ -138,6 +139,18 @@ export function registerTableDataHandlers(): void {
       try {
         const data = await executeQuery(params);
         return { success: true, data };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    TableDataChannels.CANCEL_QUERY,
+    async (_event, params: CancelQueryParams) => {
+      try {
+        const status = await cancelQuery(params.connectionId, params.queryId);
+        return { success: true, data: { status } };
       } catch (err) {
         return { success: false, error: (err as Error).message };
       }

@@ -68,16 +68,21 @@ describe("ConnectionItem", () => {
       schemaCache: {},
       setActiveTab: vi.fn(),
       closeTab: vi.fn(),
+      closeConnectionTabs: vi.fn(),
       openTab: vi.fn(),
       navigateToView: vi.fn(),
       refreshSchemaTree: vi.fn(),
+      refreshSchemaTreeWithStatus: vi
+        .fn()
+        .mockResolvedValue({ ok: true, data: [] }),
       refreshTabs: vi.fn(),
+      relationSessions: {},
+      updateRelationSession: vi.fn(),
     });
 
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: {
-        writeText: vi.fn().mockResolvedValue(undefined),
+    Object.assign(window, {
+      clipboardApi: {
+        writeText: vi.fn().mockResolvedValue({ success: true }),
       },
     });
   });
@@ -85,14 +90,23 @@ describe("ConnectionItem", () => {
   it("copies the saved URI connection string from the context menu", async () => {
     const user = userEvent.setup();
     const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: { writeText },
+    Object.assign(window, {
+      clipboardApi: {
+        writeText: vi.fn().mockImplementation(async (text: string) => {
+          await writeText(text);
+          return { success: true };
+        }),
+      },
     });
 
     render(
       <TooltipProvider>
-        <ConnectionItem connection={uriConnection} onEdit={vi.fn()} />
+        <ConnectionItem
+          connection={uriConnection}
+          onEdit={vi.fn()}
+          connected={false}
+          onConnectedChange={vi.fn()}
+        />
       </TooltipProvider>,
     );
 
@@ -114,5 +128,39 @@ describe("ConnectionItem", () => {
     expect(buildConnectionString(fieldConnection)).toBe(
       "postgresql://app%20user:sec%2Fret@localhost:5432/app%20db",
     );
+  });
+
+  it("requires explicit confirmation before deleting the local connection", async () => {
+    const user = userEvent.setup();
+    const remove = vi.fn().mockResolvedValue(true);
+    const closeConnectionTabs = vi.fn();
+    vi.mocked(useConnections).mockReturnValue({
+      ...vi.mocked(useConnections)(),
+      remove,
+    });
+    vi.mocked(useWorkspace).mockReturnValue({
+      ...vi.mocked(useWorkspace)(),
+      closeConnectionTabs,
+    });
+
+    render(
+      <TooltipProvider>
+        <ConnectionItem
+          connection={uriConnection}
+          onEdit={vi.fn()}
+          connected={false}
+          onConnectedChange={vi.fn()}
+        />
+      </TooltipProvider>,
+    );
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    expect(remove).not.toHaveBeenCalled();
+
+    await user.click(
+      screen.getByRole("button", { name: "Delete saved connection" }),
+    );
+    await waitFor(() => expect(remove).toHaveBeenCalledWith("conn-1"));
+    expect(closeConnectionTabs).toHaveBeenCalledWith("conn-1");
   });
 });

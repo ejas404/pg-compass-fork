@@ -1,15 +1,18 @@
-import { useMemo } from 'react';
-import { RelationListTable } from '@/components/workspace/relation-list-table';
-import { ViewerShell } from '@/components/workspace/viewer-shell';
-import { useWorkspace } from '@/hooks/use-workspace';
-import type { ViewListViewerPath } from '@/shared/types/workspace';
+import { useMemo, useState } from "react";
+import { RelationListTable } from "@/components/workspace/relation-list-table";
+import { ViewerShell } from "@/components/workspace/viewer-shell";
+import { useWorkspace } from "@/hooks/use-workspace";
+import type { ViewListViewerPath } from "@/shared/types/workspace";
 
 interface ViewListViewerProps {
   path: ViewListViewerPath;
 }
 
 export function ViewListViewer({ path }: Readonly<ViewListViewerProps>) {
-  const { schemaCache, refreshSchemaTree, navigateToView } = useWorkspace();
+  const { schemaCache, refreshSchemaTreeWithStatus, navigateToView } =
+    useWorkspace();
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
 
   const rows = useMemo(() => {
     const schema = schemaCache[path.connectionId]?.find(
@@ -19,15 +22,18 @@ export function ViewListViewer({ path }: Readonly<ViewListViewerProps>) {
     return (
       schema?.views.map((view) => ({
         name: view.name,
-        rowCount: 'Unknown',
-        sizeOnDisk: 'Unknown',
+        rowCount: "Unknown",
+        sizeOnDisk: "Unknown",
         definition: view.definition ?? undefined,
       })) ?? []
     );
   }, [schemaCache, path.connectionId, path.schemaName]);
 
-  function handleRefresh() {
-    refreshSchemaTree(path.connectionId, true).catch(() => undefined);
+  async function handleRefresh() {
+    setRefreshing(true);
+    const result = await refreshSchemaTreeWithStatus(path.connectionId, true);
+    if (result.ok) setLastRefreshedAt(new Date());
+    setRefreshing(false);
   }
 
   return (
@@ -36,7 +42,7 @@ export function ViewListViewer({ path }: Readonly<ViewListViewerProps>) {
         {
           label: path.connectionLabel,
           view: {
-            type: 'schema-list',
+            type: "schema-list",
             path: {
               connectionId: path.connectionId,
               connectionLabel: path.connectionLabel,
@@ -46,7 +52,7 @@ export function ViewListViewer({ path }: Readonly<ViewListViewerProps>) {
         {
           label: path.schemaName,
           view: {
-            type: 'schema',
+            type: "schema",
             path: {
               connectionId: path.connectionId,
               connectionLabel: path.connectionLabel,
@@ -57,7 +63,7 @@ export function ViewListViewer({ path }: Readonly<ViewListViewerProps>) {
         {
           label: path.viewName,
           view: {
-            type: 'view-list',
+            type: "view-list",
             path,
           },
         },
@@ -66,13 +72,16 @@ export function ViewListViewer({ path }: Readonly<ViewListViewerProps>) {
         navigateToView(view).catch(() => undefined);
       }}
       onRefresh={handleRefresh}
+      refreshing={refreshing}
+      lastRefreshedAt={lastRefreshedAt}
+      refreshLabel="Refresh schema metadata and view list"
     >
       <RelationListTable
         rows={rows}
         selectedName={path.viewName}
         onOpenRow={(row) => {
           navigateToView({
-            type: 'view-details',
+            type: "view-details",
             path: { ...path, viewName: row.name },
           }).catch(() => undefined);
         }}

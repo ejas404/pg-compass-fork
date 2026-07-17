@@ -18,6 +18,8 @@ interface TriggersTabProps {
   connectionId: string;
   schema: string;
   table: string;
+  refreshSignal?: number;
+  onRefreshComplete?: (success: boolean) => void;
 }
 
 function enabledLabel(trigger: TriggerInfo): string {
@@ -36,6 +38,8 @@ export function TriggersTab({
   connectionId,
   schema,
   table,
+  refreshSignal = 0,
+  onRefreshComplete,
 }: Readonly<TriggersTabProps>) {
   const { settings } = useSettings();
   const [triggers, setTriggers] = useState<TriggerInfo[]>([]);
@@ -52,13 +56,15 @@ export function TriggersTab({
       });
       if (!result.success || !result.data) {
         toast.error("Failed to load triggers", { description: result.error });
-        return;
+        return false;
       }
       setTriggers(result.data);
+      return true;
     } catch (err) {
       toast.error("Failed to load triggers", {
         description: (err as Error).message,
       });
+      return false;
     } finally {
       setLoading(false);
     }
@@ -66,9 +72,11 @@ export function TriggersTab({
 
   useEffect(
     function loadTriggers() {
-      fetch();
+      void fetch().then((success) => {
+        if (refreshSignal > 0) onRefreshComplete?.(success);
+      });
     },
-    [fetch],
+    [fetch, onRefreshComplete, refreshSignal],
   );
 
   async function handleToggle(trigger: TriggerInfo, enabled: boolean) {
@@ -96,7 +104,7 @@ export function TriggersTab({
     }
   }
 
-  if (loading) {
+  if (loading && triggers.length === 0) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loader2 className="size-5 animate-spin text-muted-foreground" />

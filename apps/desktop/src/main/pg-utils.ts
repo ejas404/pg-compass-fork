@@ -1,4 +1,4 @@
-import { Pool } from "pg";
+import { Client, Pool } from "pg";
 import type { PoolClient } from "pg";
 import fs from "node:fs";
 import os from "node:os";
@@ -153,6 +153,25 @@ export async function withPoolClient<T>(
     return await fn(client);
   } finally {
     client.release();
+  }
+}
+
+/**
+ * Run a one-off operation outside the shared pool. Cancellation uses this so
+ * it remains available even when every pooled client is occupied by work.
+ */
+export async function withDedicatedClient<T>(
+  connectionId: string,
+  fn: (client: Client) => Promise<T>,
+): Promise<T> {
+  const connection = getConnectionById(connectionId);
+  if (!connection) throw new Error("Connection not found.");
+  const client = new Client(buildPgConfig(connection));
+  await client.connect();
+  try {
+    return await fn(client);
+  } finally {
+    await client.end().catch(() => undefined);
   }
 }
 

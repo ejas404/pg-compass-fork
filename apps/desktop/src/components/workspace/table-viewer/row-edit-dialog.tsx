@@ -29,7 +29,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { ColumnInfo, UpdateRowFieldChange } from "@/shared/types/table-data";
+import type {
+  ColumnInfo,
+  UpdateRowFieldChange,
+} from "@/shared/types/table-data";
+import {
+  DateTimeEditor,
+  isDateTimeType,
+} from "@/components/workspace/renderers/date-time-editor";
+import {
+  isStructuredEditType,
+  StructuredValueEditor,
+} from "@/components/workspace/renderers/structured-value-editor";
 
 const MULTILINE_TYPES = new Set([
   "json",
@@ -109,10 +120,7 @@ function editorFor(col: ColumnInfo): TypeEditor {
     return makeFkRowEditor(col.foreignKey.valuePgCast);
   }
   if (col.enumLabels && col.enumLabels.length > 0) {
-    return makeEnumEditor(
-      col.enumLabels,
-      col.enumPgCast ?? col.dataType,
-    );
+    return makeEnumEditor(col.enumLabels, col.enumPgCast ?? col.dataType);
   }
   return editRegistry.get(col.dataType);
 }
@@ -245,7 +253,9 @@ export function RowEditDialog(props: Readonly<RowEditDialogProps>) {
       }
       props.onRowUpdated(response.data.row);
       toast.success(
-        changeCount === 1 ? "Row updated" : `${String(changeCount)} fields updated`,
+        changeCount === 1
+          ? "Row updated"
+          : `${String(changeCount)} fields updated`,
       );
       props.onClose();
     } catch (err) {
@@ -296,7 +306,8 @@ export function RowEditDialog(props: Readonly<RowEditDialogProps>) {
                 !isPk &&
                 draft !== undefined &&
                 (draft.setNull
-                  ? props.row[col.name] !== null && props.row[col.name] !== undefined
+                  ? props.row[col.name] !== null &&
+                    props.row[col.name] !== undefined
                   : draft.raw !== original);
               return (
                 <div
@@ -304,7 +315,9 @@ export function RowEditDialog(props: Readonly<RowEditDialogProps>) {
                   data-testid={`row-field-${col.name}`}
                   data-changed={changed ? "true" : "false"}
                   className={`grid grid-cols-[10rem_1fr_auto] items-start gap-2 rounded-md border px-2 py-1.5 ${
-                    changed ? "border-primary/40 bg-primary/5" : "border-transparent"
+                    changed
+                      ? "border-primary/40 bg-primary/5"
+                      : "border-transparent"
                   }`}
                 >
                   <div className="flex flex-col">
@@ -411,7 +424,9 @@ function formatPkValue(value: unknown): string {
 function PkValueDisplay({ value }: Readonly<{ value: unknown }>) {
   if (value === null || value === undefined) {
     return (
-      <span className="font-mono text-xs italic text-muted-foreground">NULL</span>
+      <span className="font-mono text-xs italic text-muted-foreground">
+        NULL
+      </span>
     );
   }
   return (
@@ -465,7 +480,11 @@ function FieldEditor(props: Readonly<FieldEditorProps>): ReactNode {
         className="h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-xs text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
       >
         {enumLabels.map((label) => (
-          <option key={label} value={label} className="bg-popover text-popover-foreground">
+          <option
+            key={label}
+            value={label}
+            className="bg-popover text-popover-foreground"
+          >
             {label}
           </option>
         ))}
@@ -489,6 +508,16 @@ function FieldEditor(props: Readonly<FieldEditorProps>): ReactNode {
   }
 
   if (MULTILINE_TYPES.has(props.col.dataType)) {
+    if (isStructuredEditType(props.col.dataType)) {
+      return (
+        <StructuredValueEditor
+          value={props.rawValue}
+          onChange={props.onChange}
+          disabled={props.disabled}
+          ariaLabel={`${props.col.name} structured value`}
+        />
+      );
+    }
     return (
       <textarea
         value={props.rawValue}
@@ -496,6 +525,17 @@ function FieldEditor(props: Readonly<FieldEditorProps>): ReactNode {
         disabled={props.disabled}
         className="min-h-16 w-full resize-y rounded-md border border-input bg-transparent px-2 py-1 font-mono text-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
         spellCheck={false}
+      />
+    );
+  }
+
+  if (isDateTimeType(props.col.dataType)) {
+    return (
+      <DateTimeEditor
+        pgType={props.col.dataType}
+        value={props.rawValue}
+        onChange={props.onChange}
+        disabled={props.disabled}
       />
     );
   }
@@ -548,9 +588,7 @@ function FkFieldEditor(props: Readonly<FkFieldEditorProps>) {
         className="flex h-8 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-2 text-left text-xs hover:bg-muted/40 disabled:opacity-50"
       >
         <span className="truncate">
-          {lastLabel ? (
-            <span className="font-medium">{lastLabel}</span>
-          ) : null}
+          {lastLabel ? <span className="font-medium">{lastLabel}</span> : null}
         </span>
         <span className="font-mono text-[11px] text-muted-foreground">
           {display}
@@ -567,9 +605,7 @@ function FkFieldEditor(props: Readonly<FkFieldEditorProps>) {
           className="sm:max-w-lg"
         >
           <DialogHeader>
-            <DialogTitle className="text-sm">
-              Pick {props.col.name}
-            </DialogTitle>
+            <DialogTitle className="text-sm">Pick {props.col.name}</DialogTitle>
             <DialogDescription className="font-mono text-[11px]">
               References {fk.schema}.{fk.table}.{fk.column}
             </DialogDescription>
@@ -581,7 +617,9 @@ function FkFieldEditor(props: Readonly<FkFieldEditorProps>) {
             connectionId={props.connectionId}
             allowNull={false}
             onPick={(value, label) => {
-              props.onChange(value === null || value === undefined ? "" : String(value));
+              props.onChange(
+                value === null || value === undefined ? "" : String(value),
+              );
               setLastLabel(label);
               setOpen(false);
             }}

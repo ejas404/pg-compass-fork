@@ -8,6 +8,8 @@ import type {
 import type { AppSettings, AppSettingsPatch } from "./shared/types/settings";
 import type {
   ColumnStructure,
+  CancelQueryParams,
+  CancelQueryResult,
   ConstraintInfo,
   DeleteRowsParams,
   DeleteRowsResult,
@@ -71,6 +73,7 @@ interface TableDataApi {
   getTypes(params: TableMetaParams): Promise<IpcResult<TableTypeInfo[]>>;
   toggleTrigger(params: ToggleTriggerParams): Promise<IpcResult<TriggerInfo[]>>;
   executeQuery(params: ExecuteQueryParams): Promise<IpcResult<TableRowsResult>>;
+  cancelQuery(params: CancelQueryParams): Promise<IpcResult<CancelQueryResult>>;
   showSaveDialog(options: SaveDialogOptions): Promise<IpcResult<string | null>>;
   exportData(params: ExportDataParams): Promise<IpcResult<ExportResult>>;
   sqlDump(params: SqlDumpParams): Promise<IpcResult<ExportResult>>;
@@ -86,12 +89,17 @@ interface TableDataApi {
 interface HelpApi {
   onShowLicense(callback: () => void): () => void;
   onShowAbout(callback: () => void): () => void;
+  onShowShortcuts(callback: () => void): () => void;
 }
 
 interface WorkspaceApi {
   onCloseTab(callback: () => void): () => void;
   onNextTab(callback: () => void): () => void;
   onPrevTab(callback: () => void): () => void;
+}
+
+interface ClipboardApi {
+  writeText(text: string): Promise<IpcResult<void>>;
 }
 
 declare global {
@@ -101,5 +109,6 @@ declare global {
     tableDataApi: TableDataApi;
     helpApi: HelpApi;
     workspaceApi: WorkspaceApi;
+    clipboardApi: ClipboardApi;
   }
 }

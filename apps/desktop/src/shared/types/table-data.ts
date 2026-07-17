@@ -164,9 +164,21 @@ export interface GetRowsParams {
 /** Parameters for executing a read-only query. */
 export interface ExecuteQueryParams {
   connectionId: string;
+  /** Renderer-generated identifier used to cancel only this invocation. */
+  queryId: string;
   sql: string;
   page: number;
   pageSize: number;
+}
+
+/** Parameters for cancelling one renderer-initiated query. */
+export interface CancelQueryParams {
+  connectionId: string;
+  queryId: string;
+}
+
+export interface CancelQueryResult {
+  status: "cancel-requested" | "already-finished";
 }
 
 /** Parameters for fetching table metadata (structure, indexes, constraints). */
@@ -345,6 +357,7 @@ export const TableDataChannels = {
   GET_TYPES: "table-data:get-types",
   TOGGLE_TRIGGER: "table-data:toggle-trigger",
   EXECUTE_QUERY: "table-data:execute-query",
+  CANCEL_QUERY: "table-data:cancel-query",
   SHOW_SAVE_DIALOG: "table-data:show-save-dialog",
   EXPORT_DATA: "table-data:export-data",
   EXPORT_PROGRESS: "table-data:export-progress",

@@ -1,12 +1,18 @@
-import { useEffect, useRef, useMemo } from 'react';
-import { EditorState, Compartment, type Extension } from '@codemirror/state';
-import { EditorView, keymap, placeholder as cmPlaceholder, lineNumbers } from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-import { sql, PostgreSQL, type SQLNamespace } from '@codemirror/lang-sql';
-import { autocompletion, type Completion } from '@codemirror/autocomplete';
-import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
-import { linter, type Diagnostic } from '@codemirror/lint';
-import { pgTheme } from './pg-theme';
+import { useEffect, useRef, useMemo } from "react";
+import { EditorState, Compartment, type Extension } from "@codemirror/state";
+import {
+  EditorView,
+  keymap,
+  placeholder as cmPlaceholder,
+  lineNumbers,
+} from "@codemirror/view";
+import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { sql, PostgreSQL, type SQLNamespace } from "@codemirror/lang-sql";
+import { autocompletion, type Completion } from "@codemirror/autocomplete";
+import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
+import { linter, type Diagnostic } from "@codemirror/lint";
+import { pgTheme } from "./pg-theme";
+import { getShortcut } from "@/shared/constants/shortcuts";
 
 export interface CompletionColumn {
   name: string;
@@ -36,13 +42,15 @@ interface UseCodemirrorOptions {
 /** PostgreSQL identifiers need double-quoting when they aren't simple lowercase. */
 const SAFE_IDENT = /^[a-z_][a-z0-9_]*$/;
 
-function buildColumnCompletions(cols: CompletionColumn[]): (string | Completion)[] {
+function buildColumnCompletions(
+  cols: CompletionColumn[],
+): (string | Completion)[] {
   return cols.map((col) => {
     const needsQuote = !SAFE_IDENT.test(col.name);
     if (!needsQuote && !col.type) return col.name;
     return {
       label: col.name,
-      type: 'property',
+      type: "property",
       ...(needsQuote && { apply: `"${col.name}"` }),
       ...(col.type && { detail: col.type }),
     } as Completion;
@@ -70,7 +78,7 @@ function buildSqlNamespace(schema?: CompletionSchema): SQLNamespace {
       const needsQuote = !SAFE_IDENT.test(tableName);
       if (needsQuote) {
         tableMap[tableName] = {
-          self: { label: tableName, type: 'type', apply: `"${tableName}"` },
+          self: { label: tableName, type: "type", apply: `"${tableName}"` },
           children: colCompletions,
         };
       } else {
@@ -81,7 +89,11 @@ function buildSqlNamespace(schema?: CompletionSchema): SQLNamespace {
     const needsQuote = !SAFE_IDENT.test(schemaName);
     if (needsQuote) {
       ns[schemaName] = {
-        self: { label: schemaName, type: 'namespace', apply: `"${schemaName}"` },
+        self: {
+          label: schemaName,
+          type: "namespace",
+          apply: `"${schemaName}"`,
+        },
         children: tableMap,
       };
     } else {
@@ -111,18 +123,19 @@ const sqlValueQuoteLinter = linter((view) => {
     // Find the double-quoted portion within the match
     const fullMatch = match[0];
     // The quoted string starts at the last " in the prefix up to the closing "
-    const quoteStart = match.index + fullMatch.lastIndexOf('"', fullMatch.length - 2);
+    const quoteStart =
+      match.index + fullMatch.lastIndexOf('"', fullMatch.length - 2);
     const quoteEnd = match.index + fullMatch.length;
-    const innerValue = match[1] ?? match[3] ?? '';
+    const innerValue = match[1] ?? match[3] ?? "";
 
     diagnostics.push({
       from: quoteStart,
       to: quoteEnd,
-      severity: 'warning',
+      severity: "warning",
       message: `Use single quotes for string values: '${innerValue}' instead of "${innerValue}".\nDouble quotes are for identifiers in PostgreSQL.`,
       actions: [
         {
-          name: 'Fix: use single quotes',
+          name: "Fix: use single quotes",
           apply: (view, from, to) => {
             view.dispatch({
               changes: { from, to, insert: `'${innerValue}'` },
@@ -164,120 +177,129 @@ export function useCodemirror(
   const defaultSchema = schema?.defaultSchema;
 
   // Create the editor once on mount
-  useEffect(function createEditor() {
-    const container = containerRef.current;
-    if (!container) return;
+  useEffect(
+    function createEditor() {
+      const container = containerRef.current;
+      if (!container) return;
 
-    const submitKeymap = keymap.of([
-      {
-        key: 'Mod-Enter',
-        run: () => {
-          onSubmitRef.current?.();
-          return true;
-        },
-      },
-    ]);
-
-    const singleLineKeymap = singleLine
-      ? keymap.of([
-          {
-            key: 'Enter',
-            run: () => {
-              onSubmitRef.current?.();
-              return true;
-            },
+      const submitKeymap = keymap.of([
+        {
+          key: getShortcut("run-query").codeMirrorKey,
+          run: () => {
+            onSubmitRef.current?.();
+            return true;
           },
-        ])
-      : [];
+        },
+      ]);
 
-    const extensions: Extension[] = [
-      pgTheme,
-      history(),
-      autocompletion({
-        activateOnTyping: true,
-      }),
-      highlightSelectionMatches(),
-      submitKeymap,
-      singleLineKeymap,
-      keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap]),
-      sqlCompartment.current.of(
-        sql({
-          dialect: PostgreSQL,
-          upperCaseKeywords: true,
-          schema: sqlNamespace,
-          defaultTable,
-          defaultSchema,
+      const singleLineKeymap = singleLine
+        ? keymap.of([
+            {
+              key: "Enter",
+              run: () => {
+                onSubmitRef.current?.();
+                return true;
+              },
+            },
+          ])
+        : [];
+
+      const extensions: Extension[] = [
+        pgTheme,
+        history(),
+        autocompletion({
+          activateOnTyping: true,
         }),
-      ),
-      sqlValueQuoteLinter,
-      EditorView.updateListener.of((update) => {
-        if (update.docChanged) {
-          const doc = update.state.doc.toString();
-          onChangeRef.current(doc);
-        }
-      }),
-      EditorState.readOnly.of(readOnly),
-    ];
+        highlightSelectionMatches(),
+        submitKeymap,
+        singleLineKeymap,
+        keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap]),
+        sqlCompartment.current.of(
+          sql({
+            dialect: PostgreSQL,
+            upperCaseKeywords: true,
+            schema: sqlNamespace,
+            defaultTable,
+            defaultSchema,
+          }),
+        ),
+        sqlValueQuoteLinter,
+        EditorView.updateListener.of((update) => {
+          if (update.docChanged) {
+            const doc = update.state.doc.toString();
+            onChangeRef.current(doc);
+          }
+        }),
+        EditorState.readOnly.of(readOnly),
+      ];
 
-    if (!singleLine) {
-      extensions.push(lineNumbers());
-    }
+      if (!singleLine) {
+        extensions.push(lineNumbers());
+      }
 
-    if (placeholder) {
-      extensions.push(cmPlaceholder(placeholder));
-    }
+      if (placeholder) {
+        extensions.push(cmPlaceholder(placeholder));
+      }
 
-    const state = EditorState.create({
-      doc: value,
-      extensions,
-    });
+      const state = EditorState.create({
+        doc: value,
+        extensions,
+      });
 
-    const view = new EditorView({
-      state,
-      parent: container,
-    });
+      const view = new EditorView({
+        state,
+        parent: container,
+      });
 
-    viewRef.current = view;
+      viewRef.current = view;
 
-    return () => {
-      view.destroy();
-      viewRef.current = null;
-    };
-    // Only run on mount — value synced via separate effect
-  }, [containerRef, singleLine, readOnly]);
+      return () => {
+        view.destroy();
+        viewRef.current = null;
+      };
+      // Only run on mount — value synced via separate effect
+    },
+    [containerRef, singleLine, readOnly],
+  );
 
   // Sync external value → CM state (only when value differs from CM doc)
-  useEffect(function syncExternalValue() {
-    const view = viewRef.current;
-    if (!view) return;
-    const currentDoc = view.state.doc.toString();
-    if (currentDoc !== value) {
-      view.dispatch({
-        changes: {
-          from: 0,
-          to: view.state.doc.length,
-          insert: value,
-        },
-      });
-    }
-  }, [value]);
+  useEffect(
+    function syncExternalValue() {
+      const view = viewRef.current;
+      if (!view) return;
+      const currentDoc = view.state.doc.toString();
+      if (currentDoc !== value) {
+        view.dispatch({
+          changes: {
+            from: 0,
+            to: view.state.doc.length,
+            insert: value,
+          },
+        });
+      }
+    },
+    [value],
+  );
 
   // Reconfigure SQL language when schema changes
-  useEffect(function reconfigureSqlLanguage() {
-    const view = viewRef.current;
-    if (!view) return;
-    view.dispatch({
-      effects: sqlCompartment.current.reconfigure(
-        sql({
-          dialect: PostgreSQL,
-          upperCaseKeywords: true,
-          schema: sqlNamespace,
-          defaultTable,
-          defaultSchema,
-        }),
-      ),
-    });
-  }, [sqlNamespace, defaultTable, defaultSchema]);
+  useEffect(
+    function reconfigureSqlLanguage() {
+      const view = viewRef.current;
+      if (!view) return;
+      view.dispatch({
+        effects: sqlCompartment.current.reconfigure(
+          sql({
+            dialect: PostgreSQL,
+            upperCaseKeywords: true,
+            schema: sqlNamespace,
+            defaultTable,
+            defaultSchema,
+          }),
+        ),
+      });
+    },
+    [sqlNamespace, defaultTable, defaultSchema],
+  );
 
   return viewRef;
 }

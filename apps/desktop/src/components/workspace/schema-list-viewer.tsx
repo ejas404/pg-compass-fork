@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from "react";
 import {
   Table,
   TableBody,
@@ -6,30 +6,36 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { ViewerShell } from '@/components/workspace/viewer-shell';
-import { useWorkspace } from '@/hooks/use-workspace';
-import type { DatabaseViewerPath } from '@/shared/types/workspace';
+} from "@/components/ui/table";
+import { ViewerShell } from "@/components/workspace/viewer-shell";
+import { useWorkspace } from "@/hooks/use-workspace";
+import type { DatabaseViewerPath } from "@/shared/types/workspace";
 
 interface SchemaListViewerProps {
   path: DatabaseViewerPath;
 }
 
 export function SchemaListViewer({ path }: Readonly<SchemaListViewerProps>) {
-  const { schemaCache, refreshSchemaTree, openTab, navigateToView } = useWorkspace();
+  const { schemaCache, refreshSchemaTreeWithStatus, openTab, navigateToView } =
+    useWorkspace();
 
-  const rows = useMemo(() => schemaCache[path.connectionId] ?? [], [
-    schemaCache,
-    path.connectionId,
-  ]);
+  const rows = useMemo(
+    () => schemaCache[path.connectionId] ?? [],
+    [schemaCache, path.connectionId],
+  );
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
 
-  function handleRefresh() {
-    refreshSchemaTree(path.connectionId, true).catch(() => undefined);
+  async function handleRefresh() {
+    setRefreshing(true);
+    const result = await refreshSchemaTreeWithStatus(path.connectionId, true);
+    if (result.ok) setLastRefreshedAt(new Date());
+    setRefreshing(false);
   }
 
   function handleOpenSchema(schemaName: string) {
     openTab({
-      type: 'schema',
+      type: "schema",
       path: { ...path, schemaName },
     }).catch(() => undefined);
   }
@@ -40,7 +46,7 @@ export function SchemaListViewer({ path }: Readonly<SchemaListViewerProps>) {
         {
           label: path.connectionLabel,
           view: {
-            type: 'schema-list',
+            type: "schema-list",
             path,
           },
         },
@@ -49,6 +55,9 @@ export function SchemaListViewer({ path }: Readonly<SchemaListViewerProps>) {
         navigateToView(view).catch(() => undefined);
       }}
       onRefresh={handleRefresh}
+      refreshing={refreshing}
+      lastRefreshedAt={lastRefreshedAt}
+      refreshLabel="Refresh connection schemas and relation counts"
     >
       {rows.length === 0 ? (
         <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">

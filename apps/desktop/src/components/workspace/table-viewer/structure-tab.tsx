@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { useCallback, useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import {
   Table,
   TableBody,
@@ -8,14 +8,16 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import type { ColumnStructure } from '@/shared/types/table-data';
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import type { ColumnStructure } from "@/shared/types/table-data";
 
 interface StructureTabProps {
   connectionId: string;
   schema: string;
   table: string;
+  refreshSignal?: number;
+  onRefreshComplete?: (success: boolean) => void;
 }
 
 function formatType(col: ColumnStructure): string {
@@ -27,19 +29,26 @@ function formatType(col: ColumnStructure): string {
   if (col.numericPrecision == null) {
     return base;
   }
-  base += col.numericScale == null
-    ? `(${String(col.numericPrecision)})`
-    : `(${String(col.numericPrecision)},${String(col.numericScale)})`;
+  base +=
+    col.numericScale == null
+      ? `(${String(col.numericPrecision)})`
+      : `(${String(col.numericPrecision)},${String(col.numericScale)})`;
   return base;
 }
 
 function renderSample(value: unknown): string {
-  if (value === null || value === undefined) return 'NULL';
-  if (typeof value === 'object') return JSON.stringify(value);
+  if (value === null || value === undefined) return "NULL";
+  if (typeof value === "object") return JSON.stringify(value);
   return String(value as string | number | boolean);
 }
 
-export function StructureTab({ connectionId, schema, table }: Readonly<StructureTabProps>) {
+export function StructureTab({
+  connectionId,
+  schema,
+  table,
+  refreshSignal = 0,
+  onRefreshComplete,
+}: Readonly<StructureTabProps>) {
   const [columns, setColumns] = useState<ColumnStructure[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -52,22 +61,31 @@ export function StructureTab({ connectionId, schema, table }: Readonly<Structure
         table,
       });
       if (!result.success || !result.data) {
-        toast.error('Failed to load structure', { description: result.error });
-        return;
+        toast.error("Failed to load structure", { description: result.error });
+        return false;
       }
       setColumns(result.data);
+      return true;
     } catch (err) {
-      toast.error('Failed to load structure', { description: (err as Error).message });
+      toast.error("Failed to load structure", {
+        description: (err as Error).message,
+      });
+      return false;
     } finally {
       setLoading(false);
     }
   }, [connectionId, schema, table]);
 
-  useEffect(function loadStructure() {
-    fetch();
-  }, [fetch]);
+  useEffect(
+    function loadStructure() {
+      void fetch().then((success) => {
+        if (refreshSignal > 0) onRefreshComplete?.(success);
+      });
+    },
+    [fetch, onRefreshComplete, refreshSignal],
+  );
 
-  if (loading) {
+  if (loading && columns.length === 0) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loader2 className="size-5 animate-spin text-muted-foreground" />
@@ -116,7 +134,9 @@ export function StructureTab({ connectionId, schema, table }: Readonly<Structure
                 )}
               </TableCell>
               <TableCell className="max-w-50 truncate font-mono text-xs text-muted-foreground">
-                {col.columnDefault ?? <span className="italic text-muted-foreground/50">none</span>}
+                {col.columnDefault ?? (
+                  <span className="italic text-muted-foreground/50">none</span>
+                )}
               </TableCell>
               <TableCell className="max-w-75">
                 <div className="flex flex-wrap gap-1">
@@ -134,7 +154,9 @@ export function StructureTab({ connectionId, schema, table }: Readonly<Structure
                       );
                     })
                   ) : (
-                    <span className="text-xs italic text-muted-foreground/50">no data</span>
+                    <span className="text-xs italic text-muted-foreground/50">
+                      no data
+                    </span>
                   )}
                 </div>
               </TableCell>

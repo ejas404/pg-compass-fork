@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { useCallback, useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import {
   Table,
   TableBody,
@@ -8,34 +8,41 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import type { ConstraintInfo } from '@/shared/types/table-data';
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import type { ConstraintInfo } from "@/shared/types/table-data";
 
 interface ConstraintsTabProps {
   connectionId: string;
   schema: string;
   table: string;
+  refreshSignal?: number;
+  onRefreshComplete?: (success: boolean) => void;
 }
 
-const CONSTRAINT_TYPE_ORDER: ConstraintInfo['type'][] = [
-  'PRIMARY KEY',
-  'FOREIGN KEY',
-  'UNIQUE',
-  'CHECK',
-  'EXCLUDE',
+const CONSTRAINT_TYPE_ORDER: ConstraintInfo["type"][] = [
+  "PRIMARY KEY",
+  "FOREIGN KEY",
+  "UNIQUE",
+  "CHECK",
+  "EXCLUDE",
 ];
 
-const CONSTRAINT_BADGE_VARIANT: Record<ConstraintInfo['type'], 'default' | 'secondary' | 'outline'> = {
-  'PRIMARY KEY': 'default',
-  'FOREIGN KEY': 'secondary',
-  'UNIQUE': 'secondary',
-  'CHECK': 'outline',
-  'EXCLUDE': 'outline',
+const CONSTRAINT_BADGE_VARIANT: Record<
+  ConstraintInfo["type"],
+  "default" | "secondary" | "outline"
+> = {
+  "PRIMARY KEY": "default",
+  "FOREIGN KEY": "secondary",
+  UNIQUE: "secondary",
+  CHECK: "outline",
+  EXCLUDE: "outline",
 };
 
-function groupByType(constraints: ConstraintInfo[]): Map<ConstraintInfo['type'], ConstraintInfo[]> {
-  const groups = new Map<ConstraintInfo['type'], ConstraintInfo[]>();
+function groupByType(
+  constraints: ConstraintInfo[],
+): Map<ConstraintInfo["type"], ConstraintInfo[]> {
+  const groups = new Map<ConstraintInfo["type"], ConstraintInfo[]>();
 
   for (const type of CONSTRAINT_TYPE_ORDER) {
     const items = constraints.filter((c) => c.type === type);
@@ -47,7 +54,13 @@ function groupByType(constraints: ConstraintInfo[]): Map<ConstraintInfo['type'],
   return groups;
 }
 
-export function ConstraintsTab({ connectionId, schema, table }: Readonly<ConstraintsTabProps>) {
+export function ConstraintsTab({
+  connectionId,
+  schema,
+  table,
+  refreshSignal = 0,
+  onRefreshComplete,
+}: Readonly<ConstraintsTabProps>) {
   const [constraints, setConstraints] = useState<ConstraintInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -60,22 +73,33 @@ export function ConstraintsTab({ connectionId, schema, table }: Readonly<Constra
         table,
       });
       if (!result.success || !result.data) {
-        toast.error('Failed to load constraints', { description: result.error });
-        return;
+        toast.error("Failed to load constraints", {
+          description: result.error,
+        });
+        return false;
       }
       setConstraints(result.data);
+      return true;
     } catch (err) {
-      toast.error('Failed to load constraints', { description: (err as Error).message });
+      toast.error("Failed to load constraints", {
+        description: (err as Error).message,
+      });
+      return false;
     } finally {
       setLoading(false);
     }
   }, [connectionId, schema, table]);
 
-  useEffect(function loadConstraints() {
-    fetch();
-  }, [fetch]);
+  useEffect(
+    function loadConstraints() {
+      void fetch().then((success) => {
+        if (refreshSignal > 0) onRefreshComplete?.(success);
+      });
+    },
+    [fetch, onRefreshComplete, refreshSignal],
+  );
 
-  if (loading) {
+  if (loading && constraints.length === 0) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loader2 className="size-5 animate-spin text-muted-foreground" />
@@ -98,10 +122,15 @@ export function ConstraintsTab({ connectionId, schema, table }: Readonly<Constra
       {Array.from(groups.entries()).map(([type, items]) => (
         <section key={type}>
           <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold">
-            <Badge variant={CONSTRAINT_BADGE_VARIANT[type]} className="text-[10px]">
+            <Badge
+              variant={CONSTRAINT_BADGE_VARIANT[type]}
+              className="text-[10px]"
+            >
               {type}
             </Badge>
-            <span className="text-xs text-muted-foreground">({items.length})</span>
+            <span className="text-xs text-muted-foreground">
+              ({items.length})
+            </span>
           </h3>
           <div className="overflow-auto rounded-lg border border-border">
             <Table>
@@ -109,7 +138,7 @@ export function ConstraintsTab({ connectionId, schema, table }: Readonly<Constra
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Columns</TableHead>
-                  {type === 'FOREIGN KEY' && <TableHead>References</TableHead>}
+                  {type === "FOREIGN KEY" && <TableHead>References</TableHead>}
                   <TableHead>Definition</TableHead>
                 </TableRow>
               </TableHeader>
@@ -120,23 +149,29 @@ export function ConstraintsTab({ connectionId, schema, table }: Readonly<Constra
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {c.columns.map((col) => (
-                          <Badge key={col} variant="outline" className="font-mono text-[10px]">
+                          <Badge
+                            key={col}
+                            variant="outline"
+                            className="font-mono text-[10px]"
+                          >
                             {col}
                           </Badge>
                         ))}
                       </div>
                     </TableCell>
-                    {type === 'FOREIGN KEY' && (
+                    {type === "FOREIGN KEY" && (
                       <TableCell className="text-xs text-muted-foreground">
                         {c.foreignTable && (
                           <span className="font-mono">
-                            {c.foreignTable}({c.foreignColumns.join(', ')})
+                            {c.foreignTable}({c.foreignColumns.join(", ")})
                           </span>
                         )}
                       </TableCell>
                     )}
                     <TableCell className="max-w-100 truncate font-mono text-[10px] text-muted-foreground">
-                      <span title={c.definition ?? undefined}>{c.definition}</span>
+                      <span title={c.definition ?? undefined}>
+                        {c.definition}
+                      </span>
                     </TableCell>
                   </TableRow>
                 ))}

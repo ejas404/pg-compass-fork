@@ -17,6 +17,8 @@ interface TypesTabProps {
   connectionId: string;
   schema: string;
   table: string;
+  refreshSignal?: number;
+  onRefreshComplete?: (success: boolean) => void;
 }
 
 function typeKey(type: TableTypeInfo): string {
@@ -138,6 +140,8 @@ export function TypesTab({
   connectionId,
   schema,
   table,
+  refreshSignal = 0,
+  onRefreshComplete,
 }: Readonly<TypesTabProps>) {
   const [types, setTypes] = useState<TableTypeInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -153,13 +157,15 @@ export function TypesTab({
       });
       if (!result.success || !result.data) {
         toast.error("Failed to load types", { description: result.error });
-        return;
+        return false;
       }
       setTypes(result.data);
+      return true;
     } catch (err) {
       toast.error("Failed to load types", {
         description: (err as Error).message,
       });
+      return false;
     } finally {
       setLoading(false);
     }
@@ -167,12 +173,14 @@ export function TypesTab({
 
   useEffect(
     function loadTypes() {
-      fetch();
+      void fetch().then((success) => {
+        if (refreshSignal > 0) onRefreshComplete?.(success);
+      });
     },
-    [fetch],
+    [fetch, onRefreshComplete, refreshSignal],
   );
 
-  if (loading) {
+  if (loading && types.length === 0) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loader2 className="size-5 animate-spin text-muted-foreground" />

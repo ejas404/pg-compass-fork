@@ -83,6 +83,7 @@ export function runTableDataIntegrationSuite(
 
       const query = await executeQuery({
         connectionId,
+        queryId: "integration-query-1",
         sql: "SELECT id, email FROM app.users ORDER BY id LIMIT 10",
         page: 1,
         pageSize: 5,
@@ -90,6 +91,34 @@ export function runTableDataIntegrationSuite(
       expect(query.totalCount).toBe(10);
       expect(query.rows[0]).toMatchObject({ id: 1 });
     });
+
+    it.runIf(label === "postgres")(
+      "cancels only the targeted slow query and treats repeated cancellation as idempotent",
+      async () => {
+        const { cancelQuery, executeQuery } =
+          await import("@/main/table-data-rows");
+        const queryId = "integration-slow-query";
+        const running = executeQuery({
+          connectionId,
+          queryId,
+          sql: "SELECT pg_sleep(10)",
+          page: 1,
+          pageSize: 1,
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        await expect(cancelQuery(connectionId, queryId)).resolves.toBe(
+          "cancel-requested",
+        );
+        await expect(cancelQuery(connectionId, queryId)).resolves.toBe(
+          "cancel-requested",
+        );
+        await expect(running).rejects.toThrow("Query cancelled.");
+        await expect(cancelQuery(connectionId, queryId)).resolves.toBe(
+          "already-finished",
+        );
+      },
+    );
 
     it("fetches structure, indexes, constraints, and types", async () => {
       const { getStructure, getIndexes, getConstraints, getTypes } =
@@ -345,6 +374,7 @@ export function runTableDataIntegrationSuite(
         const { executeQuery } = await import("@/main/table-data-rows");
         const result = await executeQuery({
           connectionId,
+          queryId: "integration-query-2",
           sql: "SELECT id, email FROM app.users ORDER BY id LIMIT 10",
           page: 1,
           pageSize: 5,
@@ -792,6 +822,7 @@ export function runTableDataIntegrationSuite(
         const { executeQuery } = await import("@/main/table-data-rows");
         const result = await executeQuery({
           connectionId,
+          queryId: "integration-query-3",
           sql: "SELECT id, role FROM app.users ORDER BY id LIMIT 5",
           page: 1,
           pageSize: 5,

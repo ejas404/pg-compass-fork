@@ -247,4 +247,56 @@ describe("useWorkspace", () => {
     expect(result.current.tabs).toHaveLength(0);
     expect(result.current.activeTabId).toBeNull();
   });
+
+  it("scopes relation session state to a tab and clears it when the connection closes", async () => {
+    const { result } = renderHook(() => useWorkspace(), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.tabs).toHaveLength(0));
+
+    await act(async () => {
+      await result.current.openTab({
+        type: "table-details",
+        path: {
+          connectionId: "conn-1",
+          connectionLabel: "Local",
+          schemaName: "app",
+          tableName: "users",
+        },
+      });
+    });
+    const tabId = result.current.tabs[0]!.id;
+
+    act(() => {
+      result.current.updateRelationSession(tabId, {
+        activeSubTab: "indexes",
+        dataPageSize: 100,
+        dataWhereClause: "id > 10",
+        dataViewMode: "card",
+      });
+    });
+    expect(result.current.relationSessions[tabId]).toMatchObject({
+      activeSubTab: "indexes",
+      dataPageSize: 100,
+      dataWhereClause: "id > 10",
+      dataViewMode: "card",
+    });
+
+    act(() => result.current.closeConnectionTabs("conn-1"));
+    expect(result.current.tabs).toHaveLength(0);
+    expect(result.current.relationSessions[tabId]).toBeUndefined();
+  });
+
+  it("reports schema refresh failures without treating an empty result as success", async () => {
+    vi.mocked(window.connectionApi.getSchemaTree).mockResolvedValueOnce({
+      success: false,
+      error: "network unavailable",
+    });
+    const { result } = renderHook(() => useWorkspace(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await expect(
+        result.current.refreshSchemaTreeWithStatus("conn-failed", true),
+      ).resolves.toEqual({ ok: false, data: [] });
+    });
+    expect(result.current.schemaCache["conn-failed"]).toBeUndefined();
+  });
 });

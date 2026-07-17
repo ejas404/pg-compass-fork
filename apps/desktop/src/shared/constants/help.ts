@@ -1,14 +1,15 @@
-export const GITHUB_REPO_URL = 'https://github.com/waterrmalann/pg-compass';
+export const GITHUB_REPO_URL = "https://github.com/waterrmalann/pg-compass";
 
 export const FEATURE_REQUEST_URL =
-  'https://github.com/waterrmalann/pg-compass/issues/new?template=feature_request.md';
+  "https://github.com/waterrmalann/pg-compass/issues/new?template=feature_request.md";
 
 export const BUG_REPORT_URL =
-  'https://github.com/waterrmalann/pg-compass/issues/new?template=bug_report.md';
+  "https://github.com/waterrmalann/pg-compass/issues/new?template=bug_report.md";
 
 export const HelpChannels = {
-  SHOW_LICENSE: 'help:show-license',
-  SHOW_ABOUT: 'help:show-about',
+  SHOW_LICENSE: "help:show-license",
+  SHOW_ABOUT: "help:show-about",
+  SHOW_SHORTCUTS: "help:show-shortcuts",
 } as const;
 
 export const LICENSE_TEXT = `MIT License

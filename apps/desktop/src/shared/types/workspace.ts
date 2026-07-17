@@ -19,27 +19,27 @@ export interface ViewListViewerPath extends WorkspacePath {
 
 export type WorkspaceTabView =
   | {
-      type: 'schema-list';
+      type: "schema-list";
       path: DatabaseViewerPath;
     }
   | {
-      type: 'schema';
+      type: "schema";
       path: SchemaViewerPath;
     }
   | {
-      type: 'table-list';
+      type: "table-list";
       path: TableListViewerPath;
     }
   | {
-      type: 'table-details';
+      type: "table-details";
       path: TableListViewerPath;
     }
   | {
-      type: 'view-list';
+      type: "view-list";
       path: ViewListViewerPath;
     }
   | {
-      type: 'view-details';
+      type: "view-details";
       path: ViewListViewerPath;
     };
 
@@ -49,3 +49,26 @@ export interface WorkspaceTab {
   color?: string;
   view: WorkspaceTabView;
 }
+
+export type RelationSubTab =
+  | "data"
+  | "structure"
+  | "indexes"
+  | "constraints"
+  | "triggers"
+  | "types"
+  | "query";
+
+export interface RelationSessionState {
+  activeSubTab: RelationSubTab;
+  dataViewMode: "table" | "card";
+  dataPageSize: number;
+  dataWhereClause: string;
+}
+
+export const DEFAULT_RELATION_SESSION: RelationSessionState = {
+  activeSubTab: "data",
+  dataViewMode: "table",
+  dataPageSize: 50,
+  dataWhereClause: "",
+};

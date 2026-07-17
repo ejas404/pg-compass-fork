@@ -5,9 +5,29 @@ import type {
   GetRowsParams,
   TableRowsResult,
 } from "../shared/types/table-data";
-import { quoteIdent, withPoolClient } from "./pg-utils";
+import { quoteIdent, withDedicatedClient, withPoolClient } from "./pg-utils";
 import { buildEnumTypeMap, buildTypeMap } from "./table-data-utils";
 import { resolveForeignKeys } from "./table-data-fk";
+
+interface ActiveQuery {
+  connectionId: string;
+  backendPid: number | null;
+  cancelRequested: boolean;
+  cancelPromise: Promise<boolean> | null;
+}
+
+const activeQueries = new Map<string, ActiveQuery>();
+
+function validateQueryId(queryId: string): void {
+  if (
+    typeof queryId !== "string" ||
+    queryId.length < 8 ||
+    queryId.length > 128 ||
+    !/^[a-zA-Z0-9_-]+$/.test(queryId)
+  ) {
+    throw new Error("Invalid query identifier.");
+  }
+}
 
 function parseCountRow(raw: string | undefined): number {
   // `SELECT count(*)` always produces exactly one row; a missing value here
@@ -202,61 +222,130 @@ export function stripLimitOffset(sql: string): {
 export async function executeQuery(
   params: ExecuteQueryParams,
 ): Promise<TableRowsResult> {
+  validateQueryId(params.queryId);
   if (!isReadOnlyQuery(params.sql)) {
     throw new Error(
       "Only SELECT statements (including CTEs with WITH) are allowed.",
     );
   }
 
-  return withPoolClient(params.connectionId, async (client) => {
-    // Set the transaction to read-only for extra safety
-    await client.query("BEGIN READ ONLY");
+  if (activeQueries.has(params.queryId)) {
+    throw new Error("A query with this identifier is already running.");
+  }
+  const active: ActiveQuery = {
+    connectionId: params.connectionId,
+    backendPid: null,
+    cancelRequested: false,
+    cancelPromise: null,
+  };
+  activeQueries.set(params.queryId, active);
 
-    try {
-      const offset = (params.page - 1) * params.pageSize;
-      const trimmedSql = params.sql.replace(/;\s*$/, "");
-      const { core, userLimit } = stripLimitOffset(trimmedSql);
-
-      const countResult = await client.query<{ count: string }>(
-        `SELECT count(*) AS count FROM (${core}) AS __count_subquery`,
-      );
-      let totalCount = parseCountRow(countResult.rows[0]?.count);
-
-      // Honour the user's LIMIT as an upper bound on total rows.
-      if (userLimit !== null && userLimit < totalCount) {
-        totalCount = userLimit;
+  try {
+    return await withPoolClient(params.connectionId, async (client) => {
+      if (active.cancelRequested) {
+        throw new Error("Query cancelled.");
       }
+      active.backendPid = (
+        client as PoolClient & { processID: number }
+      ).processID;
 
-      const dataResult = await client.query(
-        `SELECT * FROM (${core}) AS __data_subquery LIMIT $1 OFFSET $2`,
-        [params.pageSize, offset],
-      );
+      // Set the transaction to read-only for extra safety
+      await client.query("BEGIN READ ONLY");
+      try {
+        const offset = (params.page - 1) * params.pageSize;
+        const trimmedSql = params.sql.replace(/;\s*$/, "");
+        const { core, userLimit } = stripLimitOffset(trimmedSql);
 
-      await client.query("COMMIT");
+        const countResult = await client.query<{ count: string }>(
+          `SELECT count(*) AS count FROM (${core}) AS __count_subquery`,
+        );
+        let totalCount = parseCountRow(countResult.rows[0]?.count);
 
-      const oids = dataResult.fields.map((f) => f.dataTypeID);
-      const typeMap = await buildTypeMap(client, oids);
-      const enumMap = await buildEnumTypeMap(client, oids);
+        // Honour the user's LIMIT as an upper bound on total rows.
+        if (userLimit !== null && userLimit < totalCount) {
+          totalCount = userLimit;
+        }
 
-      const columns: ColumnInfo[] = dataResult.fields.map((f) => {
-        const enumInfo = enumMap.get(f.dataTypeID);
-        return {
-          name: f.name,
-          dataTypeId: f.dataTypeID,
-          dataType: typeMap.get(f.dataTypeID) ?? "unknown",
-          ...(enumInfo
-            ? { enumLabels: enumInfo.labels, enumPgCast: enumInfo.pgCast }
-            : {}),
-        };
-      });
+        const dataResult = await client.query(
+          `SELECT * FROM (${core}) AS __data_subquery LIMIT $1 OFFSET $2`,
+          [params.pageSize, offset],
+        );
 
-      // Ad-hoc queries span an arbitrary set of source relations (or none —
-      // e.g. VALUES). There is no single primary key to return, so cells
-      // from this code path are always read-only.
-      return { columns, rows: dataResult.rows, totalCount, primaryKey: null };
-    } catch (err) {
-      await client.query("ROLLBACK").catch(() => undefined);
-      throw err;
-    }
+        await client.query("COMMIT");
+
+        const oids = dataResult.fields.map((f) => f.dataTypeID);
+        const typeMap = await buildTypeMap(client, oids);
+        const enumMap = await buildEnumTypeMap(client, oids);
+
+        const columns: ColumnInfo[] = dataResult.fields.map((f) => {
+          const enumInfo = enumMap.get(f.dataTypeID);
+          return {
+            name: f.name,
+            dataTypeId: f.dataTypeID,
+            dataType: typeMap.get(f.dataTypeID) ?? "unknown",
+            ...(enumInfo
+              ? { enumLabels: enumInfo.labels, enumPgCast: enumInfo.pgCast }
+              : {}),
+          };
+        });
+
+        // Ad-hoc queries span an arbitrary set of source relations (or none —
+        // e.g. VALUES). There is no single primary key to return, so cells
+        // from this code path are always read-only.
+        return { columns, rows: dataResult.rows, totalCount, primaryKey: null };
+      } catch (err) {
+        await client.query("ROLLBACK").catch(() => undefined);
+        if ((err as { code?: string }).code === "57014") {
+          throw new Error("Query cancelled.");
+        }
+        throw err;
+      } finally {
+        await active.cancelPromise?.catch(() => false);
+      }
+    });
+  } finally {
+    activeQueries.delete(params.queryId);
+  }
+}
+
+export async function cancelQuery(
+  connectionId: string,
+  queryId: string,
+): Promise<"cancel-requested" | "already-finished"> {
+  validateQueryId(queryId);
+  const active = activeQueries.get(queryId);
+  if (!active || active.connectionId !== connectionId) {
+    return "already-finished";
+  }
+  if (active.cancelRequested) {
+    return "cancel-requested";
+  }
+  if (active.cancelPromise) {
+    return "cancel-requested";
+  }
+  if (active.backendPid === null) {
+    active.cancelRequested = true;
+    return "cancel-requested";
+  }
+
+  const cancelPromise = withDedicatedClient(connectionId, async (client) => {
+    const result = await client.query<{ cancelled: boolean }>(
+      "SELECT pg_cancel_backend($1) AS cancelled",
+      [active.backendPid],
+    );
+    return result.rows[0]?.cancelled === true;
   });
+  active.cancelPromise = cancelPromise;
+  try {
+    const cancelled = await cancelPromise;
+    if (cancelled) {
+      active.cancelRequested = true;
+      return "cancel-requested";
+    }
+    return "already-finished";
+  } finally {
+    if (active.cancelPromise === cancelPromise) {
+      active.cancelPromise = null;
+    }
+  }
 }

@@ -7,6 +7,7 @@ import { SettingsChannels } from "./shared/types/settings";
 import { TableDataChannels } from "./shared/types/table-data";
 import { HelpChannels } from "./shared/constants/help";
 import { WorkspaceChannels } from "./shared/constants/workspace";
+import { ClipboardChannels } from "./shared/constants/clipboard";
 import type {
   ConnectionConfig,
   ConnectionFileDialogOptions,
@@ -17,6 +18,8 @@ import type {
 import type { AppSettings, AppSettingsPatch } from "./shared/types/settings";
 import type {
   ColumnStructure,
+  CancelQueryParams,
+  CancelQueryResult,
   ConstraintInfo,
   DeleteRowsParams,
   DeleteRowsResult,
@@ -125,6 +128,11 @@ const tableDataApi = {
   ): Promise<IpcResult<TableRowsResult>> =>
     ipcRenderer.invoke(TableDataChannels.EXECUTE_QUERY, params),
 
+  cancelQuery: (
+    params: CancelQueryParams,
+  ): Promise<IpcResult<CancelQueryResult>> =>
+    ipcRenderer.invoke(TableDataChannels.CANCEL_QUERY, params),
+
   showSaveDialog: (
     options: SaveDialogOptions,
   ): Promise<IpcResult<string | null>> =>
@@ -180,6 +188,14 @@ const helpApi = {
       ipcRenderer.removeListener(HelpChannels.SHOW_ABOUT, listener);
     };
   },
+
+  onShowShortcuts: (callback: () => void) => {
+    const listener = () => callback();
+    ipcRenderer.on(HelpChannels.SHOW_SHORTCUTS, listener);
+    return () => {
+      ipcRenderer.removeListener(HelpChannels.SHOW_SHORTCUTS, listener);
+    };
+  },
 };
 
 const workspaceApi = {
@@ -208,8 +224,14 @@ const workspaceApi = {
   },
 };
 
+const clipboardApi = {
+  writeText: (text: string): Promise<IpcResult<void>> =>
+    ipcRenderer.invoke(ClipboardChannels.WRITE_TEXT, text),
+};
+
 contextBridge.exposeInMainWorld("connectionApi", connectionApi);
 contextBridge.exposeInMainWorld("settingsApi", settingsApi);
 contextBridge.exposeInMainWorld("tableDataApi", tableDataApi);
 contextBridge.exposeInMainWorld("helpApi", helpApi);
 contextBridge.exposeInMainWorld("workspaceApi", workspaceApi);
+contextBridge.exposeInMainWorld("clipboardApi", clipboardApi);

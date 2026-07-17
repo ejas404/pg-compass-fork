@@ -1,5 +1,10 @@
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const PAGE_SIZE_OPTIONS = [25, 50, 75, 100] as const;
 
@@ -9,6 +14,7 @@ interface DataPaginationProps {
   totalCount: number;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
+  disabled?: boolean;
 }
 
 export function DataPagination({
@@ -17,6 +23,7 @@ export function DataPagination({
   totalCount,
   onPageChange,
   onPageSizeChange,
+  disabled = false,
 }: Readonly<DataPaginationProps>) {
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const start = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -35,9 +42,9 @@ export function DataPagination({
           <select
             className="h-6 rounded border border-input bg-background px-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             value={pageSize}
+            disabled={disabled}
             onChange={(e) => {
               onPageSizeChange(Number(e.target.value));
-              onPageChange(1);
             }}
           >
             {PAGE_SIZE_OPTIONS.map((size) => (
@@ -55,7 +62,7 @@ export function DataPagination({
           variant="ghost"
           size="icon-sm"
           className="size-7"
-          disabled={page <= 1}
+          disabled={disabled || page <= 1}
           onClick={() => onPageChange(1)}
           aria-label="First page"
         >
@@ -66,7 +73,7 @@ export function DataPagination({
           variant="ghost"
           size="icon-sm"
           className="size-7"
-          disabled={page <= 1}
+          disabled={disabled || page <= 1}
           onClick={() => onPageChange(page - 1)}
           aria-label="Previous page"
         >
@@ -80,7 +87,7 @@ export function DataPagination({
           variant="ghost"
           size="icon-sm"
           className="size-7"
-          disabled={page >= totalPages}
+          disabled={disabled || page >= totalPages}
           onClick={() => onPageChange(page + 1)}
           aria-label="Next page"
         >
@@ -91,7 +98,7 @@ export function DataPagination({
           variant="ghost"
           size="icon-sm"
           className="size-7"
-          disabled={page >= totalPages}
+          disabled={disabled || page >= totalPages}
           onClick={() => onPageChange(totalPages)}
           aria-label="Last page"
         >

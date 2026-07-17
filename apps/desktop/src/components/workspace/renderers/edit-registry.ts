@@ -191,7 +191,8 @@ function makeFloatEditor(pgCast: "float4" | "float8"): TypeEditor {
       if (trimmed === "") return err(`Not a valid ${pgCast}.`);
       const lower = trimmed.toLowerCase();
       if (lower === "nan") return ok("NaN", pgCast);
-      if (lower === "infinity" || lower === "inf") return ok("Infinity", pgCast);
+      if (lower === "infinity" || lower === "inf")
+        return ok("Infinity", pgCast);
       if (lower === "-infinity" || lower === "-inf") {
         return ok("-Infinity", pgCast);
       }
@@ -321,45 +322,69 @@ function parseJsonArray(raw: string): unknown[] | null {
   }
 }
 
-const intArrayEditor: TypeEditor = {
-  kind: "inline",
-  toInput(value) {
-    return Array.isArray(value) ? JSON.stringify(value) : toInputString(value);
-  },
-  validate(raw) {
-    const parsed = parseJsonArray(raw);
-    if (!parsed) return err(`Not a valid integer array: ${raw}`);
-    for (const item of parsed) {
-      if (typeof item !== "number" || !Number.isInteger(item)) {
-        return err(`Array contains a non-integer value: ${String(item)}`);
+function makeIntArrayEditor(
+  pgCast: "_int2" | "_int4" | "_int8",
+  min: bigint,
+  max: bigint,
+): TypeEditor {
+  return {
+    kind: "inline",
+    toInput(value) {
+      return Array.isArray(value)
+        ? JSON.stringify(value)
+        : toInputString(value);
+    },
+    validate(raw) {
+      const parsed = parseJsonArray(raw);
+      if (!parsed) return err(`Not a valid integer array: ${raw}`);
+      const normalized: Array<number | string> = [];
+      for (const item of parsed) {
+        const itemText =
+          typeof item === "number" && Number.isInteger(item)
+            ? String(item)
+            : typeof item === "string" && INTEGER_RE.test(item)
+              ? item
+              : null;
+        if (itemText === null) {
+          return err(`Array contains a non-integer value: ${String(item)}`);
+        }
+        const integer = BigInt(itemText);
+        if (integer < min || integer > max) {
+          return err(
+            `Array value is out of ${pgCast.slice(1)} range: ${itemText}`,
+          );
+        }
+        normalized.push(pgCast === "_int8" ? itemText : Number(itemText));
       }
-    }
-    return ok(parsed, "_int4");
-  },
-};
+      return ok(normalized, pgCast);
+    },
+  };
+}
 
-const textArrayEditor: TypeEditor = {
-  kind: "inline",
-  toInput(value) {
-    return Array.isArray(value) ? JSON.stringify(value) : toInputString(value);
-  },
-  validate(raw) {
-    const parsed = parseJsonArray(raw);
-    if (!parsed) return err(`Not a valid text array: ${raw}`);
-    for (const item of parsed) {
-      if (typeof item !== "string") {
-        return err(`Array contains a non-string value: ${String(item)}`);
+function makeTextArrayEditor(pgCast: "_text" | "_varchar"): TypeEditor {
+  return {
+    kind: "inline",
+    toInput(value) {
+      return Array.isArray(value)
+        ? JSON.stringify(value)
+        : toInputString(value);
+    },
+    validate(raw) {
+      const parsed = parseJsonArray(raw);
+      if (!parsed) return err(`Not a valid text array: ${raw}`);
+      for (const item of parsed) {
+        if (typeof item !== "string") {
+          return err(`Array contains a non-string value: ${String(item)}`);
+        }
       }
-    }
-    return ok(parsed, "_text");
-  },
-};
+      return ok(parsed, pgCast);
+    },
+  };
+}
 
 // --- temporal ---------------------------------------------------------------
 
-function makeTimestampEditor(
-  pgCast: "timestamp" | "timestamptz",
-): TypeEditor {
+function makeTimestampEditor(pgCast: "timestamp" | "timestamptz"): TypeEditor {
   return {
     kind: "inline",
     toInput(value) {
@@ -408,6 +433,20 @@ const timeEditor: TypeEditor = {
       return err(`Not a valid time: ${raw}`);
     }
     return ok(trimmed, "time");
+  },
+};
+
+const timetzEditor: TypeEditor = {
+  kind: "inline",
+  toInput: toInputString,
+  validate(raw) {
+    const trimmed = raw.trim();
+    if (
+      !/^\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}(:?\d{2})?)$/i.test(trimmed)
+    ) {
+      return err(`Not a valid timetz value: ${raw}`);
+    }
+    return ok(trimmed, "timetz");
   },
 };
 
@@ -541,15 +580,27 @@ export function registerDefaultEditors(): void {
   editRegistry.register("jsonb", makeJsonEditor("jsonb"));
 
   // Arrays
-  editRegistry.registerMany(["_int2", "_int4", "_int8"], intArrayEditor);
-  editRegistry.registerMany(["_text", "_varchar"], textArrayEditor);
+  editRegistry.register(
+    "_int2",
+    makeIntArrayEditor("_int2", INT2_MIN, INT2_MAX),
+  );
+  editRegistry.register(
+    "_int4",
+    makeIntArrayEditor("_int4", INT4_MIN, INT4_MAX),
+  );
+  editRegistry.register(
+    "_int8",
+    makeIntArrayEditor("_int8", INT8_MIN, INT8_MAX),
+  );
+  editRegistry.register("_text", makeTextArrayEditor("_text"));
+  editRegistry.register("_varchar", makeTextArrayEditor("_varchar"));
 
   // Temporal
   editRegistry.register("timestamp", makeTimestampEditor("timestamp"));
   editRegistry.register("timestamptz", makeTimestampEditor("timestamptz"));
   editRegistry.register("date", dateEditor);
   editRegistry.register("time", timeEditor);
-  editRegistry.register("timetz", timeEditor);
+  editRegistry.register("timetz", timetzEditor);
 
   // Vectors
   editRegistry.register("vector", vectorEditor);

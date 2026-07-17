@@ -1,8 +1,8 @@
-import { useMemo } from 'react';
-import { RelationListTable } from '@/components/workspace/relation-list-table';
-import { ViewerShell } from '@/components/workspace/viewer-shell';
-import { useWorkspace } from '@/hooks/use-workspace';
-import type { TableListViewerPath } from '@/shared/types/workspace';
+import { useMemo, useState } from "react";
+import { RelationListTable } from "@/components/workspace/relation-list-table";
+import { ViewerShell } from "@/components/workspace/viewer-shell";
+import { useWorkspace } from "@/hooks/use-workspace";
+import type { TableListViewerPath } from "@/shared/types/workspace";
 
 interface TableListViewerProps {
   path: TableListViewerPath;
@@ -10,14 +10,17 @@ interface TableListViewerProps {
 
 function formatEstimatedRowCount(value: number | null | undefined): string {
   if (value == null) {
-    return 'Unknown';
+    return "Unknown";
   }
 
   return new Intl.NumberFormat().format(value);
 }
 
 export function TableListViewer({ path }: Readonly<TableListViewerProps>) {
-  const { schemaCache, refreshSchemaTree, navigateToView } = useWorkspace();
+  const { schemaCache, refreshSchemaTreeWithStatus, navigateToView } =
+    useWorkspace();
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
 
   const rows = useMemo(() => {
     const schema = schemaCache[path.connectionId]?.find(
@@ -31,14 +34,17 @@ export function TableListViewer({ path }: Readonly<TableListViewerProps>) {
         return {
           name: tableName,
           rowCount: formatEstimatedRowCount(stats?.estimatedRowCount),
-          sizeOnDisk: stats?.sizeOnDisk ?? 'Unknown',
+          sizeOnDisk: stats?.sizeOnDisk ?? "Unknown",
         };
       }) ?? []
     );
   }, [schemaCache, path.connectionId, path.schemaName]);
 
-  function handleRefresh() {
-    refreshSchemaTree(path.connectionId, true).catch(() => undefined);
+  async function handleRefresh() {
+    setRefreshing(true);
+    const result = await refreshSchemaTreeWithStatus(path.connectionId, true);
+    if (result.ok) setLastRefreshedAt(new Date());
+    setRefreshing(false);
   }
 
   return (
@@ -47,7 +53,7 @@ export function TableListViewer({ path }: Readonly<TableListViewerProps>) {
         {
           label: path.connectionLabel,
           view: {
-            type: 'schema-list',
+            type: "schema-list",
             path: {
               connectionId: path.connectionId,
               connectionLabel: path.connectionLabel,
@@ -57,7 +63,7 @@ export function TableListViewer({ path }: Readonly<TableListViewerProps>) {
         {
           label: path.schemaName,
           view: {
-            type: 'schema',
+            type: "schema",
             path: {
               connectionId: path.connectionId,
               connectionLabel: path.connectionLabel,
@@ -68,7 +74,7 @@ export function TableListViewer({ path }: Readonly<TableListViewerProps>) {
         {
           label: path.tableName,
           view: {
-            type: 'table-list',
+            type: "table-list",
             path,
           },
         },
@@ -77,6 +83,9 @@ export function TableListViewer({ path }: Readonly<TableListViewerProps>) {
         navigateToView(view).catch(() => undefined);
       }}
       onRefresh={handleRefresh}
+      refreshing={refreshing}
+      lastRefreshedAt={lastRefreshedAt}
+      refreshLabel="Refresh schema metadata and table list"
     >
       <RelationListTable
         rows={rows}

@@ -1,11 +1,13 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { SchemaViewer } from "@/components/workspace/schema-viewer";
 
 const openTab = vi.fn().mockResolvedValue(undefined);
 const navigateToView = vi.fn().mockResolvedValue(undefined);
-const refreshSchemaTree = vi.fn().mockResolvedValue([]);
+const refreshSchemaTreeWithStatus = vi
+  .fn()
+  .mockResolvedValue({ ok: true, data: [] });
 
 vi.mock("@/hooks/use-workspace", () => ({
   useWorkspace: () => ({
@@ -27,7 +29,7 @@ vi.mock("@/hooks/use-workspace", () => ({
         },
       ],
     },
-    refreshSchemaTree,
+    refreshSchemaTreeWithStatus,
     openTab,
     navigateToView,
   }),
@@ -63,5 +65,27 @@ describe("SchemaViewer", () => {
         viewName: "active_users",
       },
     });
+  });
+
+  it("does not show a successful refresh timestamp after metadata failure", async () => {
+    const user = userEvent.setup();
+    refreshSchemaTreeWithStatus.mockResolvedValueOnce({ ok: false, data: [] });
+    render(
+      <SchemaViewer
+        path={{
+          connectionId: "conn-1",
+          connectionLabel: "Local",
+          schemaName: "app",
+        }}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /refresh schema app and visible relation list/i,
+      }),
+    );
+    await waitFor(() => expect(refreshSchemaTreeWithStatus).toHaveBeenCalled());
+    expect(screen.queryByText(/Updated/)).not.toBeInTheDocument();
   });
 });

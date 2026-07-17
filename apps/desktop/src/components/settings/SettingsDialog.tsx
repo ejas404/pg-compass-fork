@@ -1,21 +1,30 @@
-import { useState, type ReactNode } from 'react';
-import { Monitor, Moon, Palette, Settings, Shield, Sun } from 'lucide-react';
+import { useState, type ReactNode } from "react";
+import {
+  Keyboard,
+  Monitor,
+  Moon,
+  Palette,
+  Settings,
+  Shield,
+  Sun,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useSettings } from '@/hooks/use-settings';
-import { cn } from '@/lib/utils';
-import type { ThemePreference } from '@/shared/types/settings';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSettings } from "@/hooks/use-settings";
+import { cn } from "@/lib/utils";
+import type { ThemePreference } from "@/shared/types/settings";
+import { KeyboardShortcutsDialog } from "@/components/help/KeyboardShortcutsDialog";
 
-type SettingsCategory = 'general' | 'appearance' | 'privacy';
+type SettingsCategory = "general" | "appearance" | "privacy";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -27,17 +36,23 @@ const categories: Array<{
   label: string;
   icon: typeof Settings;
 }> = [
-  { id: 'general', label: 'General', icon: Settings },
-  { id: 'appearance', label: 'Appearance', icon: Palette },
-  { id: 'privacy', label: 'Privacy', icon: Shield },
+  { id: "general", label: "General", icon: Settings },
+  { id: "appearance", label: "Appearance", icon: Palette },
+  { id: "privacy", label: "Privacy", icon: Shield },
 ];
 
-export function SettingsDialog({ open, onOpenChange }: Readonly<SettingsDialogProps>) {
-  const [category, setCategory] = useState<SettingsCategory>('general');
+export function SettingsDialog({
+  open,
+  onOpenChange,
+}: Readonly<SettingsDialogProps>) {
+  const [category, setCategory] = useState<SettingsCategory>("general");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-hidden p-0 sm:max-w-4xl" showCloseButton>
+      <DialogContent
+        className="max-h-[85vh] overflow-hidden p-0 sm:max-w-4xl"
+        showCloseButton
+      >
         <DialogHeader className="px-5 pt-5">
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
@@ -53,7 +68,7 @@ export function SettingsDialog({ open, onOpenChange }: Readonly<SettingsDialogPr
               {categories.map(({ id, label, icon: Icon }) => (
                 <Button
                   key={id}
-                  variant={category === id ? 'secondary' : 'ghost'}
+                  variant={category === id ? "secondary" : "ghost"}
                   className="justify-start gap-2"
                   onClick={() => setCategory(id)}
                 >
@@ -65,9 +80,9 @@ export function SettingsDialog({ open, onOpenChange }: Readonly<SettingsDialogPr
           </aside>
 
           <section className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-5">
-            {category === 'general' && <GeneralSettingsPanel />}
-            {category === 'appearance' && <AppearanceSettingsPanel />}
-            {category === 'privacy' && <PrivacySettingsPanel />}
+            {category === "general" && <GeneralSettingsPanel />}
+            {category === "appearance" && <AppearanceSettingsPanel />}
+            {category === "privacy" && <PrivacySettingsPanel />}
           </section>
         </div>
       </DialogContent>
@@ -77,6 +92,7 @@ export function SettingsDialog({ open, onOpenChange }: Readonly<SettingsDialogPr
 
 function GeneralSettingsPanel() {
   const { settings, updateSettings } = useSettings();
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   return (
     <div className="flex flex-col gap-1">
@@ -92,6 +108,29 @@ function GeneralSettingsPanel() {
         onCheckedChange={(checked) =>
           updateSettings({ general: { readOnlyMode: checked } })
         }
+      />
+
+      <div className="mt-2 flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-3">
+        <div>
+          <p className="text-sm font-medium">Keyboard Shortcuts</p>
+          <p className="text-xs text-muted-foreground">
+            Browse and search platform-specific workspace and editor commands.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={() => setShortcutsOpen(true)}
+        >
+          <Keyboard className="size-4" />
+          View
+        </Button>
+      </div>
+      <KeyboardShortcutsDialog
+        open={shortcutsOpen}
+        onOpenChange={setShortcutsOpen}
       />
 
       <SettingToggleRow
@@ -178,7 +217,8 @@ function PrivacySettingsPanel() {
     <div className="flex flex-col gap-1">
       <h3 className="text-sm font-semibold">Privacy</h3>
       <p className="mb-3 text-xs text-muted-foreground">
-        Define how the app behaves for maintenance and telemetry-related features.
+        Define how the app behaves for maintenance and telemetry-related
+        features.
       </p>
 
       <SettingToggleRow
@@ -241,7 +281,7 @@ function ThemeCard({
         void onSelect(value);
       }}
       className={cn(
-        'h-auto min-h-40 w-full min-w-0 flex-col items-start justify-start gap-3 rounded-lg border border-border bg-card p-3 text-left whitespace-normal wrap-break-word data-[state=active]:border-primary data-[state=active]:bg-accent/40',
+        "h-auto min-h-40 w-full min-w-0 flex-col items-start justify-start gap-3 rounded-lg border border-border bg-card p-3 text-left whitespace-normal wrap-break-word data-[state=active]:border-primary data-[state=active]:bg-accent/40",
       )}
     >
       <div className="flex w-full items-center gap-2 text-sm font-semibold">

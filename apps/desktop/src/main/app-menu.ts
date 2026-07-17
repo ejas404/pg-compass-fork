@@ -1,11 +1,12 @@
-import { app, BrowserWindow, Menu, shell } from 'electron';
+import { app, BrowserWindow, Menu, shell } from "electron";
 import {
   BUG_REPORT_URL,
   FEATURE_REQUEST_URL,
   GITHUB_REPO_URL,
   HelpChannels,
-} from '../shared/constants/help';
-import { WorkspaceChannels } from '../shared/constants/workspace';
+} from "../shared/constants/help";
+import { WorkspaceChannels } from "../shared/constants/workspace";
+import { getShortcut } from "../shared/constants/shortcuts";
 
 function sendToFocusedWindow(channel: string) {
   const win = BrowserWindow.getFocusedWindow();
@@ -15,7 +16,7 @@ function sendToFocusedWindow(channel: string) {
 }
 
 export function buildAppMenu(): Menu {
-  const isMac = process.platform === 'darwin';
+  const isMac = process.platform === "darwin";
 
   const template: Electron.MenuItemConstructorOptions[] = [
     // On macOS the first menu is the "app" menu (PG Compass)
@@ -24,13 +25,13 @@ export function buildAppMenu(): Menu {
           {
             label: app.name,
             submenu: [
-              { role: 'about' as const },
-              { type: 'separator' as const },
-              { role: 'hide' as const },
-              { role: 'hideOthers' as const },
-              { role: 'unhide' as const },
-              { type: 'separator' as const },
-              { role: 'quit' as const },
+              { role: "about" as const },
+              { type: "separator" as const },
+              { role: "hide" as const },
+              { role: "hideOthers" as const },
+              { role: "unhide" as const },
+              { type: "separator" as const },
+              { role: "quit" as const },
             ],
           },
         ]
@@ -38,77 +39,82 @@ export function buildAppMenu(): Menu {
 
     // Edit menu (for copy/paste/undo/redo support)
     {
-      label: 'Edit',
+      label: "Edit",
       submenu: [
-        { role: 'undo' },
-        { role: 'redo' },
-        { type: 'separator' },
-        { role: 'cut' },
-        { role: 'copy' },
-        { role: 'paste' },
-        { role: 'selectAll' },
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "selectAll" },
       ],
     },
 
     // View menu
     {
-      label: 'View',
+      label: "View",
       submenu: [
-        { role: 'reload' },
-        { role: 'forceReload' },
-        { type: 'separator' },
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
-        { type: 'separator' },
-        { role: 'togglefullscreen' },
+        { role: "reload" },
+        { role: "forceReload" },
+        { type: "separator" },
+        { role: "resetZoom" },
+        { role: "zoomIn" },
+        { role: "zoomOut" },
+        { type: "separator" },
+        { role: "togglefullscreen" },
       ],
     },
 
     // Window menu
     {
-      label: 'Window',
+      label: "Window",
       submenu: [
         {
-          label: 'Close Tab',
-          accelerator: 'CmdOrCtrl+W',
+          label: "Close Tab",
+          accelerator: getShortcut("close-tab").accelerator,
           click: () => sendToFocusedWindow(WorkspaceChannels.CLOSE_TAB),
         },
-        { role: 'minimize' },
+        { role: "minimize" },
         ...(isMac
-          ? [{ type: 'separator' as const }, { role: 'front' as const }]
+          ? [{ type: "separator" as const }, { role: "front" as const }]
           : []),
       ],
     },
 
     // Help menu
     {
-      role: 'help',
+      role: "help",
       submenu: [
         {
-          label: 'License',
+          label: "Keyboard Shortcuts",
+          click: () => sendToFocusedWindow(HelpChannels.SHOW_SHORTCUTS),
+        },
+        { type: "separator" },
+        {
+          label: "License",
           click: () => sendToFocusedWindow(HelpChannels.SHOW_LICENSE),
         },
-        { type: 'separator' },
+        { type: "separator" },
         {
-          label: 'View Source on GitHub',
+          label: "View Source on GitHub",
           click: () => void shell.openExternal(GITHUB_REPO_URL),
         },
         {
-          label: 'Suggest a Feature',
+          label: "Suggest a Feature",
           click: () => void shell.openExternal(FEATURE_REQUEST_URL),
         },
         {
-          label: 'Report a Bug',
+          label: "Report a Bug",
           click: () => void shell.openExternal(BUG_REPORT_URL),
         },
-        { type: 'separator' },
+        { type: "separator" },
         {
-          label: 'About PG Compass',
+          label: "About PG Compass",
           click: () => sendToFocusedWindow(HelpChannels.SHOW_ABOUT),
         },
         {
-          label: 'Check for Updates',
+          label: "Check for Updates",
           enabled: false,
         },
       ],

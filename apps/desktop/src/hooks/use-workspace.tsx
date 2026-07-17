@@ -6,15 +6,17 @@ import {
   useRef,
   useState,
   type ReactNode,
-} from 'react';
-import { toast } from 'sonner';
-import { useConnections } from '@/hooks/use-connections';
-import { useSettings } from '@/hooks/use-settings';
-import type { DatabaseSchema } from '@/shared/types/connection';
+} from "react";
+import { toast } from "sonner";
+import { useConnections } from "@/hooks/use-connections";
+import { useSettings } from "@/hooks/use-settings";
+import type { DatabaseSchema } from "@/shared/types/connection";
 import type {
+  RelationSessionState,
   WorkspaceTab,
   WorkspaceTabView,
-} from '@/shared/types/workspace';
+} from "@/shared/types/workspace";
+import { DEFAULT_RELATION_SESSION } from "@/shared/types/workspace";
 
 interface WorkspaceContextValue {
   tabs: WorkspaceTab[];
@@ -22,11 +24,27 @@ interface WorkspaceContextValue {
   schemaCache: Record<string, DatabaseSchema[]>;
   setActiveTab: (id: string) => void;
   closeTab: (id: string) => void;
+  closeConnectionTabs: (connectionId: string) => void;
   openTab: (view: WorkspaceTabView, color?: string) => Promise<void>;
   navigateToView: (view: WorkspaceTabView) => Promise<void>;
-  refreshSchemaTree: (connectionId: string, force?: boolean) => Promise<DatabaseSchema[]>;
+  refreshSchemaTree: (
+    connectionId: string,
+    force?: boolean,
+  ) => Promise<DatabaseSchema[]>;
+  refreshSchemaTreeWithStatus: (
+    connectionId: string,
+    force?: boolean,
+  ) => Promise<{ ok: boolean; data: DatabaseSchema[] }>;
   /** Patch path fields on all open tabs belonging to a connection. */
-  refreshTabs: (connectionId: string, patch: { connectionLabel?: string }) => void;
+  refreshTabs: (
+    connectionId: string,
+    patch: { connectionLabel?: string },
+  ) => void;
+  relationSessions: Record<string, RelationSessionState>;
+  updateRelationSession: (
+    tabId: string,
+    patch: Partial<RelationSessionState>,
+  ) => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -34,9 +52,9 @@ const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
 function buildTabId(view: WorkspaceTabView): string {
   const base = `${view.path.connectionId}:${view.type}`;
 
-  if (view.type === 'schema-list') return base;
-  if (view.type === 'schema') return `${base}:${view.path.schemaName}`;
-  if (view.type === 'table-list' || view.type === 'table-details')
+  if (view.type === "schema-list") return base;
+  if (view.type === "schema") return `${base}:${view.path.schemaName}`;
+  if (view.type === "table-list" || view.type === "table-details")
     return `${base}:${view.path.schemaName}:${view.path.tableName}`;
 
   // view-list or view-details
@@ -44,15 +62,19 @@ function buildTabId(view: WorkspaceTabView): string {
 }
 
 function buildTabTitle(view: WorkspaceTabView): string {
-  if (view.type === 'schema-list') return view.path.connectionLabel;
-  if (view.type === 'schema') return view.path.schemaName;
-  if (view.type === 'table-list' || view.type === 'table-details') return view.path.tableName;
+  if (view.type === "schema-list") return view.path.connectionLabel;
+  if (view.type === "schema") return view.path.schemaName;
+  if (view.type === "table-list" || view.type === "table-details")
+    return view.path.tableName;
 
   // view-list or view-details
   return view.path.viewName;
 }
 
-function buildWorkspaceTab(view: WorkspaceTabView, color?: string): WorkspaceTab {
+function buildWorkspaceTab(
+  view: WorkspaceTabView,
+  color?: string,
+): WorkspaceTab {
   return {
     id: buildTabId(view),
     title: buildTabTitle(view),
@@ -61,12 +83,19 @@ function buildWorkspaceTab(view: WorkspaceTabView, color?: string): WorkspaceTab
   };
 }
 
-export function WorkspaceProvider({ children }: Readonly<{ children: ReactNode }>) {
+export function WorkspaceProvider({
+  children,
+}: Readonly<{ children: ReactNode }>) {
   const { getSchemaTree } = useConnections();
   const { settings } = useSettings();
   const [tabs, setTabs] = useState<WorkspaceTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
-  const [schemaCache, setSchemaCache] = useState<Record<string, DatabaseSchema[]>>({});
+  const [schemaCache, setSchemaCache] = useState<
+    Record<string, DatabaseSchema[]>
+  >({});
+  const [relationSessions, setRelationSessions] = useState<
+    Record<string, RelationSessionState>
+  >({});
 
   const activeTabIdRef = useRef(activeTabId);
   activeTabIdRef.current = activeTabId;
@@ -74,63 +103,127 @@ export function WorkspaceProvider({ children }: Readonly<{ children: ReactNode }
   const schemaCacheRef = useRef(schemaCache);
   schemaCacheRef.current = schemaCache;
 
-  const refreshSchemaTree = useCallback(
-    async (connectionId: string, force = false): Promise<DatabaseSchema[]> => {
+  const refreshSchemaTreeWithStatus = useCallback(
+    async (
+      connectionId: string,
+      force = false,
+    ): Promise<{ ok: boolean; data: DatabaseSchema[] }> => {
       if (!force && schemaCacheRef.current[connectionId]) {
-        return schemaCacheRef.current[connectionId];
+        return { ok: true, data: schemaCacheRef.current[connectionId] };
       }
 
-      const result = await getSchemaTree(connectionId, {
-        includeInternalSchemas: !settings.general.hideInternalSchemas,
-      });
+      let result;
+      try {
+        result = await getSchemaTree(connectionId, {
+          includeInternalSchemas: !settings.general.hideInternalSchemas,
+        });
+      } catch (error) {
+        toast.error("Failed to load schema tree", {
+          description: (error as Error).message,
+        });
+        return { ok: false, data: [] };
+      }
 
       if (!result.ok || !result.data) {
-        toast.error('Failed to load schema tree', {
+        toast.error("Failed to load schema tree", {
           description: result.error,
         });
-        return [];
+        return { ok: false, data: [] };
       }
 
       setSchemaCache((prev) => ({
         ...prev,
         [connectionId]: result.data ?? [],
       }));
-      return result.data;
+      return { ok: true, data: result.data };
     },
     [getSchemaTree, settings.general.hideInternalSchemas],
   );
 
-  const refreshTabs = useCallback((connectionId: string, patch: { connectionLabel?: string }) => {
-    setTabs((prevTabs) =>
-      prevTabs.map((tab) => {
-        if (tab.view.path.connectionId !== connectionId) return tab;
-        const updatedView = {
-          ...tab.view,
-          path: { ...tab.view.path, ...patch },
-        } as WorkspaceTabView;
-        const updatedTitle =
-          tab.view.type === 'schema-list' && patch.connectionLabel
-            ? patch.connectionLabel
-            : tab.title;
-        return { ...tab, title: updatedTitle, view: updatedView };
-      }),
-    );
-  }, []);
+  const refreshSchemaTree = useCallback(
+    async (connectionId: string, force = false): Promise<DatabaseSchema[]> =>
+      (await refreshSchemaTreeWithStatus(connectionId, force)).data,
+    [refreshSchemaTreeWithStatus],
+  );
+
+  const refreshTabs = useCallback(
+    (connectionId: string, patch: { connectionLabel?: string }) => {
+      setTabs((prevTabs) =>
+        prevTabs.map((tab) => {
+          if (tab.view.path.connectionId !== connectionId) return tab;
+          const updatedView = {
+            ...tab.view,
+            path: { ...tab.view.path, ...patch },
+          } as WorkspaceTabView;
+          const updatedTitle =
+            tab.view.type === "schema-list" && patch.connectionLabel
+              ? patch.connectionLabel
+              : tab.title;
+          return { ...tab, title: updatedTitle, view: updatedView };
+        }),
+      );
+    },
+    [],
+  );
 
   const setActiveTab = useCallback((id: string) => {
     setActiveTabId(id);
   }, []);
 
-  const closeTab = useCallback(
-    (id: string) => {
-      setTabs((prevTabs) => {
-        const nextTabs = prevTabs.filter((tab) => tab.id !== id);
-        if (activeTabIdRef.current === id) {
-          const fallback = nextTabs.at(-1);
-          setActiveTabId(fallback?.id ?? null);
-        }
-        return nextTabs;
-      });
+  const closeTab = useCallback((id: string) => {
+    setTabs((prevTabs) => {
+      const nextTabs = prevTabs.filter((tab) => tab.id !== id);
+      if (activeTabIdRef.current === id) {
+        const fallback = nextTabs.at(-1);
+        setActiveTabId(fallback?.id ?? null);
+      }
+      return nextTabs;
+    });
+    setRelationSessions((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }, []);
+
+  const closeConnectionTabs = useCallback((connectionId: string) => {
+    setTabs((prevTabs) => {
+      const removedIds = new Set(
+        prevTabs
+          .filter((tab) => tab.view.path.connectionId === connectionId)
+          .map((tab) => tab.id),
+      );
+      const nextTabs = prevTabs.filter(
+        (tab) => tab.view.path.connectionId !== connectionId,
+      );
+      if (activeTabIdRef.current && removedIds.has(activeTabIdRef.current)) {
+        setActiveTabId(nextTabs.at(-1)?.id ?? null);
+      }
+      setRelationSessions((prev) =>
+        Object.fromEntries(
+          Object.entries(prev).filter(([tabId]) => !removedIds.has(tabId)),
+        ),
+      );
+      return nextTabs;
+    });
+    setSchemaCache((prev) => {
+      if (!(connectionId in prev)) return prev;
+      const next = { ...prev };
+      delete next[connectionId];
+      return next;
+    });
+  }, []);
+
+  const updateRelationSession = useCallback(
+    (tabId: string, patch: Partial<RelationSessionState>) => {
+      setRelationSessions((prev) => ({
+        ...prev,
+        [tabId]: {
+          ...(prev[tabId] ?? DEFAULT_RELATION_SESSION),
+          ...patch,
+        },
+      }));
     },
     [],
   );
@@ -156,7 +249,9 @@ export function WorkspaceProvider({ children }: Readonly<{ children: ReactNode }
 
       const targetTabId = buildTabId(view);
       setTabs((prevTabs) => {
-        const existingTargetTab = prevTabs.find((tab) => tab.id === targetTabId);
+        const existingTargetTab = prevTabs.find(
+          (tab) => tab.id === targetTabId,
+        );
         if (existingTargetTab) {
           return prevTabs;
         }
@@ -165,14 +260,25 @@ export function WorkspaceProvider({ children }: Readonly<{ children: ReactNode }
         const activeIndex = currentActiveId
           ? prevTabs.findIndex((tab) => tab.id === currentActiveId)
           : -1;
-        const fallbackColor = activeIndex >= 0 ? prevTabs[activeIndex]?.color : undefined;
+        const fallbackColor =
+          activeIndex >= 0 ? prevTabs[activeIndex]?.color : undefined;
         const nextTab = buildWorkspaceTab(view, fallbackColor);
 
         if (activeIndex < 0) {
           return [...prevTabs, nextTab];
         }
 
-        return prevTabs.map((tab, index) => (index === activeIndex ? nextTab : tab));
+        if (currentActiveId && currentActiveId !== targetTabId) {
+          setRelationSessions((prev) => {
+            if (!(currentActiveId in prev)) return prev;
+            const next = { ...prev };
+            delete next[currentActiveId];
+            return next;
+          });
+        }
+        return prevTabs.map((tab, index) =>
+          index === activeIndex ? nextTab : tab,
+        );
       });
 
       setActiveTabId(targetTabId);
@@ -187,10 +293,14 @@ export function WorkspaceProvider({ children }: Readonly<{ children: ReactNode }
       schemaCache,
       setActiveTab,
       closeTab,
+      closeConnectionTabs,
       openTab,
       navigateToView,
       refreshSchemaTree,
+      refreshSchemaTreeWithStatus,
       refreshTabs,
+      relationSessions,
+      updateRelationSession,
     }),
     [
       tabs,
@@ -198,20 +308,28 @@ export function WorkspaceProvider({ children }: Readonly<{ children: ReactNode }
       schemaCache,
       setActiveTab,
       closeTab,
+      closeConnectionTabs,
       openTab,
       navigateToView,
       refreshSchemaTree,
+      refreshSchemaTreeWithStatus,
       refreshTabs,
+      relationSessions,
+      updateRelationSession,
     ],
   );
 
-  return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
+  return (
+    <WorkspaceContext.Provider value={value}>
+      {children}
+    </WorkspaceContext.Provider>
+  );
 }
 
 export function useWorkspace(): WorkspaceContextValue {
   const ctx = useContext(WorkspaceContext);
   if (!ctx) {
-    throw new Error('useWorkspace must be used within WorkspaceProvider');
+    throw new Error("useWorkspace must be used within WorkspaceProvider");
   }
   return ctx;
 }
