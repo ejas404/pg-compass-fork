@@ -49,7 +49,8 @@ test("starts the packaged application without a database", async () => {
     `Packaged executable was not found at ${executablePath}`,
   ).toBe(true);
 
-  const app = spawn(executablePath, [], {
+  const launchArguments = process.platform === "linux" ? ["--no-sandbox"] : [];
+  const app = spawn(executablePath, launchArguments, {
     env: {
       ...process.env,
       PG_COMPASS_STORE_DIR: storeDir,

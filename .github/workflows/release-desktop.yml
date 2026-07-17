@@ -2,7 +2,6 @@ name: Release Desktop
 
 on:
   push:
-    branches: [main]
     tags:
       - "v*"
   workflow_dispatch:

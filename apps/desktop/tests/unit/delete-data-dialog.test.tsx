@@ -128,7 +128,9 @@ describe("DeleteDataDialog", () => {
       ),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    const deleteButton = screen.getByRole("button", { name: "Delete" });
+    await waitFor(() => expect(deleteButton).toBeEnabled());
+    fireEvent.click(deleteButton);
 
     await waitFor(() =>
       expect(deleteRows).toHaveBeenCalledWith(
