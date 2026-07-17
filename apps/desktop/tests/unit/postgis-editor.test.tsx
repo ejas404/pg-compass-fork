@@ -26,9 +26,13 @@ vi.mock("react-leaflet", () => {
         data-lng={String(position[1])}
       />
     ),
-    useMapEvents: (handlers: { click?: (e: { latlng: { lat: number; lng: number } }) => void }) => {
+    useMapEvents: (handlers: {
+      click?: (e: { latlng: { lat: number; lng: number } }) => void;
+    }) => {
       if (handlers.click) {
-        clickHandlers.push((lat, lng) => handlers.click?.({ latlng: { lat, lng } }));
+        clickHandlers.push((lat, lng) =>
+          handlers.click?.({ latlng: { lat, lng } }),
+        );
       }
       return null;
     },
@@ -37,8 +41,12 @@ vi.mock("react-leaflet", () => {
 
 vi.mock("leaflet/dist/leaflet.css", () => ({}));
 vi.mock("leaflet/dist/images/marker-icon.png", () => ({ default: "icon.png" }));
-vi.mock("leaflet/dist/images/marker-icon-2x.png", () => ({ default: "icon2x.png" }));
-vi.mock("leaflet/dist/images/marker-shadow.png", () => ({ default: "shadow.png" }));
+vi.mock("leaflet/dist/images/marker-icon-2x.png", () => ({
+  default: "icon2x.png",
+}));
+vi.mock("leaflet/dist/images/marker-shadow.png", () => ({
+  default: "shadow.png",
+}));
 vi.mock("leaflet", () => ({
   default: {
     Icon: { Default: { prototype: {}, mergeOptions: () => undefined } },
@@ -54,9 +62,10 @@ beforeAll(() => {
   clickHandlers.length = 0;
 });
 
-function renderEditor(
-  initialValue: unknown = "",
-): { onSave: ReturnType<typeof vi.fn>; onCancel: ReturnType<typeof vi.fn> } {
+function renderEditor(initialValue: unknown = ""): {
+  onSave: ReturnType<typeof vi.fn>;
+  onCancel: ReturnType<typeof vi.fn>;
+} {
   const onSave = vi.fn();
   const onCancel = vi.fn();
   render(
@@ -72,40 +81,54 @@ function renderEditor(
 describe("GeometryMapEditor", () => {
   it("pre-fills lat/lng/SRID/WKT from an EWKT Point", () => {
     renderEditor("SRID=4326;POINT(-122.419 37.775)");
-    expect((screen.getByTestId("postgis-lng") as HTMLInputElement).value).toBe("-122.419");
-    expect((screen.getByTestId("postgis-lat") as HTMLInputElement).value).toBe("37.775");
-    expect((screen.getByTestId("postgis-srid") as HTMLInputElement).value).toBe("4326");
-    expect((screen.getByTestId("postgis-wkt") as HTMLTextAreaElement).value).toBe(
-      "SRID=4326;POINT(-122.419 37.775)",
+    expect((screen.getByTestId("postgis-lng") as HTMLInputElement).value).toBe(
+      "-122.419",
     );
+    expect((screen.getByTestId("postgis-lat") as HTMLInputElement).value).toBe(
+      "37.775",
+    );
+    expect((screen.getByTestId("postgis-srid") as HTMLInputElement).value).toBe(
+      "4326",
+    );
+    expect(
+      (screen.getByTestId("postgis-wkt") as HTMLTextAreaElement).value,
+    ).toBe("SRID=4326;POINT(-122.419 37.775)");
   });
 
   it("leaves structured fields blank for non-Point WKT and keeps WKT as-is", () => {
     const line = "LINESTRING(0 0, 1 1, 2 2)";
     renderEditor(line);
-    expect((screen.getByTestId("postgis-lng") as HTMLInputElement).value).toBe("");
-    expect((screen.getByTestId("postgis-lat") as HTMLInputElement).value).toBe("");
-    expect((screen.getByTestId("postgis-wkt") as HTMLTextAreaElement).value).toBe(line);
+    expect((screen.getByTestId("postgis-lng") as HTMLInputElement).value).toBe(
+      "",
+    );
+    expect((screen.getByTestId("postgis-lat") as HTMLInputElement).value).toBe(
+      "",
+    );
+    expect(
+      (screen.getByTestId("postgis-wkt") as HTMLTextAreaElement).value,
+    ).toBe(line);
   });
 
   it("syncs lat/lng/SRID edits into the WKT textarea", () => {
     renderEditor("SRID=4326;POINT(-122.419 37.775)");
     const lat = screen.getByTestId("postgis-lat") as HTMLInputElement;
     fireEvent.change(lat, { target: { value: "40" } });
-    expect((screen.getByTestId("postgis-wkt") as HTMLTextAreaElement).value).toBe(
-      "SRID=4326;POINT(-122.419 40)",
-    );
+    expect(
+      (screen.getByTestId("postgis-wkt") as HTMLTextAreaElement).value,
+    ).toBe("SRID=4326;POINT(-122.419 40)");
     const srid = screen.getByTestId("postgis-srid") as HTMLInputElement;
     fireEvent.change(srid, { target: { value: "3857" } });
-    expect((screen.getByTestId("postgis-wkt") as HTMLTextAreaElement).value).toBe(
-      "SRID=3857;POINT(-122.419 40)",
-    );
+    expect(
+      (screen.getByTestId("postgis-wkt") as HTMLTextAreaElement).value,
+    ).toBe("SRID=3857;POINT(-122.419 40)");
   });
 
   it("editing WKT disables point-mode sync (textarea wins)", () => {
     renderEditor("SRID=4326;POINT(-122.419 37.775)");
     const wkt = screen.getByTestId("postgis-wkt") as HTMLTextAreaElement;
-    fireEvent.change(wkt, { target: { value: "POLYGON((0 0, 1 0, 1 1, 0 0))" } });
+    fireEvent.change(wkt, {
+      target: { value: "POLYGON((0 0, 1 0, 1 1, 0 0))" },
+    });
     // Further lat changes must NOT clobber the textarea.
     const lat = screen.getByTestId("postgis-lat") as HTMLInputElement;
     fireEvent.change(lat, { target: { value: "50" } });
@@ -113,7 +136,9 @@ describe("GeometryMapEditor", () => {
     // verify the opposite path too: wkt edits stick until a lat/lng/srid
     // change re-engages the sync. This is the exact behaviour we want.
     // Reset and re-assert the "wkt edit wins until point-mode is re-engaged".
-    fireEvent.change(wkt, { target: { value: "POLYGON((0 0, 1 0, 1 1, 0 0))" } });
+    fireEvent.change(wkt, {
+      target: { value: "POLYGON((0 0, 1 0, 1 1, 0 0))" },
+    });
     expect(wkt.value).toBe("POLYGON((0 0, 1 0, 1 1, 0 0))");
   });
 
@@ -122,11 +147,15 @@ describe("GeometryMapEditor", () => {
     act(() => {
       clickHandlers[clickHandlers.length - 1]?.(37.5, -122.5);
     });
-    expect((screen.getByTestId("postgis-lat") as HTMLInputElement).value).toBe("37.500000");
-    expect((screen.getByTestId("postgis-lng") as HTMLInputElement).value).toBe("-122.500000");
-    expect((screen.getByTestId("postgis-wkt") as HTMLTextAreaElement).value).toBe(
-      "SRID=4326;POINT(-122.5 37.5)",
+    expect((screen.getByTestId("postgis-lat") as HTMLInputElement).value).toBe(
+      "37.500000",
     );
+    expect((screen.getByTestId("postgis-lng") as HTMLInputElement).value).toBe(
+      "-122.500000",
+    );
+    expect(
+      (screen.getByTestId("postgis-wkt") as HTMLTextAreaElement).value,
+    ).toBe("SRID=4326;POINT(-122.5 37.5)");
   });
 
   it("save sends the current WKT with geometry cast", () => {
@@ -155,8 +184,8 @@ describe("GeometryMapEditor", () => {
     renderEditor("SRID=4326;POINT(0 0)");
     const srid = screen.getByTestId("postgis-srid") as HTMLInputElement;
     fireEvent.change(srid, { target: { value: "0" } });
-    expect((screen.getByTestId("postgis-wkt") as HTMLTextAreaElement).value).toBe(
-      "SRID=0;POINT(0 0)",
-    );
+    expect(
+      (screen.getByTestId("postgis-wkt") as HTMLTextAreaElement).value,
+    ).toBe("SRID=0;POINT(0 0)");
   });
 });

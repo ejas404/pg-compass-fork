@@ -20,7 +20,12 @@ beforeAll(() => {
 
 const columns: ColumnInfo[] = [
   { name: "id", dataTypeId: 23, dataType: "int4", isNullable: false },
-  { name: "display_name", dataTypeId: 1043, dataType: "varchar", isNullable: false },
+  {
+    name: "display_name",
+    dataTypeId: 1043,
+    dataType: "varchar",
+    isNullable: false,
+  },
   { name: "login_count", dataTypeId: 23, dataType: "int4", isNullable: false },
   { name: "profile_note", dataTypeId: 25, dataType: "text", isNullable: true },
 ];
@@ -101,14 +106,14 @@ describe("RowEditDialog", () => {
       />,
     );
 
-    const nameField = screen.getByTestId("row-field-display_name").querySelector(
-      "input",
-    )!;
+    const nameField = screen
+      .getByTestId("row-field-display_name")
+      .querySelector("input")!;
     fireEvent.change(nameField, { target: { value: "Alice 2" } });
 
-    const countField = screen.getByTestId("row-field-login_count").querySelector(
-      "input",
-    )!;
+    const countField = screen
+      .getByTestId("row-field-login_count")
+      .querySelector("input")!;
     fireEvent.change(countField, { target: { value: "9" } });
 
     const save = screen.getByTestId("row-editor-save");
@@ -123,7 +128,12 @@ describe("RowEditDialog", () => {
       pkColumns: ["id"],
       pkValues: [1],
       changes: [
-        { column: "display_name", pgCast: "varchar", newValue: "Alice 2", setNull: false },
+        {
+          column: "display_name",
+          pgCast: "varchar",
+          newValue: "Alice 2",
+          setNull: false,
+        },
         { column: "login_count", pgCast: "int4", newValue: 9, setNull: false },
       ],
     });
@@ -145,31 +155,34 @@ describe("RowEditDialog", () => {
         onClose={() => {}}
       />,
     );
-    const nameInput = screen.getByTestId("row-field-display_name").querySelector(
-      "input",
-    )! as HTMLInputElement;
+    const nameInput = screen
+      .getByTestId("row-field-display_name")
+      .querySelector("input")! as HTMLInputElement;
     fireEvent.change(nameInput, { target: { value: "Renamed" } });
-    const countInput = screen.getByTestId("row-field-login_count").querySelector(
-      "input",
-    )! as HTMLInputElement;
+    const countInput = screen
+      .getByTestId("row-field-login_count")
+      .querySelector("input")! as HTMLInputElement;
     fireEvent.change(countInput, { target: { value: "9" } });
 
-    expect(screen.getByTestId("row-field-display_name").getAttribute("data-changed")).toBe(
-      "true",
-    );
+    expect(
+      screen.getByTestId("row-field-display_name").getAttribute("data-changed"),
+    ).toBe("true");
 
     fireEvent.click(screen.getByTestId("revert-display_name"));
 
     expect(
-      (screen.getByTestId("row-field-display_name").querySelector("input")! as HTMLInputElement)
-        .value,
+      (
+        screen
+          .getByTestId("row-field-display_name")
+          .querySelector("input")! as HTMLInputElement
+      ).value,
     ).toBe("Alice");
-    expect(screen.getByTestId("row-field-display_name").getAttribute("data-changed")).toBe(
-      "false",
-    );
-    expect(screen.getByTestId("row-field-login_count").getAttribute("data-changed")).toBe(
-      "true",
-    );
+    expect(
+      screen.getByTestId("row-field-display_name").getAttribute("data-changed"),
+    ).toBe("false");
+    expect(
+      screen.getByTestId("row-field-login_count").getAttribute("data-changed"),
+    ).toBe("true");
   });
 
   it("Set NULL replaces the input with a NULL pill and sends setNull: true", async () => {
@@ -214,15 +227,15 @@ describe("RowEditDialog", () => {
         onClose={() => {}}
       />,
     );
-    const countInput = screen.getByTestId("row-field-login_count").querySelector(
-      "input",
-    )!;
+    const countInput = screen
+      .getByTestId("row-field-login_count")
+      .querySelector("input")!;
     fireEvent.change(countInput, { target: { value: "not-a-number" } });
     fireEvent.click(screen.getByTestId("row-editor-save"));
     expect(fn).not.toHaveBeenCalled();
-    expect(
-      screen.getByTestId("row-field-login_count").textContent,
-    ).toMatch(/not a valid int4/i);
+    expect(screen.getByTestId("row-field-login_count").textContent).toMatch(
+      /not a valid int4/i,
+    );
   });
 
   it("Cancel closes immediately when there are no changes", () => {
@@ -261,9 +274,9 @@ describe("RowEditDialog", () => {
         onClose={onClose}
       />,
     );
-    const nameInput = screen.getByTestId("row-field-display_name").querySelector(
-      "input",
-    )!;
+    const nameInput = screen
+      .getByTestId("row-field-display_name")
+      .querySelector("input")!;
     fireEvent.change(nameInput, { target: { value: "Renamed" } });
 
     const confirmSpy = vi

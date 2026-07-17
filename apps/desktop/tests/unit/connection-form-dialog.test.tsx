@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   tryParsePostgresUrl,
   validateConnectionInput,
-} from "@/components/connections/ConnectionFormDialog";
+} from "@/components/connections/connection-form-dialog";
 
 describe("ConnectionFormDialog helpers", () => {
   it("parses postgres URLs pasted into the host field", () => {

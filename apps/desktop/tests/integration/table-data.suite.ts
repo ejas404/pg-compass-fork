@@ -1283,6 +1283,23 @@ export function runTableDataIntegrationSuite(
     }
 
     describe("deleteRows", () => {
+      it("rejects stacked statements in a data filter", async () => {
+        await resetDeleteTarget();
+        const { getRows } = await import("@/main/table-data-rows");
+
+        await expect(
+          getRows({
+            connectionId,
+            schema: "app",
+            table: "delete_target",
+            page: 1,
+            pageSize: 25,
+            whereClause: "TRUE; COMMIT; DROP TABLE app.delete_target; --",
+          }),
+        ).rejects.toThrow();
+        expect(await countDeleteTarget()).toBe(5);
+      });
+
       it("deletes rows matching the current filter and returns the deleted count", async () => {
         await resetDeleteTarget();
         const { deleteRows } = await import("@/main/table-data-write");
@@ -1311,6 +1328,21 @@ export function runTableDataIntegrationSuite(
         });
 
         expect(result.deletedCount).toBe(0);
+        expect(await countDeleteTarget()).toBe(5);
+      });
+
+      it("rejects stacked statements in a delete filter", async () => {
+        await resetDeleteTarget();
+        const { deleteRows } = await import("@/main/table-data-write");
+
+        await expect(
+          deleteRows({
+            connectionId,
+            schema: "app",
+            table: "delete_target",
+            whereClause: "TRUE; DROP TABLE app.delete_target; --",
+          }),
+        ).rejects.toThrow();
         expect(await countDeleteTarget()).toBe(5);
       });
 

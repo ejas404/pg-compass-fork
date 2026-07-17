@@ -18,7 +18,7 @@ function buildDatabaseUrl(baseUrl: string, databaseName: string): string {
 export function hasPostgresTestConfig(): boolean {
   return Boolean(
     process.env.PG_COMPASS_TEST_ADMIN_DATABASE_URL ||
-      process.env.PG_COMPASS_TEST_DATABASE_URL,
+    process.env.PG_COMPASS_TEST_DATABASE_URL,
   );
 }
 

@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  isReadOnlyQuery,
-  stripLimitOffset,
-} from "@/main/table-data-rows";
+import { isReadOnlyQuery, stripLimitOffset } from "@/main/table-data-rows";
 import {
   buildExportSql,
   csvEscapeValue,
@@ -36,9 +33,18 @@ describe("table-data query helpers", () => {
   });
 
   it.each([
-    ["SELECT * FROM t LIMIT 25 OFFSET 50", { core: "SELECT * FROM t", userLimit: 25 }],
-    ["SELECT * FROM t limit 10 offset 5", { core: "SELECT * FROM t", userLimit: 10 }],
-    ["SELECT * FROM t LIMIT 25 OFFSET 50  ", { core: "SELECT * FROM t", userLimit: 25 }],
+    [
+      "SELECT * FROM t LIMIT 25 OFFSET 50",
+      { core: "SELECT * FROM t", userLimit: 25 },
+    ],
+    [
+      "SELECT * FROM t limit 10 offset 5",
+      { core: "SELECT * FROM t", userLimit: 10 },
+    ],
+    [
+      "SELECT * FROM t LIMIT 25 OFFSET 50  ",
+      { core: "SELECT * FROM t", userLimit: 25 },
+    ],
     ["SELECT * FROM t LIMIT 25", { core: "SELECT * FROM t", userLimit: 25 }],
     ["SELECT * FROM t OFFSET 50", { core: "SELECT * FROM t", userLimit: null }],
     ["SELECT * FROM t", { core: "SELECT * FROM t", userLimit: null }],

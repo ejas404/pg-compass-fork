@@ -129,7 +129,12 @@ describe("EditableCell gating", () => {
   it("renders no edit affordance for a primary-key cell", () => {
     render(
       <EditableCell
-        col={{ name: "id", dataTypeId: 23, dataType: "int4", isNullable: false }}
+        col={{
+          name: "id",
+          dataTypeId: 23,
+          dataType: "int4",
+          isNullable: false,
+        }}
         value={1}
         readOnly={false}
         primaryKey={["id"]}
@@ -240,10 +245,9 @@ describe("EditableCell boolean editor", () => {
     );
     fireEvent.doubleClick(screen.getByTestId("cell-editor-target"));
     expect(screen.getByTestId("cell-bool-toggle")).toBeInTheDocument();
-    expect(screen.getByRole("switch", { name: /toggle boolean value/i })).toHaveAttribute(
-      "data-state",
-      "checked",
-    );
+    expect(
+      screen.getByRole("switch", { name: /toggle boolean value/i }),
+    ).toHaveAttribute("data-state", "checked");
     expect(screen.getByText("True")).toBeInTheDocument();
   });
 
@@ -262,10 +266,9 @@ describe("EditableCell boolean editor", () => {
       />,
     );
     fireEvent.doubleClick(screen.getByTestId("cell-editor-target"));
-    expect(screen.getByRole("switch", { name: /toggle boolean value/i })).toHaveAttribute(
-      "data-state",
-      "unchecked",
-    );
+    expect(
+      screen.getByRole("switch", { name: /toggle boolean value/i }),
+    ).toHaveAttribute("data-state", "unchecked");
     expect(screen.getByText("False")).toBeInTheDocument();
   });
 });
@@ -273,7 +276,10 @@ describe("EditableCell boolean editor", () => {
 describe("EditableCell read-only-mode DOM contract", () => {
   it("matches the DOM of the plain display renderer exactly when readOnly=true", () => {
     const plain = render(
-      <>{/* What a read-only renderer would emit directly. */}{"Alice"}</>,
+      <>
+        {/* What a read-only renderer would emit directly. */}
+        {"Alice"}
+      </>,
     );
     const plainHtml = plain.container.innerHTML;
     plain.unmount();

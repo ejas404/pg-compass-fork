@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ClipboardChannels } from "@/shared/constants/clipboard";
+import { ClipboardChannels } from "@/shared/constants/ipc-channels";
 
 const mocks = vi.hoisted(() => ({
   handle: vi.fn(),
@@ -12,11 +12,19 @@ vi.mock("electron", () => ({
 }));
 
 import { registerClipboardHandlers } from "@/main/clipboard-ipc";
+import { configureIpcSecurity } from "@/main/ipc-security";
 
 describe("clipboard IPC", () => {
+  const mainFrame = { url: "file:///app/index.html" };
+  const event = {
+    senderFrame: mainFrame,
+    sender: { mainFrame },
+  };
+
   beforeEach(() => {
     mocks.handle.mockReset();
     mocks.writeText.mockReset();
+    configureIpcSecurity(mainFrame.url);
     registerClipboardHandlers();
   });
 
@@ -29,8 +37,11 @@ describe("clipboard IPC", () => {
       text: unknown,
     ) => { success: boolean; error?: string };
 
-    expect(handler({}, { unsafe: true }).success).toBe(false);
-    expect(handler({}, "copied value")).toEqual({ success: true });
+    expect(handler(event, { unsafe: true }).success).toBe(false);
+    expect(handler(event, "copied value")).toEqual({
+      success: true,
+      data: undefined,
+    });
     expect(mocks.writeText).toHaveBeenCalledWith("copied value");
   });
 });

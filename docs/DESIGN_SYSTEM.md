@@ -29,40 +29,48 @@ We use shadcn/ui's **neutral** base color in oklch. All colors are exposed as CS
 
 ### Semantic Tokens
 
-| Token                  | Usage                                          |
-| ---------------------- | ---------------------------------------------- |
-| `background`           | Page/app background                            |
-| `foreground`           | Primary text color                             |
-| `card` / `card-fg`     | Card surfaces and their text                   |
-| `muted` / `muted-fg`   | Subdued backgrounds, secondary text            |
-| `accent` / `accent-fg` | Hover states, active highlights                |
-| `primary` / `primary-fg`| Primary actions (buttons, links)              |
-| `secondary` / `secondary-fg` | Secondary actions                        |
-| `destructive`          | Danger/delete actions                          |
-| `border`               | Borders and dividers                           |
-| `input`                | Form input borders                             |
-| `ring`                 | Focus ring color                               |
-| `sidebar-*`            | Sidebar-specific variants                      |
+| Token                        | Usage                               |
+| ---------------------------- | ----------------------------------- |
+| `background`                 | Page/app background                 |
+| `foreground`                 | Primary text color                  |
+| `card` / `card-fg`           | Card surfaces and their text        |
+| `muted` / `muted-fg`         | Subdued backgrounds, secondary text |
+| `accent` / `accent-fg`       | Hover states, active highlights     |
+| `primary` / `primary-fg`     | Primary actions (buttons, links)    |
+| `secondary` / `secondary-fg` | Secondary actions                   |
+| `destructive`                | Danger/delete actions               |
+| `border`                     | Borders and dividers                |
+| `input`                      | Form input borders                  |
+| `ring`                       | Focus ring color                    |
+| `sidebar-*`                  | Sidebar-specific variants           |
+| `syntax-*`                   | SQL editor token categories         |
 
 ### Connection Colors
 
 Each saved connection can have an optional user-chosen accent color. This color is used as a subtle indicator dot or surface tint on:
+
 - The sidebar connection item
 - Tab headers belonging to that connection
 
 Use inline styles for per-connection colors. Do not create Tailwind classes for them.
 
+### Intentional Color Exceptions
+
+- Connection color choices use stored hex values because they are user-selected data.
+- Theme-selector previews may use fixed neutral colors because they demonstrate a different theme rather than inherit the active theme.
+- Data renderers and interactive links must otherwise use semantic design tokens.
+
 ---
 
 ## Typography
 
-| Role        | Class                     | Usage                              |
-| ----------- | ------------------------- | ---------------------------------- |
-| Heading     | `text-lg font-semibold`   | Section titles, empty states       |
-| Subheading  | `text-sm font-semibold`   | Sidebar headers, card titles       |
-| Body        | `text-sm`                 | Default text, descriptions         |
-| Caption     | `text-xs text-muted-foreground` | Hints, timestamps, metadata  |
-| Monospace   | `font-mono text-sm`       | SQL, connection strings, code      |
+| Role       | Class                           | Usage                         |
+| ---------- | ------------------------------- | ----------------------------- |
+| Heading    | `text-lg font-semibold`         | Section titles, empty states  |
+| Subheading | `text-sm font-semibold`         | Sidebar headers, card titles  |
+| Body       | `text-sm`                       | Default text, descriptions    |
+| Caption    | `text-xs text-muted-foreground` | Hints, timestamps, metadata   |
+| Monospace  | `font-mono text-sm`             | SQL, connection strings, code |
 
 ### Font Stack
 
@@ -105,22 +113,22 @@ The app uses a **fixed two-panel layout**:
 
 These are installed and available in `@/components/ui/`:
 
-| Component       | Primary Use                                       |
-| --------------- | ------------------------------------------------- |
-| `Button`        | All clickable actions                             |
-| `Tabs`          | Table viewer sub-tabs (Data, Structure, etc.)     |
-| `ScrollArea`    | Sidebar scrollable content                        |
-| `Tooltip`       | Hover hints for icon buttons                      |
-| `Separator`     | Visual dividers                                   |
-| `Input`         | Form fields (connection form, filters)            |
-| `Table`         | Data display (table listing, data viewer)         |
-| `Badge`         | Status indicators (column types, index types)     |
-| `Dialog`        | Modals (connection form, confirmations)           |
-| `Sheet`         | Slide-over panels                                 |
-| `DropdownMenu`  | Context menus, action menus                       |
-| `Accordion`     | Sidebar connection/schema tree expansion           |
-| `Sidebar`       | Sidebar primitives (available for future use)     |
-| `Skeleton`      | Loading placeholders                              |
+| Component      | Primary Use                                   |
+| -------------- | --------------------------------------------- |
+| `Button`       | All clickable actions                         |
+| `Tabs`         | Table viewer sub-tabs (Data, Structure, etc.) |
+| `ScrollArea`   | Sidebar scrollable content                    |
+| `Tooltip`      | Hover hints for icon buttons                  |
+| `Separator`    | Visual dividers                               |
+| `Input`        | Form fields (connection form, filters)        |
+| `Table`        | Data display (table listing, data viewer)     |
+| `Badge`        | Status indicators (column types, index types) |
+| `Dialog`       | Modals (connection form, confirmations)       |
+| `Sheet`        | Slide-over panels                             |
+| `DropdownMenu` | Context menus, action menus                   |
+| `Accordion`    | Sidebar connection/schema tree expansion      |
+| `Sidebar`      | Sidebar primitives (available for future use) |
+| `Skeleton`     | Loading placeholders                          |
 
 ### Button Conventions
 
@@ -145,6 +153,7 @@ These are installed and available in `@/components/ui/`:
 ### Empty States
 
 Empty states use a centered layout with:
+
 - A muted icon in a rounded container (`rounded-xl bg-muted p-4`)
 - A heading (`text-lg font-semibold`)
 - A description (`text-sm text-muted-foreground`)
@@ -157,11 +166,13 @@ Empty states use a centered layout with:
 ### Tab Bar
 
 The workspace tab bar sits at the top of the main area. Each tab shows:
+
 - The item name (table or query)
 - A close button on hover
 - An optional connection color indicator (left dot or border)
 
 Tabs use `text-xs` labels and `h-10` height.
+
 - Workspace tabs keep a consistent width, truncate long labels with ellipses, and use horizontal scrolling when the tab list overflows.
 - The workspace tab overflow scrollbar is compact and scoped to the tab bar so it does not clip tab labels.
 - Tabs belonging to a colored connection use a subtle surface tint from that connection color.
@@ -169,6 +180,7 @@ Tabs use `text-xs` labels and `h-10` height.
 ### Sidebar Tree
 
 The sidebar connection tree uses nested `Accordion` items:
+
 - **Level 0**: Connection (with optional color dot + label)
 - **Level 1**: Schema name
 - **Level 2**: Table name
@@ -180,6 +192,7 @@ Each level increases left padding by `pl-4` for visual hierarchy.
 ## Iconography
 
 All icons come from **Lucide React** (`lucide-react`). Defaults:
+
 - Size: `size-4` (16px) for inline, `size-5` (20px) for standalone.
 - Color: Inherits from `currentColor`.
 - No icon-only buttons without a `Tooltip` or `aria-label`.

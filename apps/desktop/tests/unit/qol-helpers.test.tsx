@@ -10,7 +10,7 @@ import {
   DateTimeEditor,
   isDateTimeType,
 } from "@/components/workspace/renderers/date-time-editor";
-import { filterConnectionTree } from "@/components/sidebar/SidebarContent";
+import { filterConnectionTree } from "@/components/sidebar/sidebar-content";
 import { matchesShortcut, shortcutLabel } from "@/shared/constants/shortcuts";
 import type {
   ConnectionConfig,

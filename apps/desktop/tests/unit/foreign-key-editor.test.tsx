@@ -15,7 +15,10 @@ const fk: ForeignKeyRef = {
 };
 
 function setupSearchMock(
-  responses: Record<string, { options: { value: unknown; label: string | null }[]; hasMore: boolean }>,
+  responses: Record<
+    string,
+    { options: { value: unknown; label: string | null }[]; hasMore: boolean }
+  >,
 ): { fn: ReturnType<typeof vi.fn>; calls: { params: unknown }[] } {
   const calls: { params: unknown }[] = [];
   const fn = vi.fn(async (params: { query: string }) => {

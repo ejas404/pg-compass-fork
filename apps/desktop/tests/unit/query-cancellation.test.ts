@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/main/pg-utils", () => ({
+  extendedQuery: (text: string) => ({ text, queryMode: "extended" }),
   quoteIdent: (value: string) => `"${value}"`,
   withPoolClient: mocks.withPoolClient,
   withDedicatedClient: mocks.withDedicatedClient,
@@ -67,7 +68,8 @@ describe("query cancellation lifecycle", () => {
     let poolLeaseReleased = false;
     const fakeClient = {
       processID: 42,
-      query: vi.fn().mockImplementation((sql: string) => {
+      query: vi.fn().mockImplementation((query: string | { text: string }) => {
+        const sql = typeof query === "string" ? query : query.text;
         if (sql.includes("count(*)")) return countGate.promise;
         if (sql.includes("__data_subquery")) {
           return Promise.resolve({ rows: [], fields: [] });

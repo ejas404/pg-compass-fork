@@ -16,8 +16,12 @@ export default async function globalSetup(config: FullConfig) {
   }
 
   const seeded = await createSeededDatabase();
-  const storeDir = fs.mkdtempSync(path.join(os.tmpdir(), "pg-compass-e2e-store-"));
-  const exportDir = fs.mkdtempSync(path.join(os.tmpdir(), "pg-compass-e2e-export-"));
+  const storeDir = fs.mkdtempSync(
+    path.join(os.tmpdir(), "pg-compass-e2e-store-"),
+  );
+  const exportDir = fs.mkdtempSync(
+    path.join(os.tmpdir(), "pg-compass-e2e-export-"),
+  );
   const connection = buildConnectionFromUrl(seeded.connectionUrl, {
     label: "E2E Database",
   });

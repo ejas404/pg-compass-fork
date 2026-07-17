@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { SidebarContent } from "@/components/sidebar/SidebarContent";
+import { SidebarContent } from "@/components/sidebar/sidebar-content";
 
 const refreshSchemaTreeWithStatus = vi.fn();
 
@@ -39,7 +39,7 @@ vi.mock("@/hooks/use-workspace", () => ({
   }),
 }));
 
-vi.mock("@/components/connections/ConnectionItem", () => ({
+vi.mock("@/components/connections/connection-item", () => ({
   ConnectionItem: ({
     connection,
     connected,

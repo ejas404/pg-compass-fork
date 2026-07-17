@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildConnectionString,
   ConnectionItem,
-} from "@/components/connections/ConnectionItem";
+} from "@/components/connections/connection-item";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useConnections } from "@/hooks/use-connections";
 import { useWorkspace } from "@/hooks/use-workspace";

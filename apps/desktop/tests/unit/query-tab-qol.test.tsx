@@ -7,7 +7,7 @@ vi.mock("@/hooks/use-workspace", () => ({
   useWorkspace: () => ({ schemaCache: {} }),
 }));
 
-vi.mock("@/components/sql-editor/SqlEditor", () => ({
+vi.mock("@/components/sql-editor/sql-editor", () => ({
   SqlEditor: ({
     value,
     onChange,

@@ -23,11 +23,7 @@ describe("parseEWKBHex", () => {
   it("parses a Point with SRID flag set", () => {
     // Type 0x20000001 = Point with SRID, LE. SRID = 4326 (0xE6100000 LE).
     const hex =
-      "01" +
-      "01000020" +
-      "E6100000" +
-      "000000000000F03F" +
-      "0000000000000040";
+      "01" + "01000020" + "E6100000" + "000000000000F03F" + "0000000000000040";
     const geom = parseEWKBHex(hex);
     expect(geom).toMatchObject({
       type: "Point",

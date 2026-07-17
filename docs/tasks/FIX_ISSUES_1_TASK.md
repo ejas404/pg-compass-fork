@@ -4,16 +4,32 @@ Overall the codebase is well-organized with clean IPC boundaries, proper `contex
 
 ## Implementation Progress
 
+### BLOCKING issues — All fixed ✅
+
+| #   | Issue                               | Status  | Implementation                                                                                                                                                  |
+| --- | ----------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Raw data-filter SQL                 | ✅ Done | Table reads execute inside a read-only transaction and roll back on failure.                                                                                    |
+| 2   | Implicit Electron security defaults | ✅ Done | Browser windows explicitly enable context isolation and sandboxing, disable Node integration and webviews, and disallow insecure content.                       |
+| 3   | Unrestricted navigation and windows | ✅ Done | Navigation and child windows are denied, external HTTPS destinations are allowlisted, permissions are denied, and renderer responses receive a restrictive CSP. |
+
 ### MAJOR issues — All fixed ✅
 
-| # | Issue | Status | Implementation |
-|---|-------|--------|----------------|
-| 4 | Duplicated `buildPgConfig` | ✅ Done | Extracted to `src/main/pg-utils.ts` along with `quoteIdent`. Both `connection-ipc.ts` and `table-data-ipc.ts` import from the shared module. |
-| 5 | New `pg.Client` per IPC call | ✅ Done | Introduced `pg.Pool` via `withPoolClient()` in `pg-utils.ts`. One pool per connectionId (max 5 connections), lazily created, stored in a `Map`. Pools are destroyed on connection update/delete and on app quit (`destroyAllPools()` in `main.ts` `will-quit` event). |
-| 6 | `schemaCache` cascading re-renders | ✅ Done | Replaced `schemaCache` in `refreshSchemaTree` deps with a `useRef`. The ref (`schemaCacheRef`) is kept in sync and read inside the callback, removing `schemaCache` from the dependency array. |
-| 7 | `closeTab` stale `activeTabId` | ✅ Done | Added `activeTabIdRef` (synced via `useRef`) and read it inside `closeTab` and `navigateToView` callbacks instead of the closure value. Removed `activeTabId` from their dependency arrays. |
-| 8 | `ConnectionItem` state never resets | ✅ Done | Added `handleDisconnect()` that resets `connected`, `expanded`, and `expandedSchemas`. Added a "Disconnect" menu item (with `PlugZap` icon) in the dropdown, visible only when connected. |
-| 9 | Plaintext credential storage | ✅ Done | Added `safeStorage.encryptString()`/`decryptString()` in `connection-store.ts`. Passwords and URIs are encrypted with an `esafe:` prefix before storing and decrypted transparently on read. Falls back to plaintext if `safeStorage` is unavailable. Backward-compatible with existing unencrypted connections. |
+| #   | Issue                               | Status  | Implementation                                                                                                                                                                                                                                                                                            |
+| --- | ----------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 4   | Duplicated `buildPgConfig`          | ✅ Done | Extracted to `src/main/pg-utils.ts` along with `quoteIdent`. Both `connection-ipc.ts` and `table-data-ipc.ts` import from the shared module.                                                                                                                                                              |
+| 5   | New `pg.Client` per IPC call        | ✅ Done | Introduced `pg.Pool` via `withPoolClient()` in `pg-utils.ts`. One pool per connectionId (max 5 connections), lazily created, stored in a `Map`. Pools are destroyed on connection update/delete and on app quit (`destroyAllPools()` in `main.ts` `will-quit` event).                                     |
+| 6   | `schemaCache` cascading re-renders  | ✅ Done | Replaced `schemaCache` in `refreshSchemaTree` deps with a `useRef`. The ref (`schemaCacheRef`) is kept in sync and read inside the callback, removing `schemaCache` from the dependency array.                                                                                                            |
+| 7   | `closeTab` stale `activeTabId`      | ✅ Done | Added `activeTabIdRef` (synced via `useRef`) and read it inside `closeTab` and `navigateToView` callbacks instead of the closure value. Removed `activeTabId` from their dependency arrays.                                                                                                               |
+| 8   | `ConnectionItem` state never resets | ✅ Done | Added `handleDisconnect()` that resets `connected`, `expanded`, and `expandedSchemas`. Added a "Disconnect" menu item (with `PlugZap` icon) in the dropdown, visible only when connected.                                                                                                                 |
+| 9   | Plaintext credential storage        | ✅ Done | Credentials use `safeStorage` when a secure OS encryption backend is available. New values fall back to plaintext when secure storage is unavailable (including Linux `basic_text`), and encrypted values fail closed instead of being exposed as ciphertext. Existing plaintext records remain readable. |
+
+### Consistency follow-up — Implemented
+
+- Desktop source and test filenames are enforced as kebab-case.
+- Formatting, zero-warning linting, and accessibility checks are release gates.
+- IPC channels and preload API types have one source of truth.
+- Main-process IPC arguments are validated at runtime.
+- The largest connection-tree and row-editor components were split into focused modules.
 
 ---
 
@@ -26,12 +42,13 @@ In table-data-ipc.ts, the user-supplied `whereClause` is interpolated directly i
 ```ts
 const whereFragment = params.whereClause?.trim()
   ? `WHERE ${params.whereClause}`
-  : '';
+  : "";
 // ...
-`SELECT count(*) AS count FROM ${qualifiedTable} ${whereFragment}`
+`SELECT count(*) AS count FROM ${qualifiedTable} ${whereFragment}`;
 ```
 
 Any string the user types in the Data tab filter is sent verbatim to PostgreSQL. This is dangerous even in a desktop app because:
+
 - A connection to a production DB + a mistyped or malicious clause can execute destructive operations (e.g. `1=1; DROP TABLE ...` via stacked queries — though `pg` by default doesn't allow stacked queries, some edge cases exist).
 - The `count` query and the `SELECT *` query both use it ungated.
 
@@ -50,6 +67,7 @@ webPreferences: {
 While Electron 40 **defaults** to `contextIsolation: true` and `nodeIntegration: false`, relying on implicit defaults for security-critical settings is fragile. If a future Electron version changes defaults or someone accidentally downgrades, the renderer gains full Node access.
 
 **Fix:** Be explicit:
+
 ```ts
 webPreferences: {
   preload: path.join(__dirname, 'preload.js'),
@@ -64,10 +82,11 @@ webPreferences: {
 The main process doesn't restrict navigation or new window creation. If a renderer link (e.g. the OpenStreetMap link in postgis-renderers.tsx) is clicked, it navigates the Electron window itself to an external site — effectively replacing your app.
 
 **Fix:** Add handlers after window creation:
+
 ```ts
-mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-mainWindow.webContents.on('will-navigate', (event, url) => {
-  if (!url.startsWith(MAIN_WINDOW_VITE_DEV_SERVER_URL ?? '')) {
+mainWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+mainWindow.webContents.on("will-navigate", (event, url) => {
+  if (!url.startsWith(MAIN_WINDOW_VITE_DEV_SERVER_URL ?? "")) {
     event.preventDefault();
     shell.openExternal(url); // opens in default browser instead
   }
@@ -95,6 +114,7 @@ Every `getRows`, `getStructure`, `getIndexes`, `getConstraints`, and even the sc
 In use-workspace.tsx, `refreshSchemaTree` includes `schemaCache` in its `useCallback` dependency array. Since `schemaCache` is an object that gets a new reference on every state update, **`refreshSchemaTree` gets a new identity on every cache change**, which cascades to all 6 `open*Viewer` callbacks that depend on it, re-creating every function in the context value every time any schema is fetched.
 
 **Fix:** Use a ref to read the cache inside the callback:
+
 ```ts
 const schemaCacheRef = useRef(schemaCache);
 schemaCacheRef.current = schemaCache;
@@ -113,6 +133,7 @@ const refreshSchemaTree = useCallback(
 ### 7. `closeTab` reads stale `activeTabId`
 
 In use-workspace.tsx:
+
 ```ts
 const closeTab = useCallback(
   (id: string) => {
@@ -185,13 +206,14 @@ No `Ctrl+W` to close active tab, no `Ctrl+Tab` to cycle tabs. For a "keyboard-fr
 
 ## Summary
 
-| Severity | Count | Key themes |
-|----------|-------|------------|
-| BLOCKING | 3 | SQL injection, missing explicit security, no navigation restriction |
-| MAJOR | 6 | DRY violations, performance (client-per-query), stale closures, state bugs |
-| MINOR | 11 | Dead code, config issues, UX polish, consistency |
+| Severity | Count | Key themes                                                                 |
+| -------- | ----- | -------------------------------------------------------------------------- |
+| BLOCKING | 3     | SQL injection, missing explicit security, no navigation restriction        |
+| MAJOR    | 6     | DRY violations, performance (client-per-query), stale closures, state bugs |
+| MINOR    | 11    | Dead code, config issues, UX polish, consistency                           |
 
 **Biggest quick wins:**
+
 1. Add `READ ONLY` transaction to `getRows` (fixes #1, minimal change)
 2. Explicit `webPreferences` (fixes #2, 3-line change)
 3. Add `will-navigate` / `setWindowOpenHandler` (fixes #3, ~10 lines)

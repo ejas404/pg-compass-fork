@@ -8,7 +8,8 @@ describe("settings-store", () => {
   });
 
   it("merges settings patches without dropping unrelated keys", async () => {
-    const { getSettings, updateSettings } = await import("@/main/settings-store");
+    const { getSettings, updateSettings } =
+      await import("@/main/settings-store");
 
     updateSettings({
       appearance: { theme: "light" },

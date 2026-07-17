@@ -2,8 +2,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ConnectionSSHFieldset } from "@/components/connections/ConnectionSSHFieldset";
-import { ConnectionSSLFieldset } from "@/components/connections/ConnectionSSLFieldset";
+import { ConnectionSSHFieldset } from "@/components/connections/connection-ssh-fieldset";
+import { ConnectionSSLFieldset } from "@/components/connections/connection-ssl-fieldset";
 import type { SSHConfig, SSLConfig } from "@/shared/types/connection";
 
 function SslHarness() {

@@ -40,9 +40,10 @@ function getExecutablePath(): string {
   return path.join(appRoot, "out", "PG Compass-linux-x64", "pg-compass");
 }
 
-async function launch(
-  runtime: { storeDir: string; exportDir: string },
-): Promise<{ app: ElectronApplication; page: Page }> {
+async function launch(runtime: {
+  storeDir: string;
+  exportDir: string;
+}): Promise<{ app: ElectronApplication; page: Page }> {
   const app = await electron.launch({
     executablePath: getExecutablePath(),
     env: {
@@ -55,10 +56,7 @@ async function launch(
   return { app, page };
 }
 
-function writeSettings(
-  storeDir: string,
-  readOnlyMode: boolean,
-): void {
+function writeSettings(storeDir: string, readOnlyMode: boolean): void {
   fs.writeFileSync(
     path.join(storeDir, "settings.json"),
     JSON.stringify(
@@ -93,8 +91,13 @@ test.skip(
 
 test.describe.configure({ mode: "serial" });
 
-test("read-only mode hides every edit affordance", async ({ browserName }, testInfo) => {
-  test.skip(browserName !== "chromium", "Electron tests only run with Chromium");
+test("read-only mode hides every edit affordance", async ({
+  browserName,
+}, testInfo) => {
+  test.skip(
+    browserName !== "chromium",
+    "Electron tests only run with Chromium",
+  );
   const runtime = getRuntimeState(testInfo);
   writeSettings(runtime.storeDir, true);
 
@@ -103,7 +106,9 @@ test("read-only mode hides every edit affordance", async ({ browserName }, testI
     await openUsersDataTab(page);
 
     // Table view
-    await expect(page.locator('[data-testid="cell-editor-target"]')).toHaveCount(0);
+    await expect(
+      page.locator('[data-testid="cell-editor-target"]'),
+    ).toHaveCount(0);
     const firstCell = page.locator("td").first();
     await firstCell.dblclick({ force: true });
     await expect(page.locator('[data-testid="cell-editor"]')).toHaveCount(0);
@@ -111,14 +116,21 @@ test("read-only mode hides every edit affordance", async ({ browserName }, testI
 
     // Card view
     await page.getByRole("button", { name: "Card view" }).click();
-    await expect(page.locator('[data-testid="cell-editor-target"]')).toHaveCount(0);
+    await expect(
+      page.locator('[data-testid="cell-editor-target"]'),
+    ).toHaveCount(0);
   } finally {
     await app.close();
   }
 });
 
-test("edits apply when read-only mode is off", async ({ browserName }, testInfo) => {
-  test.skip(browserName !== "chromium", "Electron tests only run with Chromium");
+test("edits apply when read-only mode is off", async ({
+  browserName,
+}, testInfo) => {
+  test.skip(
+    browserName !== "chromium",
+    "Electron tests only run with Chromium",
+  );
   const runtime = getRuntimeState(testInfo);
   writeSettings(runtime.storeDir, false);
 
@@ -140,7 +152,10 @@ test("edits apply when read-only mode is off", async ({ browserName }, testInfo)
 test("views expose no edit affordance even when read-only mode is off", async ({
   browserName,
 }, testInfo) => {
-  test.skip(browserName !== "chromium", "Electron tests only run with Chromium");
+  test.skip(
+    browserName !== "chromium",
+    "Electron tests only run with Chromium",
+  );
   const runtime = getRuntimeState(testInfo);
   writeSettings(runtime.storeDir, false);
 
@@ -153,7 +168,9 @@ test("views expose no edit affordance even when read-only mode is off", async ({
     await page.getByRole("row", { name: /active_users/i }).click();
     await page.getByRole("tab", { name: "Data" }).click();
 
-    await expect(page.locator('[data-testid="cell-editor-target"]')).toHaveCount(0);
+    await expect(
+      page.locator('[data-testid="cell-editor-target"]'),
+    ).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Add Data" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Update" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Delete" })).toHaveCount(0);

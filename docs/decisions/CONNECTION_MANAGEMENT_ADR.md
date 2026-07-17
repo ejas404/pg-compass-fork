@@ -14,7 +14,7 @@ Connection management is implemented using a layered architecture across Electro
 
 1. **Shared types** in `src/shared/types/` — used by all three processes (main, preload, renderer).
 2. **electron-store v8** for JSON persistence of connections on disk.
-3. **ipcMain.handle / ipcRenderer.invoke** pattern for all CRUD operations.
+3. **ipcMain.handle / ipcRenderer.invoke** pattern for all CRUD operations, with main-frame origin validation on every handler.
 4. **contextBridge** to expose a typed `connectionApi` to the renderer.
 5. **React context** (`ConnectionProvider`) to manage state and provide hooks.
 6. **pg (node-postgres)** imported only in main process for test connections.
@@ -31,5 +31,5 @@ Connection management is implemented using a layered architecture across Electro
 
 - All connection operations go through IPC — renderer has zero direct Node.js access.
 - SSL certificate/key paths are persisted as paths, then read in the main process before constructing `pg` clients because node-postgres expects the file contents. CA certificates may also be stored as explicit inline material for provider-supplied values such as base64 `POSTGRES_SSL_CA`.
-- Connection passwords are stored in plaintext in electron-store JSON. A future task should add encryption or use the OS keychain.
+- Connection URIs and password-bearing fields are encrypted with Electron `safeStorage` when a secure OS backend is available. On systems without one (including Linux's `basic_text` backend), new values remain plaintext so connections still work; encrypted records fail closed until secure storage is available again.
 - SSH tunnel support is persisted in the schema but not yet wired to an actual tunnelling library (e.g., `ssh2`).
