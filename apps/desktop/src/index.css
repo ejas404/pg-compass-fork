@@ -138,6 +138,25 @@
   }
 }
 
+/*
+ * Data-view density. `comfortable` uses the component defaults (TableCell
+ * p-2 / TableHead h-10); `compact` tightens vertical rhythm across every
+ * table in the workspace (data, structure, indexes, relation lists, …) via
+ * the data-density attribute on the workspace root — no per-table wiring.
+ *
+ * Left unlayered on purpose: Tailwind's padding/height utilities live in the
+ * `utilities` cascade layer, which would otherwise win over a layered rule
+ * regardless of selector specificity. Unlayered rules outrank every layer.
+ */
+[data-density="compact"] [data-slot="table-cell"] {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+[data-density="compact"] [data-slot="table-head"] {
+  height: 2rem;
+}
+
 @layer components {
   .workspace-tab-scrollbar {
     scrollbar-color: color-mix(in oklab, var(--foreground) 28%, transparent)

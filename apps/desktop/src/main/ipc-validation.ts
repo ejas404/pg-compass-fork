@@ -371,6 +371,7 @@ export function validateSettingsPatch(value: unknown): AppSettingsPatch {
     assertAllowedKeys(appearance, "settingsPatch.appearance", [
       "theme",
       "sidebarWidth",
+      "density",
     ]);
     if (
       appearance.theme !== undefined &&
@@ -379,6 +380,13 @@ export function validateSettingsPatch(value: unknown): AppSettingsPatch {
       appearance.theme !== "system"
     ) {
       throw new TypeError("settingsPatch.appearance.theme is invalid.");
+    }
+    if (
+      appearance.density !== undefined &&
+      appearance.density !== "compact" &&
+      appearance.density !== "comfortable"
+    ) {
+      throw new TypeError("settingsPatch.appearance.density is invalid.");
     }
     if (appearance.sidebarWidth !== undefined) {
       asInteger(

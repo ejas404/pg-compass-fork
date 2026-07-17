@@ -3,6 +3,8 @@ import { typeRegistry } from "@/components/workspace/renderers/type-registry";
 import { JsonTree } from "@/components/workspace/table-viewer/json-tree";
 import { EditableCell } from "@/components/workspace/table-viewer/editable-cell";
 import { RowEditButton } from "@/components/workspace/table-viewer/row-edit-button";
+import { useDensity } from "@/hooks/use-density";
+import { cn } from "@/lib/utils";
 import type { ColumnInfo } from "@/shared/types/table-data";
 import type { EditContext } from "@/components/workspace/table-viewer/data-tab";
 import {
@@ -48,6 +50,8 @@ export function CardDataView({
   rows,
   editContext,
 }: Readonly<CardDataViewProps>) {
+  const compact = useDensity() === "compact";
+
   if (rows.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -56,9 +60,11 @@ export function CardDataView({
     );
   }
 
+  const copyButtonSize = compact ? "size-6" : "size-8";
+
   return (
     <ScrollArea className="h-full">
-      <div className="flex flex-col gap-3 p-1">
+      <div className={cn("flex flex-col p-1", compact ? "gap-2" : "gap-3")}>
         {rows.map((row, rowIndex) => {
           const rowKey = `card-${String(rowIndex)}`;
           const pkValues = pkValuesFor(row, editContext.primaryKey);
@@ -67,7 +73,12 @@ export function CardDataView({
               key={rowKey}
               className="group rounded-lg border border-border bg-card"
             >
-              <div className="flex items-center justify-between border-b border-border px-3 py-1.5">
+              <div
+                className={cn(
+                  "flex items-center justify-between border-b border-border px-3",
+                  compact ? "py-0.5" : "py-1.5",
+                )}
+              >
                 <span className="text-xs font-medium text-muted-foreground">
                   Document {rowIndex + 1}
                 </span>
@@ -76,6 +87,7 @@ export function CardDataView({
                     label={`Copy document ${String(rowIndex + 1)}`}
                     text={serializeRow(columns, row)}
                     successMessage="Row copied as JSON"
+                    className={copyButtonSize}
                   />
                   <RowEditButton
                     columns={columns}
@@ -91,26 +103,44 @@ export function CardDataView({
                   />
                 </div>
               </div>
-              <div className="px-3 py-2">
+              <div className={cn("px-3", compact ? "py-1" : "py-2")}>
                 {columns.map((col) => (
                   <div
                     key={col.name}
-                    className="flex gap-2 border-b border-border/30 py-1.5 last:border-b-0"
+                    className={cn(
+                      "flex gap-2",
+                      compact
+                        ? "items-baseline py-0.5"
+                        : "border-b border-border/30 py-1.5 last:border-b-0",
+                    )}
                   >
-                    <div className="group/label flex w-36 shrink-0 items-start gap-1">
+                    <div
+                      className={cn(
+                        "group/label flex shrink-0 items-start gap-1",
+                        compact ? "w-44" : "w-36",
+                      )}
+                    >
                       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                        <span className="text-xs font-medium text-foreground/80">
+                        <span
+                          className="truncate text-xs font-medium text-foreground/80"
+                          title={compact ? col.dataType : undefined}
+                        >
                           {col.name}
                         </span>
-                        <span className="text-[10px] text-muted-foreground/50">
-                          {col.dataType}
-                        </span>
+                        {compact ? null : (
+                          <span className="text-[11px] text-muted-foreground/60">
+                            {col.dataType}
+                          </span>
+                        )}
                       </div>
                       <DataCopyButton
                         label={`Copy column name ${col.name}`}
                         text={col.name}
                         successMessage="Column name copied"
-                        className="size-8 shrink-0 opacity-0 group-hover/label:opacity-100 focus-visible:opacity-100"
+                        className={cn(
+                          "shrink-0 opacity-0 group-hover/label:opacity-100 focus-visible:opacity-100",
+                          copyButtonSize,
+                        )}
                       />
                     </div>
                     <div className="group/value flex min-w-0 flex-1 items-start gap-1 font-mono text-xs">
@@ -138,7 +168,10 @@ export function CardDataView({
                         label={`Copy ${col.name} value`}
                         text={serializeCellValue(row[col.name])}
                         successMessage="Cell value copied"
-                        className="size-8 shrink-0 opacity-0 group-hover/value:opacity-100 focus-visible:opacity-100"
+                        className={cn(
+                          "shrink-0 opacity-0 group-hover/value:opacity-100 focus-visible:opacity-100",
+                          copyButtonSize,
+                        )}
                       />
                     </div>
                   </div>

@@ -21,7 +21,10 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettings } from "@/hooks/use-settings";
 import { cn } from "@/lib/utils";
-import type { ThemePreference } from "@/shared/types/settings";
+import type {
+  DensityPreference,
+  ThemePreference,
+} from "@/shared/types/settings";
 import { KeyboardShortcutsDialog } from "@/components/help/keyboard-shortcuts-dialog";
 
 type SettingsCategory = "general" | "appearance" | "privacy";
@@ -164,7 +167,8 @@ function GeneralSettingsPanel() {
 }
 
 function AppearanceSettingsPanel() {
-  const { settings, setTheme } = useSettings();
+  const { settings, setTheme, updateSettings } = useSettings();
+  const density = settings.appearance.density ?? "compact";
 
   return (
     <div className="flex flex-col gap-1">
@@ -174,7 +178,7 @@ function AppearanceSettingsPanel() {
       </p>
 
       <Tabs value={settings.appearance.theme}>
-        <TabsList className="grid w-full grid-cols-1 gap-2 bg-transparent p-0 sm:grid-cols-3">
+        <TabsList className="grid w-full grid-cols-1 gap-2 bg-transparent p-0 group-data-[orientation=horizontal]/tabs:h-auto sm:grid-cols-3">
           <ThemeCard
             value="light"
             title="Light"
@@ -206,6 +210,62 @@ function AppearanceSettingsPanel() {
           </ThemeCard>
         </TabsList>
       </Tabs>
+
+      <Separator className="my-4" />
+
+      <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-3">
+        <div className="space-y-1">
+          <p className="text-sm font-medium">Density</p>
+          <p className="text-xs text-muted-foreground">
+            Row spacing for data tables and the card viewer. Compact fits more
+            rows on screen; comfortable adds breathing room.
+          </p>
+        </div>
+        <DensitySelector
+          value={density}
+          onChange={(next) =>
+            updateSettings({ appearance: { density: next } })
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
+const DENSITY_OPTIONS: Array<{ value: DensityPreference; label: string }> = [
+  { value: "compact", label: "Compact" },
+  { value: "comfortable", label: "Comfortable" },
+];
+
+function DensitySelector({
+  value,
+  onChange,
+}: Readonly<{
+  value: DensityPreference;
+  onChange: (value: DensityPreference) => void;
+}>) {
+  return (
+    <div role="radiogroup" aria-label="Density" className="flex shrink-0 gap-1.5">
+      {DENSITY_OPTIONS.map((option) => {
+        const selected = value === option.value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => onChange(option.value)}
+            className={cn(
+              "rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+              selected
+                ? "border-primary bg-primary/10 text-foreground"
+                : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
+            )}
+          >
+            {option.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

@@ -1,5 +1,8 @@
 export type ThemePreference = "light" | "dark" | "system";
 
+/** Row/cell density for data tables and the card viewer. */
+export type DensityPreference = "compact" | "comfortable";
+
 export interface GeneralSettings {
   readOnlyMode: boolean;
   shellAccess: boolean;
@@ -10,6 +13,7 @@ export interface GeneralSettings {
 export interface AppearanceSettings {
   theme: ThemePreference;
   sidebarWidth: number;
+  density: DensityPreference;
 }
 
 export interface PrivacySettings {
@@ -38,6 +42,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   appearance: {
     theme: "dark",
     sidebarWidth: 256,
+    density: "compact",
   },
   privacy: {
     automaticUpdates: true,

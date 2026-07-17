@@ -7,6 +7,7 @@ import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/hooks/use-workspace";
+import { useDensity } from "@/hooks/use-density";
 import { useWorkspaceShortcuts } from "@/hooks/use-workspace-shortcuts";
 import { SchemaViewer } from "@/components/workspace/schema-viewer";
 import { SchemaListViewer } from "@/components/workspace/schema-list-viewer";
@@ -22,6 +23,7 @@ import { matchesShortcut } from "@/shared/constants/shortcuts";
 
 export function Workspace() {
   const { tabs, activeTabId, setActiveTab, closeTab } = useWorkspace();
+  const density = useDensity();
   const activeTab = tabs.find((tab) => tab.id === activeTabId);
 
   useWorkspaceShortcuts(tabs, activeTabId, closeTab, setActiveTab);
@@ -59,7 +61,7 @@ export function Workspace() {
   }, []);
 
   return (
-    <main className="flex flex-1 flex-col overflow-hidden">
+    <main className="flex flex-1 flex-col overflow-hidden" data-density={density}>
       <ApplicationTitle>{buildWindowTitle(activeTab?.view)}</ApplicationTitle>
       <WorkspaceTabBar
         tabs={tabs}
