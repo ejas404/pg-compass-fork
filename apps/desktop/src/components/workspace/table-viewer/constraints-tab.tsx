@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useLatestRequest } from "@/hooks/use-latest-request";
 import {
   Table,
   TableBody,
@@ -61,34 +62,35 @@ export function ConstraintsTab({
   refreshSignal = 0,
   onRefreshComplete,
 }: Readonly<ConstraintsTabProps>) {
+  const runLatestRequest = useLatestRequest();
   const [constraints, setConstraints] = useState<ConstraintInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetch = useCallback(async () => {
     setLoading(true);
-    try {
-      const result = await globalThis.window.tableDataApi.getConstraints({
+    const request = await runLatestRequest(() => globalThis.window.tableDataApi.getConstraints({
         connectionId,
         schema,
         table,
-      });
+    }));
+    if (request.status === "stale") return false;
+    if (request.status === "error") {
+      toast.error("Failed to load constraints", { description: (request.error as Error).message });
+      setLoading(false);
+      return false;
+    }
+    const result = request.value;
       if (!result.success || !result.data) {
         toast.error("Failed to load constraints", {
           description: result.error,
         });
+        setLoading(false);
         return false;
       }
       setConstraints(result.data);
-      return true;
-    } catch (err) {
-      toast.error("Failed to load constraints", {
-        description: (err as Error).message,
-      });
-      return false;
-    } finally {
       setLoading(false);
-    }
-  }, [connectionId, schema, table]);
+      return true;
+  }, [connectionId, runLatestRequest, schema, table]);
 
   useEffect(
     function loadConstraints() {

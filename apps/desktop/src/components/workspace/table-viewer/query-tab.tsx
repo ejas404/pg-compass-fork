@@ -12,6 +12,7 @@ import { CardDataView } from "@/components/workspace/table-viewer/card-data-view
 import type { EditContext } from "@/components/workspace/table-viewer/data-tab";
 import { ExportDropdown } from "@/components/workspace/export-dropdown";
 import { useWorkspace } from "@/hooks/use-workspace";
+import { useLatestRequest } from "@/hooks/use-latest-request";
 import type { ColumnInfo } from "@/shared/types/table-data";
 
 type ViewMode = "table" | "card";
@@ -71,6 +72,7 @@ export function QueryTab({
   onRefreshComplete,
 }: Readonly<QueryTabProps>) {
   const { schemaCache } = useWorkspace();
+  const runLatestRequest = useLatestRequest();
   const [sql, setSql] = useState(
     `SELECT * FROM "${schema}"."${table}" LIMIT 100;`,
   );
@@ -123,16 +125,28 @@ export function QueryTab({
       activeQueryIdRef.current = queryId;
       setLoading(true);
       setError(null);
-      try {
-        const result = await globalThis.window.tableDataApi.executeQuery({
+      const request = await runLatestRequest(() =>
+        globalThis.window.tableDataApi.executeQuery({
           connectionId,
           queryId,
           sql: submittedSql,
           page: p,
           pageSize: ps,
-        });
-
-        if (!result.success || !result.data) {
+        }),
+      );
+      if (request.status === "stale") return false;
+      if (request.status === "error") {
+        const msg = (request.error as Error).message;
+        setError(msg);
+        toast.error("Query failed", { description: msg });
+        if (activeQueryIdRef.current === queryId) {
+          activeQueryIdRef.current = null;
+          setLoading(false);
+        }
+        return false;
+      }
+      const result = request.value;
+      if (!result.success || !result.data) {
           const message = result.error ?? "Unknown error";
           setError(message);
           if (message === "Query cancelled.") {
@@ -142,29 +156,25 @@ export function QueryTab({
           } else {
             toast.error("Query failed", { description: message });
           }
-          return false;
-        }
-
-        setColumns(result.data.columns);
-        setRows(result.data.rows);
-        setTotalCount(result.data.totalCount);
-        setHasRun(true);
-        setLastSuccessfulSql(submittedSql);
-        setLastRefreshedAt(new Date());
-        return true;
-      } catch (err) {
-        const msg = (err as Error).message;
-        setError(msg);
-        toast.error("Query failed", { description: msg });
-        return false;
-      } finally {
         if (activeQueryIdRef.current === queryId) {
           activeQueryIdRef.current = null;
           setLoading(false);
         }
+        return false;
       }
+      setColumns(result.data.columns);
+      setRows(result.data.rows);
+      setTotalCount(result.data.totalCount);
+      setHasRun(true);
+      setLastSuccessfulSql(submittedSql);
+      setLastRefreshedAt(new Date());
+      if (activeQueryIdRef.current === queryId) {
+        activeQueryIdRef.current = null;
+        setLoading(false);
+      }
+      return true;
     },
-    [connectionId, sql],
+    [connectionId, runLatestRequest, sql],
   );
 
   useEffect(() => {

@@ -30,6 +30,7 @@ import { DeleteDataDialog } from "@/components/workspace/table-viewer/delete-dat
 import { ExportDropdown } from "@/components/workspace/export-dropdown";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { useSettings } from "@/hooks/use-settings";
+import { useLatestRequest } from "@/hooks/use-latest-request";
 import type { ColumnInfo } from "@/shared/types/table-data";
 import type { RelationSessionState } from "@/shared/types/workspace";
 
@@ -129,6 +130,7 @@ export function DataTab({
 }: Readonly<DataTabProps>) {
   const { schemaCache } = useWorkspace();
   const { settings } = useSettings();
+  const runLatestRequest = useLatestRequest();
   const [columns, setColumns] = useState<ColumnInfo[]>([]);
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [primaryKey, setPrimaryKey] = useState<string[] | null>(null);
@@ -182,46 +184,49 @@ export function DataTab({
     async (p: number, ps: number, where: string, background = false) => {
       if (!background) setLoading(true);
       setError(null);
-      try {
-        const result = await globalThis.window.tableDataApi.getRows({
+      const request = await runLatestRequest(() =>
+        globalThis.window.tableDataApi.getRows({
           connectionId,
           schema,
           table,
           page: p,
           pageSize: ps,
           whereClause: where || undefined,
-        });
-        if (!result.success || !result.data) {
+        }),
+      );
+      if (request.status === "stale") return false;
+      if (request.status === "error") {
+        const msg = (request.error as Error).message;
+        setError(msg);
+        if (!background) {
+          setRows([]);
+          setTotalCount(0);
+          setLoading(false);
+        }
+        toast.error("Failed to load rows", { description: msg });
+        return false;
+      }
+      const result = request.value;
+      if (!result.success || !result.data) {
           const msg = result.error ?? "Unknown error";
           setError(msg);
           if (!background) {
             setRows([]);
             setTotalCount(0);
+            setLoading(false);
           }
           toast.error("Failed to load rows", { description: msg });
-          return false;
-        }
-
-        setColumns(result.data.columns);
-        setRows(result.data.rows);
-        setPrimaryKey(result.data.primaryKey);
-        setTotalCount(result.data.totalCount);
-        setLastRefreshedAt(new Date());
-        return true;
-      } catch (err) {
-        const msg = (err as Error).message;
-        setError(msg);
-        if (!background) {
-          setRows([]);
-          setTotalCount(0);
-        }
-        toast.error("Failed to load rows", { description: msg });
         return false;
-      } finally {
-        if (!background) setLoading(false);
       }
+      setColumns(result.data.columns);
+      setRows(result.data.rows);
+      setPrimaryKey(result.data.primaryKey);
+      setTotalCount(result.data.totalCount);
+      setLastRefreshedAt(new Date());
+      if (!background) setLoading(false);
+      return true;
     },
-    [connectionId, schema, table],
+    [connectionId, runLatestRequest, schema, table],
   );
 
   useEffect(() => {

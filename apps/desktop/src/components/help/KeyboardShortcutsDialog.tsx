@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Search } from "lucide-react";
 import {
   Dialog,
@@ -25,15 +25,14 @@ export function KeyboardShortcutsDialog({
 }: Readonly<KeyboardShortcutsDialogProps>) {
   const [search, setSearch] = useState("");
   const platform = currentShortcutPlatform();
-  const visible = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return SHORTCUTS;
-    return SHORTCUTS.filter((shortcut) =>
-      `${shortcut.label} ${shortcut.category} ${shortcutLabel(shortcut, platform)}`
-        .toLowerCase()
-        .includes(query),
-    );
-  }, [platform, search]);
+  const query = search.trim().toLowerCase();
+  const visible = query
+    ? SHORTCUTS.filter((shortcut) =>
+        `${shortcut.label} ${shortcut.category} ${shortcutLabel(shortcut, platform)}`
+          .toLowerCase()
+          .includes(query),
+      )
+    : SHORTCUTS;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

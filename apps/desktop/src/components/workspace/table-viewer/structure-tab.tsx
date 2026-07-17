@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useLatestRequest } from "@/hooks/use-latest-request";
 import {
   Table,
   TableBody,
@@ -49,32 +50,33 @@ export function StructureTab({
   refreshSignal = 0,
   onRefreshComplete,
 }: Readonly<StructureTabProps>) {
+  const runLatestRequest = useLatestRequest();
   const [columns, setColumns] = useState<ColumnStructure[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetch = useCallback(async () => {
     setLoading(true);
-    try {
-      const result = await globalThis.window.tableDataApi.getStructure({
+    const request = await runLatestRequest(() => globalThis.window.tableDataApi.getStructure({
         connectionId,
         schema,
         table,
-      });
+    }));
+    if (request.status === "stale") return false;
+    if (request.status === "error") {
+      toast.error("Failed to load structure", { description: (request.error as Error).message });
+      setLoading(false);
+      return false;
+    }
+    const result = request.value;
       if (!result.success || !result.data) {
         toast.error("Failed to load structure", { description: result.error });
+        setLoading(false);
         return false;
       }
       setColumns(result.data);
-      return true;
-    } catch (err) {
-      toast.error("Failed to load structure", {
-        description: (err as Error).message,
-      });
-      return false;
-    } finally {
       setLoading(false);
-    }
-  }, [connectionId, schema, table]);
+      return true;
+  }, [connectionId, runLatestRequest, schema, table]);
 
   useEffect(
     function loadStructure() {

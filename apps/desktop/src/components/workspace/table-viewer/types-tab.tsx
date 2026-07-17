@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useLatestRequest } from "@/hooks/use-latest-request";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -143,33 +144,34 @@ export function TypesTab({
   refreshSignal = 0,
   onRefreshComplete,
 }: Readonly<TypesTabProps>) {
+  const runLatestRequest = useLatestRequest();
   const [types, setTypes] = useState<TableTypeInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedType, setExpandedType] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
     setLoading(true);
-    try {
-      const result = await globalThis.window.tableDataApi.getTypes({
+    const request = await runLatestRequest(() => globalThis.window.tableDataApi.getTypes({
         connectionId,
         schema,
         table,
-      });
+    }));
+    if (request.status === "stale") return false;
+    if (request.status === "error") {
+      toast.error("Failed to load types", { description: (request.error as Error).message });
+      setLoading(false);
+      return false;
+    }
+    const result = request.value;
       if (!result.success || !result.data) {
         toast.error("Failed to load types", { description: result.error });
+        setLoading(false);
         return false;
       }
       setTypes(result.data);
-      return true;
-    } catch (err) {
-      toast.error("Failed to load types", {
-        description: (err as Error).message,
-      });
-      return false;
-    } finally {
       setLoading(false);
-    }
-  }, [connectionId, schema, table]);
+      return true;
+  }, [connectionId, runLatestRequest, schema, table]);
 
   useEffect(
     function loadTypes() {

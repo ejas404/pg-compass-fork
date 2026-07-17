@@ -82,4 +82,40 @@ describe("DataTab background refresh", () => {
       screen.getByText(/Showing the last successful result/),
     ).toBeVisible();
   });
+
+  it("ignores an older response after the relation changes", async () => {
+    let resolveFirst: (value: unknown) => void;
+    let resolveSecond: (value: unknown) => void;
+    Object.assign(window, {
+      tableDataApi: {
+        getRows: vi
+          .fn()
+          .mockImplementationOnce(
+            () => new Promise((resolve) => { resolveFirst = resolve; }),
+          )
+          .mockImplementationOnce(
+            () => new Promise((resolve) => { resolveSecond = resolve; }),
+          ),
+      },
+    });
+
+    const view = render(
+      <DataTab connectionId="conn-1" schema="app" table="users" relationType="table" />,
+    );
+    view.rerender(
+      <DataTab connectionId="conn-1" schema="app" table="teams" relationType="table" />,
+    );
+
+    resolveSecond!({
+      success: true,
+      data: { columns: [], rows: [{ id: 2 }], totalCount: 1, primaryKey: ["id"] },
+    });
+    await screen.findByText("visible rows: 1");
+
+    resolveFirst!({
+      success: true,
+      data: { columns: [], rows: [{ id: 1 }, { id: 3 }], totalCount: 2, primaryKey: ["id"] },
+    });
+    await waitFor(() => expect(screen.getByText("visible rows: 1")).toBeVisible());
+  });
 });

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useLatestRequest } from "@/hooks/use-latest-request";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -42,33 +43,35 @@ export function TriggersTab({
   onRefreshComplete,
 }: Readonly<TriggersTabProps>) {
   const { settings } = useSettings();
+  const runLatestRequest = useLatestRequest();
+  const runLatestToggle = useLatestRequest();
   const [triggers, setTriggers] = useState<TriggerInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [pendingTrigger, setPendingTrigger] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
     setLoading(true);
-    try {
-      const result = await globalThis.window.tableDataApi.getTriggers({
+    const request = await runLatestRequest(() => globalThis.window.tableDataApi.getTriggers({
         connectionId,
         schema,
         table,
-      });
+    }));
+    if (request.status === "stale") return false;
+    if (request.status === "error") {
+      toast.error("Failed to load triggers", { description: (request.error as Error).message });
+      setLoading(false);
+      return false;
+    }
+    const result = request.value;
       if (!result.success || !result.data) {
         toast.error("Failed to load triggers", { description: result.error });
+        setLoading(false);
         return false;
       }
       setTriggers(result.data);
-      return true;
-    } catch (err) {
-      toast.error("Failed to load triggers", {
-        description: (err as Error).message,
-      });
-      return false;
-    } finally {
       setLoading(false);
-    }
-  }, [connectionId, schema, table]);
+      return true;
+  }, [connectionId, runLatestRequest, schema, table]);
 
   useEffect(
     function loadTriggers() {
@@ -81,27 +84,30 @@ export function TriggersTab({
 
   async function handleToggle(trigger: TriggerInfo, enabled: boolean) {
     setPendingTrigger(trigger.name);
-    try {
-      const result = await globalThis.window.tableDataApi.toggleTrigger({
+    const request = await runLatestToggle(() =>
+      globalThis.window.tableDataApi.toggleTrigger({
         connectionId,
         schema,
         table,
         trigger: trigger.name,
         enabled,
-      });
-      if (!result.success || !result.data) {
-        toast.error("Failed to update trigger", { description: result.error });
-        return;
-      }
-      setTriggers(result.data);
-      toast.success(enabled ? "Trigger enabled" : "Trigger disabled");
-    } catch (err) {
+      }),
+    );
+    if (request.status === "stale") return;
+    setPendingTrigger(null);
+    if (request.status === "error") {
       toast.error("Failed to update trigger", {
-        description: (err as Error).message,
+        description: (request.error as Error).message,
       });
-    } finally {
-      setPendingTrigger(null);
+      return;
     }
+    const result = request.value;
+    if (!result.success || !result.data) {
+      toast.error("Failed to update trigger", { description: result.error });
+      return;
+    }
+    setTriggers(result.data);
+    toast.success(enabled ? "Trigger enabled" : "Trigger disabled");
   }
 
   if (loading && triggers.length === 0) {

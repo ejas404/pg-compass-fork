@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   Table,
   TableBody,
@@ -19,10 +19,7 @@ export function SchemaListViewer({ path }: Readonly<SchemaListViewerProps>) {
   const { schemaCache, refreshSchemaTreeWithStatus, openTab, navigateToView } =
     useWorkspace();
 
-  const rows = useMemo(
-    () => schemaCache[path.connectionId] ?? [],
-    [schemaCache, path.connectionId],
-  );
+  const rows = schemaCache[path.connectionId] ?? [];
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
 

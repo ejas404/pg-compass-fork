@@ -14,12 +14,9 @@ import {
   type ThemePreference,
 } from "@/shared/types/settings";
 
-type ResolvedTheme = "light" | "dark";
-
 interface SettingsContextValue {
   settings: AppSettings;
   loading: boolean;
-  resolvedTheme: ResolvedTheme;
   refresh: () => Promise<void>;
   updateSettings: (patch: AppSettingsPatch) => Promise<AppSettings | null>;
   setTheme: (theme: ThemePreference) => Promise<void>;
@@ -27,7 +24,7 @@ interface SettingsContextValue {
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
 
-function resolveSystemTheme(): ResolvedTheme {
+function resolveSystemTheme(): "light" | "dark" {
   return globalThis.matchMedia("(prefers-color-scheme: dark)").matches
     ? "dark"
     : "light";
@@ -38,7 +35,6 @@ export function SettingsProvider({
 }: Readonly<{ children: ReactNode }>) {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
   const [loading, setLoading] = useState(true);
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("dark");
 
   const refresh = useCallback(async () => {
     const result = await globalThis.window.settingsApi.get();
@@ -61,7 +57,6 @@ export function SettingsProvider({
       let mediaQuery: MediaQueryList | null = null;
 
       const apply = (theme: "dark" | "light") => {
-        setResolvedTheme(theme);
         document.documentElement.classList.toggle("dark", theme === "dark");
       };
 
@@ -108,12 +103,11 @@ export function SettingsProvider({
     () => ({
       settings,
       loading,
-      resolvedTheme,
       refresh,
       updateSettings,
       setTheme,
     }),
-    [settings, loading, resolvedTheme, refresh, updateSettings, setTheme],
+    [settings, loading, refresh, updateSettings, setTheme],
   );
 
   return (

@@ -26,10 +26,6 @@ export function useSidebarResize() {
   const sidebarRef = useRef<HTMLElement | null>(null);
   const sidebarWidthRef = useRef(SIDEBAR_DEFAULT_WIDTH);
 
-  useEffect(function syncSidebarWidthRef() {
-    sidebarWidthRef.current = sidebarWidth;
-  }, [sidebarWidth]);
-
   useEffect(function handleResizeEvents() {
     if (!isResizing) {
       return;
@@ -39,6 +35,7 @@ export function useSidebarResize() {
       const sidebarLeft = sidebarRef.current?.getBoundingClientRect().left ?? 0;
       const nextWidth = clampSidebarWidth(event.clientX - sidebarLeft);
 
+      sidebarWidthRef.current = nextWidth;
       setSidebarWidth(nextWidth);
     }
 
@@ -70,7 +67,11 @@ export function useSidebarResize() {
 
   useEffect(function handleWindowResize() {
     function handleWindowResize() {
-      setSidebarWidth((current) => clampSidebarWidth(current));
+      setSidebarWidth((current) => {
+        const nextWidth = clampSidebarWidth(current);
+        sidebarWidthRef.current = nextWidth;
+        return nextWidth;
+      });
     }
 
     globalThis.addEventListener('resize', handleWindowResize);
@@ -86,7 +87,9 @@ export function useSidebarResize() {
     }
 
     const persistedWidth = settings.appearance.sidebarWidth ?? SIDEBAR_DEFAULT_WIDTH;
-    setSidebarWidth(clampSidebarWidth(persistedWidth));
+    const nextWidth = clampSidebarWidth(persistedWidth);
+    sidebarWidthRef.current = nextWidth;
+    setSidebarWidth(nextWidth);
   }, [loading, settings.appearance.sidebarWidth]);
 
   function handleResizeStart(event: ReactPointerEvent<HTMLButtonElement>) {
