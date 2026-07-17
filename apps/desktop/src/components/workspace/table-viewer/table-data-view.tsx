@@ -62,7 +62,7 @@ export function TableDataView({
                 <div className="group/header flex items-center gap-1">
                   <div className="flex flex-col gap-0.5">
                     <span>{col.name}</span>
-                    <span className="text-[10px] font-normal text-muted-foreground/60">
+                    <span className="text-[11px] font-normal text-muted-foreground/70">
                       {col.dataType}
                     </span>
                   </div>

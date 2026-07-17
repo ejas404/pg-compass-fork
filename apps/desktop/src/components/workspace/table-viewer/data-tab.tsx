@@ -390,7 +390,7 @@ export function DataTab({
         {/* Row 2: Action buttons */}
         <div className="flex items-center gap-1.5">
           <span
-            className="mr-auto text-[10px] text-muted-foreground"
+            className="mr-auto text-[11px] text-muted-foreground"
             title={lastRefreshedAt?.toLocaleString()}
           >
             {lastRefreshedAt

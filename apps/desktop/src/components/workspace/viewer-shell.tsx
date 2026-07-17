@@ -66,7 +66,7 @@ export function ViewerShell({
         <div className="flex items-center gap-2">
           {lastRefreshedAt ? (
             <span
-              className="text-[10px] text-muted-foreground"
+              className="text-[11px] text-muted-foreground"
               title={lastRefreshedAt.toLocaleString()}
             >
               Updated{" "}

@@ -39,7 +39,7 @@ export function DataPagination({
         <label className="flex items-center gap-1">
           Rows per page
           <select
-            className="h-8 rounded border border-input bg-background px-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            className="h-8 rounded-md border border-input bg-background px-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             value={pageSize}
             disabled={disabled}
             onChange={(e) => {

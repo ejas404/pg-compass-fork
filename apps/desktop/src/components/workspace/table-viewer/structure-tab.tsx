@@ -128,7 +128,7 @@ export function StructureTab({
               </TableCell>
               <TableCell className="font-medium">{col.name}</TableCell>
               <TableCell>
-                <Badge variant="secondary" className="font-mono text-[10px]">
+                <Badge variant="secondary" className="font-mono text-[11px]">
                   {formatType(col)}
                 </Badge>
               </TableCell>
@@ -152,7 +152,7 @@ export function StructureTab({
                       return (
                         <span
                           key={key}
-                          className="inline-block max-w-30 truncate rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]"
+                          className="inline-block max-w-30 truncate rounded bg-muted px-1.5 py-0.5 font-mono text-[11px]"
                           title={renderSample(val)}
                         >
                           {renderSample(val)}
