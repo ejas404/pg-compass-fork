@@ -4,14 +4,47 @@ on:
   push:
     branches: [main]
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.19"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Check types
+        run: pnpm check-types
+
+      - name: Run desktop tests
+        run: pnpm test
+
+      - name: Audit production dependencies
+        run: pnpm audit:desktop
+
   build-windows:
+    needs: verify
     runs-on: windows-latest
     steps:
       - name: Checkout repository
@@ -20,16 +53,19 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: "20.19"
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build desktop app
         run: pnpm run make --filter @pg-compass/desktop
+
+      - name: Smoke test packaged app
+        run: pnpm --filter @pg-compass/desktop test:e2e:smoke
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -39,6 +75,7 @@ jobs:
           if-no-files-found: error
 
   build-linux:
+    needs: verify
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -47,16 +84,19 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: "20.19"
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build desktop app
         run: pnpm run make --filter @pg-compass/desktop
+
+      - name: Smoke test packaged app
+        run: xvfb-run --auto-servernum pnpm --filter @pg-compass/desktop test:e2e:smoke
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

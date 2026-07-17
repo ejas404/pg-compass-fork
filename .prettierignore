@@ -1,0 +1,20 @@
+**/node_modules/**
+**/.astro/**
+**/.turbo/**
+**/.vite/**
+**/coverage/**
+**/dist/**
+**/out/**
+**/playwright-report/**
+**/test-results/**
+**/.test-runtime/**
+
+# The legacy landing app and its in-progress replacement are intentionally
+# outside this cleanup.
+apps/landing/**
+apps/landing-redesign/**
+
+# Generated lockfiles and binary/media assets.
+pnpm-lock.yaml
+skills-lock.json
+**/*.{gif,ico,icns,jpg,jpeg,png,svg}

@@ -4,7 +4,7 @@ A fast, minimal desktop database viewer for **PostgreSQL**, inspired by the usab
 
 **Yet another PostgreSQL GUI?**
 
-> Most PostgreSQL tools are either bloated IDE-style apps (pgAdmin, DataGrip) with features you never use, or primitive CLI wrappers. PG Compass sits in the sweet spot — a focused, fast tool for the thing developers actually do most: *inspecting data*.
+> Most PostgreSQL tools are either bloated IDE-style apps (pgAdmin, DataGrip) with features you never use, or primitive CLI wrappers. PG Compass sits in the sweet spot — a focused, fast tool for the thing developers actually do most: _inspecting data_.
 
 ![PG Compass Demo](./docs/demo.gif)
 
@@ -23,14 +23,13 @@ A fast, minimal desktop database viewer for **PostgreSQL**, inspired by the usab
 - 🛟 **Type-safe** — fully written in TypeScript with type-safe IPC between Electron processes.
 - 🔓 **Open source** — MIT licensed, no accounts, no telemetry, no nonsense.
 
-
 ![PG Compass Screenshot featuring light and dark modes](./docs/dark_light_mode.png)
 
 ## Getting Started
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) 18+
+- [Node.js](https://nodejs.org/) 20.19+
 - [pnpm](https://pnpm.io/) 9+
 
 ### Installation
@@ -93,13 +92,13 @@ docs/               # Project documentation & decision records
 
 ### Tech Stack
 
-| Layer       | Technology                          |
-| ----------- | ----------------------------------- |
-| Framework   | Electron (Forge + Vite)             |
-| Frontend    | React 19, Tailwind CSS v4, shadcn/ui|
-| Database    | node-postgres (`pg`)                |
-| Language    | TypeScript                          |
-| Tooling     | Turborepo, pnpm, ESLint, Prettier  |
+| Layer     | Technology                           |
+| --------- | ------------------------------------ |
+| Framework | Electron (Forge + Vite)              |
+| Frontend  | React 19, Tailwind CSS v4, shadcn/ui |
+| Database  | node-postgres (`pg`)                 |
+| Language  | TypeScript                           |
+| Tooling   | Turborepo, pnpm, ESLint, Prettier    |
 
 ## Contributing
 

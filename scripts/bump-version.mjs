@@ -27,7 +27,9 @@ const packageFiles = await Promise.all(
     const data = JSON.parse(raw);
 
     if (typeof data.version !== "string" || !semverPattern.test(data.version)) {
-      throw new Error(`${relativePath} has an invalid version: ${data.version}`);
+      throw new Error(
+        `${relativePath} has an invalid version: ${data.version}`,
+      );
     }
 
     return { relativePath, absolutePath, data };

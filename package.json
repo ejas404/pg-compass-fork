@@ -5,8 +5,11 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "dev:desktop": "turbo run dev --filter @pg-compass/desktop",
-    "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "check:names": "node scripts/check-file-names.mjs",
+    "audit:desktop": "node scripts/audit-desktop.mjs",
+    "lint": "pnpm check:names && turbo run lint",
+    "format": "prettier --write apps/desktop packages scripts package.json turbo.json pnpm-workspace.yaml \".github/workflows/*.yml\"",
+    "format:check": "prettier --check apps/desktop packages scripts package.json turbo.json pnpm-workspace.yaml \".github/workflows/*.yml\"",
     "check-types": "turbo run check-types",
     "version:bump": "node scripts/bump-version.mjs",
     "make": "turbo run make",
@@ -24,12 +27,17 @@
   },
   "packageManager": "pnpm@9.0.0",
   "pnpm": {
+    "overrides": {
+      "fast-uri": "3.1.2",
+      "picomatch@>=2.0.0 <2.3.2": "2.3.2",
+      "picomatch@>=4.0.0 <4.0.5": "4.0.5"
+    },
     "onlyBuiltDependencies": [
       "electron",
       "electron-winstaller"
     ]
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20.19"
   }
 }

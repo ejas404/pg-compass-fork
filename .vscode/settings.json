@@ -11,5 +11,6 @@
     "**/.agent/**": true,
     "**/.agents/**": true,
     "**/.claude/**": true
-  }
+  },
+  "js/ts.tsdk.path": "node_modules\\typescript\\lib"
 }
