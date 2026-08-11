@@ -1,14 +1,16 @@
 /**
  * Multi-field row editor — a dialog that lets the user edit any subset of a
- * row's columns and Save them as one atomic UPDATE.
+ * row's columns and Save them as one atomic UPDATE, or (in `insert` mode) fill
+ * in a brand-new row and INSERT it.
  *
  * Composes over the Phase 1 edit registry: each column reuses its registered
  * `TypeEditor` for `toInput` / `validate` / `pgCast`, so type rules stay in a
- * single place. PK columns render read-only — Phase 2 does not allow PK
- * mutation.
+ * single place. In `edit` mode PK columns render read-only (we do not allow PK
+ * mutation); in `insert` mode every column is editable and any untouched field
+ * is omitted from the statement so the database default applies.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import type {
@@ -37,23 +39,39 @@ import {
   type FieldDraft,
 } from "./row-field-editor";
 
+export type RowEditorMode = "edit" | "insert";
+
 export interface RowEditDialogProps {
   columns: ColumnInfo[];
-  row: Record<string, unknown>;
+  /** Current values (edit mode). Omit / pass `{}` for insert mode. */
+  row?: Record<string, unknown>;
+  /** PK columns — locked in edit mode, editable in insert mode. */
   primaryKey: string[];
-  pkValues: unknown[];
+  /** PK values, edit mode only. */
+  pkValues?: unknown[];
   schema: string;
   table: string;
   connectionId: string;
+  /** `edit` (default) sends an UPDATE; `insert` sends an INSERT. */
+  mode?: RowEditorMode;
+  /** Called with the saved row (from `RETURNING *`). */
   onRowUpdated: (row: Record<string, unknown>) => void;
   onClose: () => void;
 }
 
+const EMPTY_ROW: Record<string, unknown> = {};
+
 export function RowEditDialog(props: Readonly<RowEditDialogProps>) {
+  const mode: RowEditorMode = props.mode ?? "edit";
+  const isInsert = mode === "insert";
+  const row = props.row ?? EMPTY_ROW;
+
   const pkSet = useMemo(() => new Set(props.primaryKey), [props.primaryKey]);
 
-  // Editable columns — PK columns shown but locked.
-  const editableColumns = props.columns.filter((c) => !pkSet.has(c.name));
+  // In insert mode every column is editable; in edit mode PK columns are locked.
+  const editableColumns = isInsert
+    ? props.columns
+    : props.columns.filter((c) => !pkSet.has(c.name));
 
   const editors = useMemo(() => {
     const map = new Map<string, TypeEditor>();
@@ -66,22 +84,35 @@ export function RowEditDialog(props: Readonly<RowEditDialogProps>) {
   const initialInputs = useMemo(() => {
     const map = new Map<string, string>();
     for (const col of editableColumns) {
-      map.set(col.name, editors.get(col.name)!.toInput(props.row[col.name]));
+      map.set(col.name, editors.get(col.name)!.toInput(row[col.name]));
     }
     return map;
-  }, [editableColumns, editors, props.row]);
+  }, [editableColumns, editors, row]);
 
   const [drafts, setDrafts] = useState<Record<string, FieldDraft>>({});
   const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
-  const changedColumns = Object.entries(drafts).filter(([col, draft]) => {
+  /**
+   * Whether a column carries a value to send. Insert mode: any touched draft,
+   * including an empty string or explicit NULL. Edit mode: a draft that differs from the
+   * original (or a NULL on a column that wasn't already NULL).
+   */
+  function isFieldSet(col: string, draft: FieldDraft | undefined): boolean {
+    if (draft === undefined) return false;
+    if (isInsert) {
+      return true;
+    }
     if (draft.setNull) {
-      // setNull is meaningful only when original wasn't already NULL.
-      return props.row[col] !== null && props.row[col] !== undefined;
+      return row[col] !== null && row[col] !== undefined;
     }
     return draft.raw !== initialInputs.get(col);
-  });
+  }
+
+  const changedColumns = Object.entries(drafts).filter(([col, draft]) =>
+    isFieldSet(col, draft),
+  );
   const changeCount = changedColumns.length;
 
   function setDraftRaw(col: string, raw: string) {
@@ -114,7 +145,9 @@ export function RowEditDialog(props: Readonly<RowEditDialogProps>) {
     if (saving) return;
     if (changeCount > 0) {
       const ok = globalThis.window.confirm(
-        `Discard ${String(changeCount)} unsaved change${changeCount === 1 ? "" : "s"}?`,
+        isInsert
+          ? `Discard this new row?`
+          : `Discard ${String(changeCount)} unsaved change${changeCount === 1 ? "" : "s"}?`,
       );
       if (!ok) return;
     }
@@ -122,7 +155,8 @@ export function RowEditDialog(props: Readonly<RowEditDialogProps>) {
   }
 
   async function handleSave() {
-    if (changeCount === 0) return;
+    if (savingRef.current) return;
+    if (!isInsert && changeCount === 0) return;
     const validatedChanges: UpdateRowFieldChange[] = [];
     const nextErrors: Record<string, string | null> = {};
     let firstError: string | null = null;
@@ -131,7 +165,6 @@ export function RowEditDialog(props: Readonly<RowEditDialogProps>) {
       const colInfo = editableColumns.find((c) => c.name === col)!;
       const editor = editors.get(col)!;
       if (draft.setNull) {
-        // For setNull the cast is informational; main process emits `col = NULL`.
         const fallbackCast = colInfo.enumPgCast ?? colInfo.dataType;
         validatedChanges.push({
           column: col,
@@ -160,34 +193,51 @@ export function RowEditDialog(props: Readonly<RowEditDialogProps>) {
       return;
     }
 
+    savingRef.current = true;
     setSaving(true);
     try {
-      const response = await globalThis.window.tableDataApi.updateRow({
-        connectionId: props.connectionId,
-        schema: props.schema,
-        table: props.table,
-        pkColumns: props.primaryKey,
-        pkValues: props.pkValues,
-        changes: validatedChanges,
-      });
+      const response = isInsert
+        ? await globalThis.window.tableDataApi.insertRow({
+            connectionId: props.connectionId,
+            schema: props.schema,
+            table: props.table,
+            changes: validatedChanges,
+          })
+        : await globalThis.window.tableDataApi.updateRow({
+            connectionId: props.connectionId,
+            schema: props.schema,
+            table: props.table,
+            pkColumns: props.primaryKey,
+            pkValues: props.pkValues ?? [],
+            changes: validatedChanges,
+          });
       if (!response.success || !response.data) {
         const message = response.error ?? "Unknown error";
-        toast.error("Update failed", { description: message });
+        toast.error(isInsert ? "Insert failed" : "Update failed", {
+          description: message,
+        });
         return;
       }
       props.onRowUpdated(response.data.row);
       toast.success(
-        changeCount === 1
-          ? "Row updated"
-          : `${String(changeCount)} fields updated`,
+        isInsert
+          ? "Row inserted"
+          : changeCount === 1
+            ? "Row updated"
+            : `${String(changeCount)} fields updated`,
       );
       props.onClose();
     } catch (err) {
-      toast.error("Update failed", { description: (err as Error).message });
+      toast.error(isInsert ? "Insert failed" : "Update failed", {
+        description: (err as Error).message,
+      });
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
+
+  const saveDisabled = saving || (!isInsert && changeCount === 0);
 
   return (
     <Dialog
@@ -198,6 +248,7 @@ export function RowEditDialog(props: Readonly<RowEditDialogProps>) {
     >
       <DialogContent
         data-testid="row-editor"
+        data-mode={mode}
         className="sm:max-w-2xl"
         onKeyDown={(e) => {
           if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
@@ -208,34 +259,30 @@ export function RowEditDialog(props: Readonly<RowEditDialogProps>) {
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
-            <span>Edit row</span>
+            <span>{isInsert ? "Insert row" : "Edit row"}</span>
             <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
               {props.schema}.{props.table}
             </span>
           </DialogTitle>
           <DialogDescription className="font-mono text-xs">
-            {props.primaryKey
-              .map(
-                (col, index) =>
-                  `${col} = ${formatPrimaryKeyValue(props.pkValues[index])}`,
-              )
-              .join(", ")}
+            {isInsert
+              ? "Leave a field blank to use its column default."
+              : props.primaryKey
+                  .map(
+                    (col, index) =>
+                      `${col} = ${formatPrimaryKeyValue((props.pkValues ?? [])[index])}`,
+                  )
+                  .join(", ")}
           </DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="max-h-[60vh] pr-2">
           <div className="flex flex-col gap-2">
             {props.columns.map((col) => {
-              const isPk = pkSet.has(col.name);
+              const isPk = !isInsert && pkSet.has(col.name);
               const draft = drafts[col.name];
               const original = initialInputs.get(col.name);
-              const changed =
-                !isPk &&
-                draft !== undefined &&
-                (draft.setNull
-                  ? props.row[col.name] !== null &&
-                    props.row[col.name] !== undefined
-                  : draft.raw !== original);
+              const changed = !isPk && isFieldSet(col.name, draft);
               return (
                 <div
                   key={col.name}
@@ -251,12 +298,12 @@ export function RowEditDialog(props: Readonly<RowEditDialogProps>) {
                     <span className="font-mono text-xs">{col.name}</span>
                     <span className="text-[10px] text-muted-foreground/70">
                       {col.dataType}
-                      {isPk ? " · pk" : ""}
+                      {pkSet.has(col.name) ? " · pk" : ""}
                     </span>
                   </div>
                   <div className="min-w-0">
                     {isPk ? (
-                      <PrimaryKeyValue value={props.row[col.name]} />
+                      <PrimaryKeyValue value={row[col.name]} />
                     ) : (
                       <FieldEditor
                         column={col}
@@ -313,8 +360,10 @@ export function RowEditDialog(props: Readonly<RowEditDialogProps>) {
         <DialogFooter className="gap-2">
           <span className="mr-auto self-center text-xs text-muted-foreground">
             {changeCount === 0
-              ? "No changes"
-              : `${String(changeCount)} field${changeCount === 1 ? "" : "s"} changed`}
+              ? isInsert
+                ? "All defaults"
+                : "No changes"
+              : `${String(changeCount)} field${changeCount === 1 ? "" : "s"} ${isInsert ? "set" : "changed"}`}
           </span>
           <Button
             type="button"
@@ -328,13 +377,19 @@ export function RowEditDialog(props: Readonly<RowEditDialogProps>) {
           <Button
             type="button"
             size="sm"
-            disabled={saving || changeCount === 0}
+            disabled={saveDisabled}
             onClick={() => {
               void handleSave();
             }}
             data-testid="row-editor-save"
           >
-            {saving ? <Loader2 className="size-3.5 animate-spin" /> : "Save"}
+            {saving ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : isInsert ? (
+              "Insert"
+            ) : (
+              "Save"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

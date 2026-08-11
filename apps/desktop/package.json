@@ -78,6 +78,7 @@
     "electron-squirrel-startup": "^1.0.1",
     "electron-store": "8",
     "leaflet": "^1.9.4",
+    "lossless-json": "4.2.0",
     "lucide-react": "^0.577.0",
     "pg": "^8.20.0",
     "pg-copy-streams": "^7.0.0",
@@ -86,6 +87,7 @@
     "react-dom": "^19.2.0",
     "react-leaflet": "^5.0.0",
     "sonner": "^2.0.7",
+    "stream-json": "2.1.0",
     "tailwind-merge": "^3.3.0"
   }
 }

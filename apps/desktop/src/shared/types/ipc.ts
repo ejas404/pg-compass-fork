@@ -49,7 +49,13 @@ import type {
   ExportDataParams,
   ExportResult,
   GetRowsParams,
+  ImportDataParams,
+  ImportProgress,
+  ImportResult,
   IndexInfo,
+  InsertRowParams,
+  InsertRowResult,
+  OpenDialogOptions,
   SaveDialogOptions,
   SearchForeignKeyParams,
   SearchForeignKeyResult,
@@ -105,8 +111,11 @@ export interface TableDataApi {
   executeQuery(params: ExecuteQueryParams): Promise<IpcResult<TableRowsResult>>;
   cancelQuery(params: CancelQueryParams): Promise<IpcResult<CancelQueryResult>>;
   showSaveDialog(options: SaveDialogOptions): Promise<IpcResult<string | null>>;
+  showOpenDialog(options: OpenDialogOptions): Promise<IpcResult<string | null>>;
   exportData(params: ExportDataParams): Promise<IpcResult<ExportResult>>;
   sqlDump(params: SqlDumpParams): Promise<IpcResult<ExportResult>>;
+  importData(params: ImportDataParams): Promise<IpcResult<ImportResult>>;
+  insertRow(params: InsertRowParams): Promise<IpcResult<InsertRowResult>>;
   updateCell(params: UpdateCellParams): Promise<IpcResult<UpdateCellResult>>;
   updateRow(params: UpdateRowParams): Promise<IpcResult<UpdateRowResult>>;
   deleteRows(params: DeleteRowsParams): Promise<IpcResult<DeleteRowsResult>>;
@@ -114,6 +123,7 @@ export interface TableDataApi {
     params: SearchForeignKeyParams,
   ): Promise<IpcResult<SearchForeignKeyResult>>;
   onExportProgress(callback: (rowCount: number) => void): () => void;
+  onImportProgress(callback: (progress: ImportProgress) => void): () => void;
 }
 
 export interface HelpApi {

@@ -5,20 +5,11 @@ import {
   Table2,
   Search,
   CircleAlert,
-  Plus,
   Pencil,
   Trash2,
-  FileUp,
-  FilePlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   SqlEditor,
   type CompletionSchema,
@@ -27,6 +18,7 @@ import { DataPagination } from "@/components/workspace/table-viewer/data-paginat
 import { TableDataView } from "@/components/workspace/table-viewer/table-data-view";
 import { CardDataView } from "@/components/workspace/table-viewer/card-data-view";
 import { DeleteDataDialog } from "@/components/workspace/table-viewer/delete-data-dialog";
+import { AddDataDropdown } from "@/components/workspace/table-viewer/add-data-dropdown";
 import { ExportDropdown } from "@/components/workspace/export-dropdown";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { useSettings } from "@/hooks/use-settings";
@@ -316,6 +308,10 @@ export function DataTab({
     void fetchRows(1, pageSize, whereClause);
   }, [fetchRows, pageSize, whereClause]);
 
+  const handleDataChanged = useCallback(() => {
+    void fetchRows(page, pageSize, whereClause, true);
+  }, [fetchRows, page, pageSize, whereClause]);
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* Toolbar */}
@@ -400,33 +396,19 @@ export function DataTab({
                 })}`
               : ""}
           </span>
+          {isTable && !settings.general.readOnlyMode && (
+            <AddDataDropdown
+              connectionId={connectionId}
+              schema={schema}
+              table={table}
+              columns={columns}
+              primaryKey={primaryKey}
+              disabled={loading}
+              onDataChanged={handleDataChanged}
+            />
+          )}
           {isTable && (
             <>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-1.5 text-xs"
-                    disabled
-                  >
-                    <Plus className="size-3.5" />
-                    Add Data
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-48">
-                  <DropdownMenuItem disabled className="gap-2">
-                    <FileUp className="size-4" />
-                    Import JSON or CSV file
-                  </DropdownMenuItem>
-                  <DropdownMenuItem disabled className="gap-2">
-                    <FilePlus className="size-4" />
-                    Insert document
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
               <Button
                 type="button"
                 variant="outline"

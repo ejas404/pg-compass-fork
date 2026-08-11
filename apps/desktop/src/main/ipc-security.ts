@@ -8,7 +8,7 @@ type IpcHandler<Args extends unknown[], Result> = (
 
 let trustedRendererUrl: string | null = null;
 const SAVE_PATH_TTL_MS = 5 * 60 * 1_000;
-type SavePurpose = "export" | "sql-dump";
+type SavePurpose = "export" | "sql-dump" | "import";
 interface SavePathGrant {
   purpose: SavePurpose;
   expiresAt: number;

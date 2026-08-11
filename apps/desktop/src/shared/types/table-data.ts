@@ -299,6 +299,68 @@ export interface UpdateRowResult {
   row: Record<string, unknown>;
 }
 
+/**
+ * One column-level value for a single-row insert. Mirrors
+ * `UpdateRowFieldChange`: `setNull` emits `col = NULL` (and ignores
+ * `newValue`); otherwise the value is bound as `$n::pgCast`. Columns the
+ * user never touches are omitted entirely so the database default applies.
+ */
+export interface InsertRowFieldChange {
+  column: string;
+  pgCast: string;
+  newValue: unknown;
+  setNull: boolean;
+}
+
+/**
+ * Parameters for inserting a single row. When `changes` is empty the handler
+ * emits `INSERT … DEFAULT VALUES` so a table whose columns all have defaults
+ * can still be seeded. Duplicates by `column` are rejected.
+ */
+export interface InsertRowParams {
+  connectionId: string;
+  schema: string;
+  table: string;
+  changes: InsertRowFieldChange[];
+}
+
+/** Result returned after a successful single-row insert. */
+export interface InsertRowResult {
+  /** The inserted row from `RETURNING *`. */
+  row: Record<string, unknown>;
+}
+
+/** Parameters for importing a JSON or CSV file into a table. */
+export interface ImportDataParams {
+  connectionId: string;
+  schema: string;
+  table: string;
+  /** Source file path (from a prior open dialog). */
+  filePath: string;
+  format: "csv" | "json";
+  /** Correlates renderer progress events when imports overlap. */
+  operationId: string;
+}
+
+/** Result returned after a successful data import. */
+export interface ImportResult {
+  insertedCount: number;
+}
+
+/** Progress payload scoped to one import invocation. */
+export interface ImportProgress {
+  operationId: string;
+  insertedCount: number;
+}
+
+/** Options for the native open-file dialog. */
+export interface OpenDialogOptions {
+  purpose: "import";
+  title?: string;
+  defaultPath?: string;
+  filters?: { name: string; extensions: string[] }[];
+}
+
 /** Parameters for deleting rows from a table using the current data filter. */
 export interface DeleteRowsParams {
   connectionId: string;

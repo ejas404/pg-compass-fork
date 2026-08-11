@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { RowEditDialog } from "@/components/workspace/table-viewer/row-edit-dialog";
 import { registerDefaultRenderers } from "@/components/workspace/renderers/default-renderers";
@@ -51,6 +57,20 @@ function setupUpdateRowMock(
   Object.defineProperty(globalThis.window, "tableDataApi", {
     configurable: true,
     value: { updateRow: fn },
+  });
+  return { fn };
+}
+
+function setupInsertRowMock(
+  impl: (params: unknown) => unknown = () => ({
+    success: true,
+    data: { row: { id: 99, display_name: "New", login_count: 0 } },
+  }),
+): UpdateRowMock {
+  const fn = vi.fn(async (params: unknown) => impl(params));
+  Object.defineProperty(globalThis.window, "tableDataApi", {
+    configurable: true,
+    value: { insertRow: fn },
   });
   return { fn };
 }
@@ -289,5 +309,149 @@ describe("RowEditDialog", () => {
     confirmSpy.mockReturnValueOnce(true);
     fireEvent.click(screen.getByText("Cancel"));
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+describe("RowEditDialog — insert mode", () => {
+  it("renders an editable field for every column (PK included) and an Insert button", () => {
+    setupInsertRowMock();
+    render(
+      <RowEditDialog
+        mode="insert"
+        columns={columns}
+        row={{}}
+        primaryKey={["id"]}
+        schema="app"
+        table="users"
+        connectionId="c1"
+        onRowUpdated={() => {}}
+        onClose={() => {}}
+      />,
+    );
+    // Insert is enabled even with no fields set (DEFAULT VALUES insert allowed).
+    const save = screen.getByTestId("row-editor-save");
+    expect(save).toHaveTextContent("Insert");
+    expect(save).not.toBeDisabled();
+    // Even the PK column is editable in insert mode.
+    expect(
+      screen.getByTestId("row-field-id").querySelector("input"),
+    ).not.toBeNull();
+  });
+
+  it("sends only the columns the user filled in (blank fields omitted)", async () => {
+    const { fn } = setupInsertRowMock();
+    const onClose = vi.fn();
+    render(
+      <RowEditDialog
+        mode="insert"
+        columns={columns}
+        row={{}}
+        primaryKey={["id"]}
+        schema="app"
+        table="users"
+        connectionId="c1"
+        onRowUpdated={() => {}}
+        onClose={onClose}
+      />,
+    );
+
+    const nameField = screen
+      .getByTestId("row-field-display_name")
+      .querySelector("input")!;
+    fireEvent.change(nameField, { target: { value: "New Person" } });
+
+    fireEvent.click(screen.getByTestId("row-editor-save"));
+    await waitFor(() => expect(fn).toHaveBeenCalledTimes(1));
+    expect(fn).toHaveBeenCalledWith({
+      connectionId: "c1",
+      schema: "app",
+      table: "users",
+      changes: [
+        {
+          column: "display_name",
+          pgCast: "varchar",
+          newValue: "New Person",
+          setNull: false,
+        },
+      ],
+    });
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
+
+  it("inserts with an empty change set when nothing is filled in", async () => {
+    const { fn } = setupInsertRowMock();
+    render(
+      <RowEditDialog
+        mode="insert"
+        columns={columns}
+        row={{}}
+        primaryKey={["id"]}
+        schema="app"
+        table="users"
+        connectionId="c1"
+        onRowUpdated={() => {}}
+        onClose={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("row-editor-save"));
+    await waitFor(() => expect(fn).toHaveBeenCalledTimes(1));
+    const call = fn.mock.calls[0]![0] as { changes: unknown[] };
+    expect(call.changes).toEqual([]);
+  });
+
+  it("inserts an explicitly entered empty string instead of using the default", async () => {
+    const { fn } = setupInsertRowMock();
+    render(
+      <RowEditDialog
+        mode="insert"
+        columns={columns}
+        row={{}}
+        primaryKey={["id"]}
+        schema="app"
+        table="users"
+        connectionId="c1"
+        onRowUpdated={() => {}}
+        onClose={() => {}}
+      />,
+    );
+    const nameField = screen
+      .getByTestId("row-field-display_name")
+      .querySelector("input")!;
+    fireEvent.change(nameField, { target: { value: "temporary" } });
+    fireEvent.change(nameField, { target: { value: "" } });
+    fireEvent.click(screen.getByTestId("row-editor-save"));
+
+    await waitFor(() => expect(fn).toHaveBeenCalledTimes(1));
+    expect(fn.mock.calls[0]![0]).toMatchObject({
+      changes: [{ column: "display_name", newValue: "", setNull: false }],
+    });
+  });
+
+  it("ignores repeated keyboard submissions while an insert is pending", async () => {
+    let resolveInsert!: (value: unknown) => void;
+    const { fn } = setupInsertRowMock(
+      () => new Promise((resolve) => (resolveInsert = resolve)),
+    );
+    render(
+      <RowEditDialog
+        mode="insert"
+        columns={columns}
+        row={{}}
+        primaryKey={["id"]}
+        schema="app"
+        table="users"
+        connectionId="c1"
+        onRowUpdated={() => {}}
+        onClose={() => {}}
+      />,
+    );
+    const dialog = screen.getByTestId("row-editor");
+    fireEvent.keyDown(dialog, { key: "Enter", ctrlKey: true });
+    fireEvent.keyDown(dialog, { key: "Enter", ctrlKey: true });
+    await waitFor(() => expect(fn).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      resolveInsert({ success: true, data: { row: { id: 1 } } });
+    });
   });
 });
