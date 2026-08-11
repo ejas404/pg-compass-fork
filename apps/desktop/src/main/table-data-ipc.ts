@@ -11,7 +11,8 @@ import {
   toggleTrigger,
 } from "./table-data-meta";
 import { exportData, sqlDump } from "./table-data-export";
-import { deleteRows, updateCell, updateRow } from "./table-data-write";
+import { importData } from "./table-data-import";
+import { deleteRows, insertRow, updateCell, updateRow } from "./table-data-write";
 import { searchForeignKey } from "./table-data-fk";
 import {
   validateCancelQueryParams,
@@ -19,6 +20,9 @@ import {
   validateExecuteQueryParams,
   validateExportDataParams,
   validateGetRowsParams,
+  validateImportDataParams,
+  validateImportOpenDialogOptions,
+  validateInsertRowParams,
   validateSaveDialogOptions,
   validateSearchForeignKeyParams,
   validateSqlDumpParams,
@@ -48,6 +52,10 @@ function resolveTestSaveDialogPath(
 
   const fallbackName = options.defaultPath ?? "export.txt";
   return path.resolve(saveDir, path.basename(fallbackName));
+}
+
+function resolveTestOpenDialogPath(): string | null {
+  return process.env.PG_COMPASS_TEST_OPEN_DIALOG_PATH?.trim() || null;
 }
 
 // ---------------------------------------------------------------------------
@@ -196,6 +204,71 @@ export function registerTableDataHandlers(): void {
           success: true,
           data: approveSavePath(event, result.filePath, purpose),
         };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  registerIpcHandler(
+    TableDataChannels.SHOW_OPEN_DIALOG,
+    async (event, rawOptions: unknown) => {
+      try {
+        const options = validateImportOpenDialogOptions(rawOptions);
+        const { purpose, ...dialogOptions } = options;
+        const testFilePath = resolveTestOpenDialogPath();
+        if (testFilePath) {
+          return {
+            success: true,
+            data: approveSavePath(event, testFilePath, purpose),
+          };
+        }
+
+        const win = BrowserWindow.fromWebContents(event.sender);
+        const openOptions: Electron.OpenDialogOptions = {
+          ...dialogOptions,
+          properties: ["openFile"],
+        };
+        const result = win
+          ? await dialog.showOpenDialog(win, openOptions)
+          : await dialog.showOpenDialog(openOptions);
+        if (result.canceled || result.filePaths.length === 0)
+          return { success: true, data: null };
+        return {
+          success: true,
+          data: approveSavePath(event, result.filePaths[0]!, purpose),
+        };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  registerIpcHandler(
+    TableDataChannels.IMPORT_DATA,
+    async (event, rawParams: unknown) => {
+      try {
+        const params = validateImportDataParams(rawParams);
+        const filePath = consumeApprovedSavePath(
+          event,
+          params.filePath,
+          "import",
+        );
+        const data = await importData({ ...params, filePath }, event.sender);
+        return { success: true, data };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  registerIpcHandler(
+    TableDataChannels.INSERT_ROW,
+    async (_event, rawParams: unknown) => {
+      try {
+        const params = validateInsertRowParams(rawParams);
+        const data = await insertRow(params);
+        return { success: true, data };
       } catch (err) {
         return { success: false, error: (err as Error).message };
       }

@@ -29,7 +29,13 @@ import type {
   ExportResult,
   ExecuteQueryParams,
   GetRowsParams,
+  ImportDataParams,
+  ImportProgress,
+  ImportResult,
   IndexInfo,
+  InsertRowParams,
+  InsertRowResult,
+  OpenDialogOptions,
   SaveDialogOptions,
   SqlDumpParams,
   TableMetaParams,
@@ -142,11 +148,22 @@ const tableDataApi = {
   ): Promise<IpcResult<string | null>> =>
     ipcRenderer.invoke(TableDataChannels.SHOW_SAVE_DIALOG, options),
 
+  showOpenDialog: (
+    options: OpenDialogOptions,
+  ): Promise<IpcResult<string | null>> =>
+    ipcRenderer.invoke(TableDataChannels.SHOW_OPEN_DIALOG, options),
+
   exportData: (params: ExportDataParams): Promise<IpcResult<ExportResult>> =>
     ipcRenderer.invoke(TableDataChannels.EXPORT_DATA, params),
 
   sqlDump: (params: SqlDumpParams): Promise<IpcResult<ExportResult>> =>
     ipcRenderer.invoke(TableDataChannels.SQL_DUMP, params),
+
+  importData: (params: ImportDataParams): Promise<IpcResult<ImportResult>> =>
+    ipcRenderer.invoke(TableDataChannels.IMPORT_DATA, params),
+
+  insertRow: (params: InsertRowParams): Promise<IpcResult<InsertRowResult>> =>
+    ipcRenderer.invoke(TableDataChannels.INSERT_ROW, params),
 
   updateCell: (
     params: UpdateCellParams,
@@ -172,6 +189,17 @@ const tableDataApi = {
     ipcRenderer.on(TableDataChannels.EXPORT_PROGRESS, handler);
     return () => {
       ipcRenderer.removeListener(TableDataChannels.EXPORT_PROGRESS, handler);
+    };
+  },
+
+  onImportProgress: (callback: (progress: ImportProgress) => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      progress: ImportProgress,
+    ) => callback(progress);
+    ipcRenderer.on(TableDataChannels.IMPORT_PROGRESS, handler);
+    return () => {
+      ipcRenderer.removeListener(TableDataChannels.IMPORT_PROGRESS, handler);
     };
   },
 } satisfies TableDataApi;

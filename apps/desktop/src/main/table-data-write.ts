@@ -2,6 +2,8 @@ import type { PoolClient } from "pg";
 import type {
   DeleteRowsParams,
   DeleteRowsResult,
+  InsertRowParams,
+  InsertRowResult,
   UpdateCellParams,
   UpdateCellResult,
   UpdateRowParams,
@@ -279,6 +281,74 @@ export async function updateRow(
       );
     }
 
+    return { row: result.rows[0] as Record<string, unknown> };
+  });
+}
+
+/**
+ * Insert a single row. Columns the caller omits from `changes` are left out
+ * of the statement entirely so the database default (or NULL) applies; an
+ * empty `changes` array emits `INSERT … DEFAULT VALUES`. `setNull` writes a
+ * literal `NULL`; every other value travels as a bound `$n::cast` parameter.
+ *
+ * Shares `updateRow`'s read-only gate, duplicate-column guard, and cast
+ * allow-listing. Identifier injection is prevented by `quoteIdent`.
+ */
+export async function insertRow(
+  params: InsertRowParams,
+): Promise<InsertRowResult> {
+  const settings = getSettings();
+  if (settings.general.readOnlyMode) {
+    throw new Error("Cannot insert row: read-only mode is enabled.");
+  }
+
+  const seenColumns = new Set<string>();
+  for (const change of params.changes) {
+    if (seenColumns.has(change.column)) {
+      throw new Error(
+        `Cannot insert row: duplicate value for column "${change.column}".`,
+      );
+    }
+    seenColumns.add(change.column);
+  }
+
+  const enumCasts: string[] = [];
+  for (const change of params.changes) {
+    if (change.setNull) continue;
+    if (!SAFE_PG_CAST.has(change.pgCast)) {
+      enumCasts.push(change.pgCast);
+    }
+  }
+
+  return withPoolClient(params.connectionId, async (client) => {
+    for (const pgCast of enumCasts) {
+      await assertEnumCast(client, pgCast);
+    }
+
+    const qualifiedTable = `${quoteIdent(params.schema)}.${quoteIdent(params.table)}`;
+
+    if (params.changes.length === 0) {
+      const result = await client.query(
+        `INSERT INTO ${qualifiedTable} DEFAULT VALUES RETURNING *`,
+      );
+      return { row: result.rows[0] as Record<string, unknown> };
+    }
+
+    const columnIdents: string[] = [];
+    const valueExprs: string[] = [];
+    const values: unknown[] = [];
+    for (const change of params.changes) {
+      columnIdents.push(quoteIdent(change.column));
+      if (change.setNull) {
+        valueExprs.push("NULL");
+      } else {
+        values.push(change.newValue);
+        valueExprs.push(`$${values.length}::${change.pgCast}`);
+      }
+    }
+
+    const sql = `INSERT INTO ${qualifiedTable} (${columnIdents.join(", ")}) VALUES (${valueExprs.join(", ")}) RETURNING *`;
+    const result = await client.query(sql, values);
     return { row: result.rows[0] as Record<string, unknown> };
   });
 }

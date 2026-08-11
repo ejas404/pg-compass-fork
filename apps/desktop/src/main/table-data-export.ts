@@ -26,21 +26,35 @@ function createTemporaryExportPath(filePath: string): string {
 // ---------------------------------------------------------------------------
 
 /** Throttle progress IPC sends to avoid flooding the renderer. */
-export function createProgressThrottle(sender: WebContents, intervalMs = 200) {
+export function createProgressThrottle(
+  sender: WebContents,
+  intervalMs = 200,
+  channel: string = TableDataChannels.EXPORT_PROGRESS,
+  mapPayload: (rowCount: number) => unknown = (rowCount) => rowCount,
+) {
   let lastSent = 0;
   let pending: ReturnType<typeof setTimeout> | null = null;
+
+  function sendToRenderer(rowCount: number): void {
+    if (sender.isDestroyed?.()) return;
+    try {
+      sender.send(channel, mapPayload(rowCount));
+    } catch {
+      // Progress is best-effort and must never fail the database/file operation.
+    }
+  }
 
   function send(rowCount: number) {
     const now = Date.now();
     if (now - lastSent >= intervalMs) {
       lastSent = now;
-      sender.send(TableDataChannels.EXPORT_PROGRESS, rowCount);
+      sendToRenderer(rowCount);
     } else {
       pending ??= setTimeout(
         () => {
           pending = null;
           lastSent = Date.now();
-          sender.send(TableDataChannels.EXPORT_PROGRESS, rowCount);
+          sendToRenderer(rowCount);
         },
         intervalMs - (now - lastSent),
       );
@@ -52,7 +66,7 @@ export function createProgressThrottle(sender: WebContents, intervalMs = 200) {
       clearTimeout(pending);
       pending = null;
     }
-    sender.send(TableDataChannels.EXPORT_PROGRESS, rowCount);
+    sendToRenderer(rowCount);
   }
 
   function cancel() {

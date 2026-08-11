@@ -10,6 +10,9 @@ import type {
   ExecuteQueryParams,
   ExportDataParams,
   GetRowsParams,
+  ImportDataParams,
+  InsertRowParams,
+  OpenDialogOptions,
   SaveDialogOptions,
   SearchForeignKeyParams,
   SqlDumpParams,
@@ -531,6 +534,74 @@ export function validateSqlDumpParams(value: unknown): SqlDumpParams {
     maxLength: MAX_PATH_LENGTH,
   });
   return value as SqlDumpParams;
+}
+
+export function validateImportOpenDialogOptions(
+  value: unknown,
+): OpenDialogOptions {
+  const options = asRecord(value, "openDialogOptions");
+  assertAllowedKeys(options, "openDialogOptions", [
+    "purpose",
+    "title",
+    "defaultPath",
+    "filters",
+  ]);
+  if (options.purpose !== "import") {
+    throw new TypeError("openDialogOptions.purpose is invalid.");
+  }
+  asOptionalString(options.title, "openDialogOptions.title");
+  asOptionalString(options.defaultPath, "openDialogOptions.defaultPath", {
+    maxLength: MAX_PATH_LENGTH,
+    allowEmpty: true,
+  });
+  validateDialogFilters(options.filters, "openDialogOptions.filters");
+  return value as OpenDialogOptions;
+}
+
+export function validateImportDataParams(value: unknown): ImportDataParams {
+  const params = validateTableIdentity(value, "importData", [
+    "filePath",
+    "format",
+    "operationId",
+  ]);
+  asString(params.filePath, "importData.filePath", {
+    maxLength: MAX_PATH_LENGTH,
+  });
+  if (params.format !== "csv" && params.format !== "json") {
+    throw new TypeError("importData.format must be csv or json.");
+  }
+  asString(params.operationId, "importData.operationId", { maxLength: 100 });
+  return value as ImportDataParams;
+}
+
+export function validateInsertRowParams(value: unknown): InsertRowParams {
+  assertSerializedSize(value, "insertRow");
+  const params = asRecord(value, "insertRow");
+  assertAllowedKeys(params, "insertRow", [
+    "connectionId",
+    "schema",
+    "table",
+    "changes",
+  ]);
+  asString(params.connectionId, "insertRow.connectionId");
+  asString(params.schema, "insertRow.schema");
+  asString(params.table, "insertRow.table");
+  if (!Array.isArray(params.changes) || params.changes.length > 1_600) {
+    throw new TypeError("insertRow.changes must contain at most 1600 changes.");
+  }
+  params.changes.forEach((change, index) => {
+    const record = asRecord(change, `insertRow.changes[${index}]`);
+    assertAllowedKeys(record, `insertRow.changes[${index}]`, [
+      "column",
+      "pgCast",
+      "newValue",
+      "setNull",
+    ]);
+    asString(record.column, `insertRow.changes[${index}].column`);
+    asString(record.pgCast, `insertRow.changes[${index}].pgCast`);
+    asBoolean(record.setNull, `insertRow.changes[${index}].setNull`);
+  });
+  return value as InsertRowParams;
 }
 
 function validateRowIdentity(
