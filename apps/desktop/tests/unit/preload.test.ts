@@ -35,9 +35,13 @@ describe("preload API contract", () => {
       };
       tableDataApi: {
         onExportProgress: (callback: () => void) => () => void;
+        onImportProgress: (callback: () => void) => () => void;
         getTriggers: (params: unknown) => Promise<unknown>;
         getTypes: (params: unknown) => Promise<unknown>;
         toggleTrigger: (params: unknown) => Promise<unknown>;
+        showOpenDialog: (options: unknown) => Promise<unknown>;
+        importData: (params: unknown) => Promise<unknown>;
+        insertRow: (params: unknown) => Promise<unknown>;
         updateCell: (params: unknown) => Promise<unknown>;
         updateRow: (params: unknown) => Promise<unknown>;
         deleteRows: (params: unknown) => Promise<unknown>;
@@ -136,6 +140,47 @@ describe("preload API contract", () => {
     };
     await exposed.tableDataApi.deleteRows(deleteParams);
     expect(invoke).toHaveBeenCalledWith("table-data:delete-rows", deleteParams);
+
+    // Insert flows: open dialog, file import, single-row insert.
+    const openDialogOptions = { purpose: "import", title: "Import" };
+    await exposed.tableDataApi.showOpenDialog(openDialogOptions);
+    expect(invoke).toHaveBeenCalledWith(
+      "table-data:show-open-dialog",
+      openDialogOptions,
+    );
+
+    const importParams = {
+      connectionId: "c1",
+      schema: "app",
+      table: "users",
+      filePath: "/tmp/data.csv",
+      format: "csv",
+      operationId: "import-1",
+    };
+    await exposed.tableDataApi.importData(importParams);
+    expect(invoke).toHaveBeenCalledWith("table-data:import-data", importParams);
+
+    const insertParams = {
+      connectionId: "c1",
+      schema: "app",
+      table: "users",
+      changes: [
+        { column: "email", pgCast: "text", newValue: "a@b.co", setNull: false },
+      ],
+    };
+    await exposed.tableDataApi.insertRow(insertParams);
+    expect(invoke).toHaveBeenCalledWith("table-data:insert-row", insertParams);
+
+    const importCleanup = exposed.tableDataApi.onImportProgress(vi.fn());
+    expect(on).toHaveBeenCalledWith(
+      "table-data:import-progress",
+      expect.any(Function),
+    );
+    importCleanup();
+    expect(removeListener).toHaveBeenCalledWith(
+      "table-data:import-progress",
+      expect.any(Function),
+    );
 
     // FK search: forwards to SEARCH_FK channel.
     const fkParams = {

@@ -3,6 +3,9 @@ import {
   validateConnectionInput,
   validateExportDataParams,
   validateGetRowsParams,
+  validateImportDataParams,
+  validateImportOpenDialogOptions,
+  validateInsertRowParams,
   validateSettingsPatch,
   validateUpdateRowParams,
 } from "@/main/ipc-validation";
@@ -134,6 +137,56 @@ describe("IPC runtime validation", () => {
         ],
       }),
     ).toThrow(/pkColumns/);
+  });
+
+  it("validates import params and the open-file dialog options", () => {
+    const importParams = {
+      connectionId: "connection",
+      schema: "app",
+      table: "users",
+      filePath: "/tmp/data.csv",
+      format: "csv" as const,
+      operationId: "import-1",
+    };
+    expect(validateImportDataParams(importParams)).toBe(importParams);
+    expect(() =>
+      validateImportDataParams({ ...importParams, format: "xml" }),
+    ).toThrow(/format/);
+
+    const openOptions = { purpose: "import" as const, title: "Import" };
+    expect(validateImportOpenDialogOptions(openOptions)).toBe(openOptions);
+    expect(() =>
+      validateImportOpenDialogOptions({ purpose: "export" }),
+    ).toThrow(/purpose/);
+  });
+
+  it("validates insert-row params (allows empty changes, rejects bad shapes)", () => {
+    const base = {
+      connectionId: "connection",
+      schema: "app",
+      table: "users",
+    };
+    expect(validateInsertRowParams({ ...base, changes: [] })).toEqual({
+      ...base,
+      changes: [],
+    });
+    expect(
+      validateInsertRowParams({
+        ...base,
+        changes: [
+          { column: "email", pgCast: "text", newValue: "a", setNull: false },
+        ],
+      }),
+    ).toBeTruthy();
+    expect(() =>
+      validateInsertRowParams({
+        ...base,
+        changes: [{ column: "email", pgCast: "text", setNull: "no" }],
+      }),
+    ).toThrow(/setNull/);
+    expect(() =>
+      validateInsertRowParams({ ...base, changes: [{ column: 1 }] }),
+    ).toThrow(/column/);
   });
 
   it("rejects malformed settings patches", () => {

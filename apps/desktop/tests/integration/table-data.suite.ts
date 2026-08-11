@@ -1,4 +1,7 @@
+import fs from "node:fs";
+import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import type { WebContents } from "electron";
 import { createTempDir } from "../support/store";
 import { buildConnectionFromUrl } from "../support/postgres";
 import { hasExtension, hasColumn } from "../support/capabilities";
@@ -1551,6 +1554,456 @@ export function runTableDataIntegrationSuite(
           pageSize: 1,
         });
         expect(rows.totalCount).toBeGreaterThan(0);
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // insertRow
+    // -----------------------------------------------------------------------
+
+    describe("insertRow", () => {
+      async function countRows(schema: string, table: string): Promise<number> {
+        const { withPoolClient } = await import("@/main/pg-utils");
+        const { quoteIdent } = await import("@/main/pg-utils");
+        return withPoolClient(connectionId, async (c) => {
+          const r = await c.query<{ count: string }>(
+            `SELECT count(*) AS count FROM ${quoteIdent(schema)}.${quoteIdent(table)}`,
+          );
+          return Number.parseInt(r.rows[0]!.count, 10);
+        });
+      }
+
+      it("inserts a row and returns it via RETURNING *", async () => {
+        const { insertRow } = await import("@/main/table-data-write");
+        const before = await countRows("app", "notes");
+        const result = await insertRow({
+          connectionId,
+          schema: "app",
+          table: "notes",
+          changes: [
+            {
+              column: "body",
+              pgCast: "text",
+              newValue: "integration insert",
+              setNull: false,
+            },
+          ],
+        });
+        expect(result.row["body"]).toBe("integration insert");
+        expect(result.row["created_at"]).toBeDefined();
+        expect(await countRows("app", "notes")).toBe(before + 1);
+      });
+
+      it("omits untouched columns so defaults and serials apply", async () => {
+        const { insertRow } = await import("@/main/table-data-write");
+        const result = await insertRow({
+          connectionId,
+          schema: "app",
+          table: "users",
+          changes: [
+            {
+              column: "email",
+              pgCast: "text",
+              newValue: "insert-defaults@example.com",
+              setNull: false,
+            },
+            {
+              column: "display_name",
+              pgCast: "text",
+              newValue: "Inserted User",
+              setNull: false,
+            },
+          ],
+        });
+        expect(typeof result.row["id"]).toBe("number");
+        expect(result.row["status"]).toBe("active"); // column default
+        expect(result.row["role"]).toBe("viewer"); // column default
+      });
+
+      it("emits DEFAULT VALUES for an empty change set (surfaces NOT NULL)", async () => {
+        const { insertRow } = await import("@/main/table-data-write");
+        // app.notes.body is NOT NULL without a default, so DEFAULT VALUES must
+        // reach Postgres and fail there — proving the branch runs.
+        await expect(
+          insertRow({
+            connectionId,
+            schema: "app",
+            table: "notes",
+            changes: [],
+          }),
+        ).rejects.toThrow(/null|violates/i);
+      });
+
+      it("rejects a duplicate column in the change set", async () => {
+        const { insertRow } = await import("@/main/table-data-write");
+        await expect(
+          insertRow({
+            connectionId,
+            schema: "app",
+            table: "notes",
+            changes: [
+              { column: "body", pgCast: "text", newValue: "a", setNull: false },
+              { column: "body", pgCast: "text", newValue: "b", setNull: false },
+            ],
+          }),
+        ).rejects.toThrow(/duplicate/i);
+      });
+
+      it("rejects inserts when read-only mode is on", async () => {
+        const { insertRow } = await import("@/main/table-data-write");
+        const { updateSettings } = await import("@/main/settings-store");
+        updateSettings({ general: { readOnlyMode: true } });
+        try {
+          await expect(
+            insertRow({
+              connectionId,
+              schema: "app",
+              table: "notes",
+              changes: [
+                {
+                  column: "body",
+                  pgCast: "text",
+                  newValue: "nope",
+                  setNull: false,
+                },
+              ],
+            }),
+          ).rejects.toThrow(/read-only/i);
+        } finally {
+          updateSettings({ general: { readOnlyMode: false } });
+        }
+      });
+
+      it("surfaces a UNIQUE violation", async () => {
+        const { insertRow } = await import("@/main/table-data-write");
+        await insertRow({
+          connectionId,
+          schema: "app",
+          table: "users",
+          changes: [
+            {
+              column: "email",
+              pgCast: "text",
+              newValue: "dup-insert@example.com",
+              setNull: false,
+            },
+            {
+              column: "display_name",
+              pgCast: "text",
+              newValue: "First",
+              setNull: false,
+            },
+          ],
+        });
+        await expect(
+          insertRow({
+            connectionId,
+            schema: "app",
+            table: "users",
+            changes: [
+              {
+                column: "email",
+                pgCast: "text",
+                newValue: "dup-insert@example.com",
+                setNull: false,
+              },
+              {
+                column: "display_name",
+                pgCast: "text",
+                newValue: "Second",
+                setNull: false,
+              },
+            ],
+          }),
+        ).rejects.toThrow(/unique|duplicate key|violates/i);
+      });
+
+      it("quotes a hostile column name and leaves the table intact", async () => {
+        const { insertRow } = await import("@/main/table-data-write");
+        const before = await countRows("app", "injection_target");
+        const result = await insertRow({
+          connectionId,
+          schema: "app",
+          table: "injection_target",
+          changes: [
+            {
+              column: 'evil"col; DROP TABLE x; --',
+              pgCast: "text",
+              newValue: "safe-value",
+              setNull: false,
+            },
+          ],
+        });
+        expect(result.row['evil"col; DROP TABLE x; --']).toBe("safe-value");
+        expect(await countRows("app", "injection_target")).toBe(before + 1);
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // importData (CSV / JSON → INSERT, one transaction)
+    // -----------------------------------------------------------------------
+
+    describe("importData", () => {
+      const noopSender = { send: () => undefined } as unknown as WebContents;
+      let importDir = "";
+
+      function writeImportFile(name: string, content: string): string {
+        importDir ||= createTempDir(`pg-compass-${label}-import-`);
+        const filePath = path.join(importDir, name);
+        fs.writeFileSync(filePath, content, "utf-8");
+        return filePath;
+      }
+
+      async function countRows(schema: string, table: string): Promise<number> {
+        const { withPoolClient, quoteIdent } = await import("@/main/pg-utils");
+        return withPoolClient(connectionId, async (c) => {
+          const r = await c.query<{ count: string }>(
+            `SELECT count(*) AS count FROM ${quoteIdent(schema)}.${quoteIdent(table)}`,
+          );
+          return Number.parseInt(r.rows[0]!.count, 10);
+        });
+      }
+
+      it("imports a CSV file into a table", async () => {
+        const { importData } = await import("@/main/table-data-import");
+        const before = await countRows("app", "notes");
+        const filePath = writeImportFile(
+          "notes.csv",
+          'body\n"first, with comma"\n"second\nwith newline"\n',
+        );
+        const result = await importData(
+          {
+            connectionId,
+            schema: "app",
+            table: "notes",
+            filePath,
+            format: "csv",
+            operationId: "csv-happy",
+          },
+          noopSender,
+        );
+        expect(result.insertedCount).toBe(2);
+        expect(await countRows("app", "notes")).toBe(before + 2);
+      });
+
+      it("imports a JSON array of objects", async () => {
+        const { importData } = await import("@/main/table-data-import");
+        const before = await countRows("app", "notes");
+        const filePath = writeImportFile(
+          "notes.json",
+          JSON.stringify([{ body: "json-a" }, { body: "json-b" }]),
+        );
+        const result = await importData(
+          {
+            connectionId,
+            schema: "app",
+            table: "notes",
+            filePath,
+            format: "json",
+            operationId: "json-happy",
+          },
+          noopSender,
+        );
+        expect(result.insertedCount).toBe(2);
+        expect(await countRows("app", "notes")).toBe(before + 2);
+      });
+
+      it("imports a single top-level JSON object", async () => {
+        const { importData } = await import("@/main/table-data-import");
+        const before = await countRows("app", "notes");
+        const filePath = writeImportFile(
+          "single-note.json",
+          JSON.stringify({ body: "single-json-row" }),
+        );
+        const result = await importData(
+          {
+            connectionId,
+            schema: "app",
+            table: "notes",
+            filePath,
+            format: "json",
+            operationId: "json-single",
+          },
+          noopSender,
+        );
+        expect(result.insertedCount).toBe(1);
+        expect(await countRows("app", "notes")).toBe(before + 1);
+      });
+
+      it("preserves bigint precision during a streamed JSON import", async () => {
+        const { importData } = await import("@/main/table-data-import");
+        const { withPoolClient } = await import("@/main/pg-utils");
+        const filePath = writeImportFile(
+          "precise.json",
+          '[{"email":"precise-import@example.com","display_name":"Precise Import","balance_cents":9007199254740993}]',
+        );
+        await importData(
+          {
+            connectionId,
+            schema: "app",
+            table: "users",
+            filePath,
+            format: "json",
+            operationId: "precise-number",
+          },
+          noopSender,
+        );
+        const stored = await withPoolClient(connectionId, async (client) =>
+          client.query<{ balance_cents: string }>(
+            "SELECT balance_cents::text AS balance_cents FROM app.users WHERE email = $1",
+            ["precise-import@example.com"],
+          ),
+        );
+        expect(stored.rows[0]!.balance_cents).toBe("9007199254740993");
+      });
+
+      it("rolls back every batch when a later batch violates a constraint", async () => {
+        const { importData } = await import("@/main/table-data-import");
+        const before = await countRows("app", "notes");
+        const unhandledRejections: unknown[] = [];
+        const onUnhandledRejection = (reason: unknown) => {
+          unhandledRejections.push(reason);
+        };
+        process.on("unhandledRejection", onUnhandledRejection);
+        // 1500 rows span two batches (batch size 1000 for one column). The bad
+        // NULL body sits in the second batch, so a rollback must also wipe the
+        // first, already-inserted batch.
+        const rows: { body: string | null }[] = Array.from(
+          { length: 1_500 },
+          (_, i) => ({ body: `row-${String(i)}` }),
+        );
+        rows[1_200] = { body: null };
+        const filePath = writeImportFile("bad.json", JSON.stringify(rows));
+        try {
+          await expect(
+            importData(
+              {
+                connectionId,
+                schema: "app",
+                table: "notes",
+                filePath,
+                format: "json",
+                operationId: "rollback",
+              },
+              noopSender,
+            ),
+          ).rejects.toThrow(/null|violates/i);
+          await new Promise<void>((resolve) => setImmediate(resolve));
+        } finally {
+          process.off("unhandledRejection", onUnhandledRejection);
+        }
+        expect(await countRows("app", "notes")).toBe(before);
+        expect(unhandledRejections).toEqual([]);
+      });
+
+      it("commits a large import across multiple batches atomically", async () => {
+        const { importData } = await import("@/main/table-data-import");
+        const before = await countRows("app", "notes");
+        const rows = Array.from({ length: 2_500 }, (_, i) => ({
+          body: `bulk-${String(i)}`,
+        }));
+        const filePath = writeImportFile("bulk.json", JSON.stringify(rows));
+        const result = await importData(
+          {
+            connectionId,
+            schema: "app",
+            table: "notes",
+            filePath,
+            format: "json",
+            operationId: "large",
+          },
+          noopSender,
+        );
+        expect(result.insertedCount).toBe(2_500);
+        expect(await countRows("app", "notes")).toBe(before + 2_500);
+      });
+
+      it("treats a header-only CSV as zero rows", async () => {
+        const { importData } = await import("@/main/table-data-import");
+        const before = await countRows("app", "notes");
+        const filePath = writeImportFile("header-only.csv", "body\n");
+        const result = await importData(
+          {
+            connectionId,
+            schema: "app",
+            table: "notes",
+            filePath,
+            format: "csv",
+            operationId: "header-only",
+          },
+          noopSender,
+        );
+        expect(result.insertedCount).toBe(0);
+        expect(await countRows("app", "notes")).toBe(before);
+      });
+
+      it("rejects an empty CSV file", async () => {
+        const { importData } = await import("@/main/table-data-import");
+        const filePath = writeImportFile("empty.csv", "");
+        await expect(
+          importData(
+            {
+              connectionId,
+              schema: "app",
+              table: "notes",
+              filePath,
+              format: "csv",
+              operationId: "empty",
+            },
+            noopSender,
+          ),
+        ).rejects.toThrow(/empty/i);
+      });
+
+      it("rejects imports when read-only mode is on", async () => {
+        const { importData } = await import("@/main/table-data-import");
+        const { updateSettings } = await import("@/main/settings-store");
+        const filePath = writeImportFile(
+          "ro.json",
+          JSON.stringify([{ body: "x" }]),
+        );
+        updateSettings({ general: { readOnlyMode: true } });
+        try {
+          await expect(
+            importData(
+              {
+                connectionId,
+                schema: "app",
+                table: "notes",
+                filePath,
+                format: "json",
+                operationId: "read-only",
+              },
+              noopSender,
+            ),
+          ).rejects.toThrow(/read-only/i);
+        } finally {
+          updateSettings({ general: { readOnlyMode: false } });
+        }
+      });
+
+      it("quotes a hostile CSV header and leaves the table intact", async () => {
+        const { importData } = await import("@/main/table-data-import");
+        const before = await countRows("app", "injection_target");
+        // The header names the real (quoted) column; the comma/quotes force CSV
+        // quoting, and quoteIdent must keep the identifier safe.
+        const filePath = writeImportFile(
+          "inject.csv",
+          '"evil""col; DROP TABLE x; --"\nsafe-import\n',
+        );
+        const result = await importData(
+          {
+            connectionId,
+            schema: "app",
+            table: "injection_target",
+            filePath,
+            format: "csv",
+            operationId: "hostile-header",
+          },
+          noopSender,
+        );
+        expect(result.insertedCount).toBe(1);
+        expect(await countRows("app", "injection_target")).toBe(before + 1);
       });
     });
   });
