@@ -3,528 +3,479 @@ import Layout from '../layouts/Layout.astro';
 import landingPkg from '../../package.json';
 
 const appVersion = landingPkg.version;
+const currentYear = new Date().getFullYear();
 const siteBase = import.meta.env.BASE_URL.endsWith('/')
   ? import.meta.env.BASE_URL
   : `${import.meta.env.BASE_URL}/`;
-const currentYear = new Date().getFullYear();
-const githubLatestReleaseUrl = 'https://github.com/waterrmalann/pg-compass/releases/latest';
-const githubReleasesUrl = 'https://github.com/waterrmalann/pg-compass/releases';
-const githubLatestReleaseApiUrl = 'https://api.github.com/repos/waterrmalann/pg-compass/releases/latest';
-
-const features = [
-  {
-    title: 'Zero Configuration',
-    description: 'Paste a connection string and start exploring immediately. No setup files, no plugin installs, no configuration ceremony.',
-    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>`,
-  },
-  {
-    title: 'Schema-First Navigation',
-    description: 'Schemas are first-class citizens. Browse connections, expand schemas, and drill into tables from a clean, collapsible sidebar tree.',
-    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h6v6H3zM15 3h6v6h-6zM15 15h6v6h-6zM3 15h6v6H3z"/><path d="M9 6h6M6 9v6M18 9v6M9 18h6"/></svg>`,
-  },
-  {
-    title: 'Five-Tab Table Viewer',
-    description: 'Data, Structure, Indexes, Constraints, Query — everything you need to understand a table in one focused interface. Export as CSV or JSON.',
-    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>`,
-  },
-  {
-    title: 'Extension-Aware Rendering',
-    description: 'Understands pgvector embeddings and PostGIS geometry. Data is rendered meaningfully — not as raw binary blobs or unreadable values.',
-    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
-  },
-];
 ---
 
 <Layout>
+<div class="grid-bg"></div>
 
-  <!-- ============================================================
-       NAVIGATION
-  ============================================================= -->
-  <nav class="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
-    <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-
-      <a href={siteBase} class="flex items-center gap-2.5">
-        <div class="w-7 h-7 rounded-md bg-card border border-border flex items-center justify-center text-foreground">
-          <!-- Compass-inspired logo mark -->
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.25"/>
-            <circle cx="7" cy="7" r="1.5" fill="currentColor"/>
-            <line x1="7" y1="1.5" x2="7" y2="4.5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="7" y1="9.5" x2="7" y2="12.5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="1.5" y1="7" x2="4.5" y2="7" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="9.5" y1="7" x2="12.5" y2="7" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <span class="font-semibold text-sm text-foreground">PG Compass</span>
-        <span class="hidden sm:inline text-xs text-muted-foreground border border-border rounded px-1.5 py-0.5 font-mono leading-none">v{appVersion}</span>
+<!-- ====================== NAV ====================== -->
+<nav class="top">
+  <div class="shell row">
+    <div class="brand">
+      <img src={`${siteBase}assets/logo.png`} alt="" />
+      <span>pg<span class="dot">/</span>compass</span>
+    </div>
+    <div class="nav-links">
+      <a href="#features">features</a>
+      <a href="#install">install</a>
+      <a href="#open-source">open source</a>
+      <a href="https://github.com/waterrmalann/pg-compass#readme" target="_blank" rel="noopener">docs</a>
+    </div>
+    <div class="nav-cta">
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+        <svg id="iconMoon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+      <a class="btn btn-ghost" href="https://github.com/waterrmalann/pg-compass" target="_blank" rel="noopener">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2.16c-3.2.69-3.87-1.36-3.87-1.36-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.69 1.24 3.35.95.1-.74.4-1.24.72-1.53-2.55-.29-5.23-1.27-5.23-5.65 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17a10.93 10.93 0 0 1 5.74 0c2.19-1.48 3.15-1.17 3.15-1.17.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.07 0 4.39-2.69 5.36-5.25 5.64.41.36.78 1.06.78 2.13v3.16c0 .31.21.66.8.55C20.21 21.39 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+        github
+        <span class="kbd" data-github-stars aria-label="GitHub stars">GitHub</span>
       </a>
-
-      <div class="flex items-center gap-5">
-        <a href="#features" class="hidden sm:block text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
-        <a href="#preview" class="hidden sm:block text-sm text-muted-foreground hover:text-foreground transition-colors">Preview</a>
-        <a href="#download" class="hidden sm:block text-sm text-muted-foreground hover:text-foreground transition-colors">Download</a>
-        <a
-          href="https://github.com/waterrmalann/pg-compass"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/>
-          </svg>
-          <span class="hidden sm:inline">GitHub</span>
-        </a>
-      </div>
-
+      <a class="btn btn-primary" href="#install">Download</a>
     </div>
-  </nav>
+  </div>
+</nav>
 
+<!-- ====================== HERO ====================== -->
+<section class="hero">
+  <div class="shell">
+    <!-- decorative compass -->
+    <svg class="compass-mark" viewBox="0 0 220 220" fill="none" aria-hidden="true">
+      <circle cx="110" cy="110" r="108" stroke="var(--border-2)" stroke-width="1"/>
+      <circle cx="110" cy="110" r="80" stroke="var(--border)" stroke-width="1" stroke-dasharray="2 4"/>
+      <line x1="110" y1="0" x2="110" y2="220" class="crosshair-line"/>
+      <line x1="0" y1="110" x2="220" y2="110" class="crosshair-line"/>
+      <g class="compass-rose">
+        <path d="M110 22 L118 110 L110 198 L102 110 Z" fill="var(--accent)" opacity="0.8"/>
+        <path d="M22 110 L110 102 L198 110 L110 118 Z" fill="var(--text)" opacity="0.7"/>
+        <path d="M110 50 L114 110 L110 170 L106 110 Z" fill="var(--text)"/>
+      </g>
+      <text x="110" y="14" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="var(--text-2)">N</text>
+      <text x="214" y="113" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="var(--text-2)">E</text>
+      <text x="110" y="216" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="var(--text-2)">S</text>
+      <text x="6" y="113" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="var(--text-2)">W</text>
+    </svg>
 
-  <main>
+    <span class="hero-eyebrow">
+      <span class="pill">v{appVersion}</span>
+      PostgreSQL database explorer for Windows and Linux
+    </span>
 
-    <!-- ============================================================
-         HERO
-    ============================================================= -->
-    <section class="hero-section relative min-h-screen flex flex-col items-center justify-center pt-14 overflow-hidden">
+    <h1 class="hero-title">
+      A <em>focused</em> viewer<br/>for PostgreSQL.
+    </h1>
+    <p class="hero-sub">
+      PG Compass is a fast, minimal database viewer for PostgreSQL. Connect, navigate schemas, inspect tables, and run queries without the overhead of a full IDE.
+    </p>
 
-      <!-- Dot grid background -->
-      <div class="hero-grid absolute inset-0 pointer-events-none" aria-hidden="true"></div>
-
-      <!-- Accent glow -->
-      <div class="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] rounded-full bg-accent/[0.07] blur-[100px] pointer-events-none" aria-hidden="true"></div>
-
-      <div class="relative z-10 max-w-4xl mx-auto px-6 text-center">
-
-        <!-- Eyebrow badge -->
-        <div class="inline-flex items-center gap-2 border border-border rounded-full px-3 py-1 mb-8 text-xs font-mono text-muted-foreground">
-          <span class="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0"></span>
-          PostgreSQL Database Explorer
-        </div>
-
-        <!-- Headline -->
-        <h1 class="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight leading-[1.04] mb-6">
-          Browse your database.<br>
-          <span class="text-muted-foreground">Not fight your tools.</span>
-        </h1>
-
-        <!-- Description -->
-        <p class="text-lg text-muted-foreground max-w-xl mx-auto mb-10 leading-relaxed">
-          PG Compass is a fast, minimal database viewer for PostgreSQL. Connect, navigate schemas, inspect tables, and run queries — without the overhead of a full IDE.
-        </p>
-
-        <!-- CTAs -->
-        <div class="flex flex-col sm:flex-row items-center justify-center gap-3 mb-12">
-          <a
-            id="primary-download"
-            href={githubLatestReleaseUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            class="btn-primary inline-flex items-center gap-2 px-6 py-3 rounded-md font-medium text-sm"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            <span id="primary-download-label">Download latest release</span>
-          </a>
-          <a
-            href="https://github.com/waterrmalann/pg-compass"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="btn-secondary inline-flex items-center gap-2 px-6 py-3 rounded-md font-medium text-sm"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/>
-            </svg>
-            View on GitHub
-          </a>
-        </div>
-
-        <!-- Connection string hint -->
-        <div class="inline-flex flex-wrap items-center justify-center gap-0 bg-card border border-border rounded-lg px-4 py-2.5 text-sm font-mono">
-          <span class="text-muted-foreground mr-2">$</span>
-          <span class="text-accent">postgresql://</span><span class="text-muted-foreground">user:pass@localhost:5432/</span><span class="text-foreground">mydb</span>
-          <span class="flex items-center gap-1.5 text-xs ml-4 text-[#4ade80]">
-            <span class="w-1.5 h-1.5 rounded-full bg-[#4ade80]"></span>
-            Connected
-          </span>
-        </div>
-
-      </div>
-
-      <!-- Scroll nudge -->
-      <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-muted-foreground/50" aria-hidden="true">
-        <div class="w-5 h-8 rounded-full border border-border flex items-start justify-center pt-1.5">
-          <div class="scroll-dot w-1 h-1.5 rounded-full bg-muted-foreground/50"></div>
-        </div>
-      </div>
-    </section>
-
-
-    <!-- ============================================================
-         STATS STRIP
-    ============================================================= -->
-    <div class="border-y border-border bg-card/40">
-      <div class="max-w-6xl mx-auto px-6 py-4 flex flex-wrap items-center justify-center gap-6 sm:gap-10">
-
-        <div class="flex items-center gap-2 text-sm text-muted-foreground">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
-          </svg>
-          Open Source
-        </div>
-
-        <div class="hidden sm:block w-px h-4 bg-border"></div>
-
-        <div class="text-sm text-muted-foreground">MIT License</div>
-
-        <div class="hidden sm:block w-px h-4 bg-border"></div>
-
-        <div class="flex items-center gap-2 text-sm text-muted-foreground">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-          </svg>
-          Windows · Linux
-        </div>
-
-        <div class="hidden sm:block w-px h-4 bg-border"></div>
-
-        <div class="flex items-center gap-2 text-sm text-muted-foreground">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          </svg>
-          No Telemetry
-        </div>
-
-      </div>
+    <div class="hero-cta">
+      <a id="primary-download" class="btn btn-accent" href="https://github.com/waterrmalann/pg-compass/releases/latest" target="_blank" rel="noopener">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 9.4l-9-5.19A1 1 0 0 0 6 5v14a1 1 0 0 0 1.5.86l9-5.2v-5.26z" opacity=".0"/><path d="M12 2L4 7v10l8 5 8-5V7l-8-5zm0 2.31L18 8v.01L12 11.5 6 8 12 4.31zM6 9.85l5 2.92v6.69L6 16.55V9.85zm7 9.6V12.77l5-2.92v6.7l-5 2.9z"/></svg>
+        <span data-download-label>Download latest release</span>
+      </a>
+      <a class="btn" href="#install">Windows · Linux</a>
+      <span class="install">release assets from <code>GitHub</code></span>
     </div>
 
+    <div class="hero-meta">
+      <span><b>5</b> focused table views</span>
+      <span><b>Windows</b> and <b>Linux</b></span>
+      <span><b>0</b> telemetry, <b>0</b> accounts</span>
+      <span><b>MIT</b> licensed</span>
+    </div>
+  </div>
+</section>
 
-    <!-- ============================================================
-         FEATURES
-    ============================================================= -->
-    <section id="features" class="py-24">
-      <div class="max-w-6xl mx-auto px-6">
-
-        <div class="max-w-2xl mb-16">
-          <span class="font-mono text-xs text-accent uppercase tracking-widest">Features</span>
-          <h2 class="text-4xl md:text-5xl font-bold tracking-tight mt-3 mb-4">
-            Everything you need.<br>Nothing you don't.
-          </h2>
-          <p class="text-lg text-muted-foreground">
-            Built for one purpose: helping developers quickly understand what's inside their database.
-          </p>
+<!-- ====================== SHOWCASE — DARK/LIGHT SLIDER ====================== -->
+<section class="section" style="padding-top: 24px;" id="showcase">
+  <div class="shell">
+    <div class="showcase">
+      <div class="showcase-tag"><span class="live"></span>payments-development · drag to compare themes</div>
+      <div class="compare-slider" id="compareSlider" style="--split: 50%;" role="slider" tabindex="0" aria-label="Compare dark and light themes" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+        <span class="compare-label dark">// dark — default</span>
+        <span class="compare-label light">// light — for daylight</span>
+        <img class="dark-pane" src={`${siteBase}assets/dark.png`} alt="PG Compass dark mode" draggable="false" />
+        <img class="light-pane" src={`${siteBase}assets/light.png`} alt="PG Compass light mode" draggable="false" />
+        <div class="compare-handle" aria-hidden="true">
+          <div class="knob">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 6L3 12l6 6M15 6l6 6-6 6"/>
+            </svg>
+          </div>
         </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {features.map((f) => (
-            <div class="feature-card group p-6 rounded-lg border border-border bg-card transition-colors hover:border-border-strong hover:bg-card-hover">
-              <div class="w-10 h-10 rounded-md bg-background border border-border flex items-center justify-center mb-4 text-accent group-hover:border-border-strong transition-colors">
-                <Fragment set:html={f.icon} />
-              </div>
-              <h3 class="font-semibold text-base mb-2">{f.title}</h3>
-              <p class="text-sm text-muted-foreground leading-relaxed">{f.description}</p>
-            </div>
-          ))}
-        </div>
-
       </div>
-    </section>
+    </div>
+  </div>
+</section>
 
+<!-- ====================== FEATURES ====================== -->
+<section class="section" id="features">
+  <div class="shell">
+    <div class="section-label"><span class="num">// 01</span> what's inside</div>
+    <h2 class="section-title">Everything you need.<br/><em>Nothing you don't.</em></h2>
+    <p class="section-sub">Most PostgreSQL tools are bloated IDEs or primitive CLI wrappers. PG Compass sits in the sweet spot: a focused, fast tool for the thing developers do most — inspecting data.</p>
 
-    <!-- ============================================================
-         APP PREVIEW MOCK
-    ============================================================= -->
-    <section id="preview" class="py-24 border-t border-border">
-      <div class="max-w-6xl mx-auto px-6">
+    <div class="features">
+      <div class="feature wide">
+        <span class="corner">N · 01</span>
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </div>
+        <h3>Schema-first navigation</h3>
+        <p>Browse connections, expand schemas, and drill into tables from a clean tree. Schemas remain first-class instead of being buried behind database tooling.</p>
+      </div>
+      <div class="feature wide">
+        <span class="corner">NE · 02</span>
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+        </div>
+        <h3>Zero configuration</h3>
+        <p>Paste a PostgreSQL connection string and start exploring. Save, label, color-code, and favorite the connections you use every day.</p>
+      </div>
 
-        <div class="text-center max-w-2xl mx-auto mb-16">
-          <span class="font-mono text-xs text-accent uppercase tracking-widest">Interface</span>
-          <h2 class="text-4xl md:text-5xl font-bold tracking-tight mt-3 mb-4">See your database clearly.</h2>
-          <p class="text-lg text-muted-foreground">
-            A focused, no-bloat interface built for speed. Every pixel earns its place.
-          </p>
+      <div class="feature">
+        <span class="corner">E · 03</span>
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        </div>
+        <h3>Card view for JSONB</h3>
+        <p>Tables stuffed with JSONB? Flip to card view and read documents like a human, not a row.</p>
+      </div>
+      <div class="feature">
+        <span class="corner">SE · 04</span>
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 4h16v6H4zM4 14h16v6H4z"/></svg>
+        </div>
+        <h3>Five-tab table viewer</h3>
+        <p>Data, Structure, Indexes, Constraints, and Query keep everything you need to understand a table in one focused interface.</p>
+      </div>
+      <div class="feature">
+        <span class="corner">S · 05</span>
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        </div>
+        <h3>CSV / JSON export</h3>
+        <p>Right-click any result set or table. Export full or filtered rows, no row-count limit.</p>
+      </div>
+
+      <div class="feature">
+        <span class="corner">SW · 06</span>
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        </div>
+        <h3>SQL query editor</h3>
+        <p>Run ad-hoc SQL and inspect the results with the same pagination and data views used while browsing tables.</p>
+      </div>
+      <div class="feature">
+        <span class="corner">W · 07</span>
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+        </div>
+        <h3>Extension-aware rendering</h3>
+        <p>Inspect pgvector embeddings and PostGIS geometry as meaningful values instead of unreadable blobs.</p>
+      </div>
+      <div class="feature">
+        <span class="corner">NW · 08</span>
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
+        </div>
+        <h3>Dark by default</h3>
+        <p>A quiet, data-first interface with light mode included and keyboard-friendly controls throughout.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== DEMO GIF + TABS ====================== -->
+<section class="section" id="demo" style="padding-top: 0;">
+  <div class="shell">
+    <div class="section-label"><span class="num">// 02</span> in motion</div>
+    <h2 class="section-title">Click, browse, breathe.<br/><em>It just keeps up.</em></h2>
+    <p class="section-sub">One window. Tab anything you want to keep open. Switch between connections without losing your place.</p>
+
+    <div class="product-tabs">
+      <button type="button" class="active" data-tab="browse" aria-selected="true">/// browse_data.gif</button>
+      <button type="button" data-tab="schema" aria-selected="false">/// schemas (still)</button>
+      <button type="button" data-tab="query" aria-selected="false">/// query_editor.sql</button>
+    </div>
+
+    <div id="tab-browse" class="gif-frame" style="margin-top: 0; border-top-left-radius: 0; border-top-right-radius: 0;">
+      <img src={`${siteBase}assets/demo.gif`} alt="PG Compass demo: browsing schemas and tables" />
+    </div>
+
+    <div id="tab-schema" class="gif-frame" style="display:none; margin-top: 0; border-top-left-radius: 0; border-top-right-radius: 0;">
+      <img src={`${siteBase}assets/screenshot.png`} alt="PG Compass interface with schema list and data table" />
+    </div>
+
+    <div id="tab-query" style="display:none; padding: 28px; background: var(--bg-1); border: 1px solid var(--border); border-top: 0; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;">
+<pre class="sql-block" style="margin:0;border:0;padding:0;background:transparent;"><span class="com">-- pg_compass · query #14 · public.bonfires</span>
+<span class="kw">SELECT</span> b.id, b.name, b.category, b.created_at,
+       <span class="kw">jsonb_array_length</span>(b.vector) <span class="kw">AS</span> dims
+  <span class="kw">FROM</span> public.bonfires b
+  <span class="kw">JOIN</span> public.profiles p <span class="kw">ON</span> p.id = b.owner_id
+ <span class="kw">WHERE</span> b.category <span class="kw">IN</span> (<span class="str">'mind'</span>, <span class="str">'business'</span>)
+   <span class="kw">AND</span> b.created_at &gt; <span class="kw">now</span>() - <span class="str">'7 days'</span>::interval
+ <span class="kw">ORDER BY</span> b.created_at <span class="kw">DESC</span>
+ <span class="kw">LIMIT</span> <span class="num">50</span>;
+<span class="com">-- ✓ 50 rows · 28 ms · cached</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== SPLIT — STRUCTURE + TERMINAL ====================== -->
+<section class="section" id="install" style="padding-top: 32px;">
+  <div class="shell">
+    <div class="section-label"><span class="num">// 03</span> get it on your machine</div>
+    <h2 class="section-title">Download the latest release.<br/><em>Start exploring.</em></h2>
+
+    <div class="split">
+      <div class="card" style="display:flex;flex-direction:column;">
+        <h3>Latest GitHub release</h3>
+        <p>Release metadata and platform assets are loaded directly from the public repository.</p>
+        <div class="terminal-card" style="margin-top:auto;">
+          <div class="terminal-head">
+            <div class="dots"><span></span><span></span><span></span></div>
+            <span>github.com/waterrmalann/pg-compass</span>
+          </div>
+          <div class="terminal-body">
+<span class="comment"># current release</span><br/>
+<span class="prompt">&gt;</span><span class="cmd" data-release-name>Checking GitHub…</span><br/>
+<span class="comment"># published</span><br/>
+<span class="prompt">&gt;</span><span class="out" data-release-date>Public release metadata</span><br/>
+<span class="prompt">&gt;</span><span class="ok">✓ Windows and Linux assets</span><span class="cursor"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;">
+        <h3>Direct download</h3>
+        <p>Choose the release asset for your platform, or inspect every file on GitHub.</p>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top:auto;">
+          <a class="btn" data-platform-download="windows" href="https://github.com/waterrmalann/pg-compass/releases/latest" target="_blank" rel="noopener" style="justify-content:flex-start;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z"/></svg>
+            Windows<span class="download-detail" style="color:var(--text-3);font-size:11px;">latest asset</span>
+          </a>
+          <a class="btn" data-platform-download="linux" href="https://github.com/waterrmalann/pg-compass/releases/latest" target="_blank" rel="noopener" style="justify-content:flex-start;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a3 3 0 0 0-3 3v3l-3 6 1 9h10l1-9-3-6V5a3 3 0 0 0-3-3z"/></svg>
+            Linux<span class="download-detail" style="color:var(--text-3);font-size:11px;">latest asset</span>
+          </a>
+          <a class="btn" href="https://github.com/waterrmalann/pg-compass/releases" target="_blank" rel="noopener" style="justify-content:flex-start;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.4 3.4 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.4 13.4 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+            Source<span style="color:var(--text-3);font-size:11px;">github</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== COMPARE ====================== -->
+<!-- Kept in source for a later verified comparison pass; intentionally hidden in CSS. -->
+<section class="section pending-content" id="compare" style="padding-top: 32px;">
+  <div class="shell">
+    <div class="section-label"><span class="num">// 05</span> the lay of the land</div>
+    <h2 class="section-title">Why <em>another</em> Postgres GUI?</h2>
+    <p class="section-sub">Because the existing ones are either heavy IDEs full of features you'll never touch — or terminal wrappers with the ergonomics of a hand-cranked drill. We picked the middle.</p>
+
+    <div class="compare">
+      <div class="compare-row compare-head">
+        <div class="compare-cell">Feature</div>
+        <div class="compare-cell us">PG Compass</div>
+        <div class="compare-cell">pgAdmin</div>
+        <div class="compare-cell">DataGrip</div>
+      </div>
+      <div class="compare-row">
+        <div class="compare-cell feature-name">Cold start</div>
+        <div class="compare-cell val us-col">~80 ms</div>
+        <div class="compare-cell val">~3 s</div>
+        <div class="compare-cell val">~12 s</div>
+      </div>
+      <div class="compare-row">
+        <div class="compare-cell feature-name">Install size</div>
+        <div class="compare-cell val us-col">14 MB</div>
+        <div class="compare-cell val">230 MB</div>
+        <div class="compare-cell val">740 MB</div>
+      </div>
+      <div class="compare-row">
+        <div class="compare-cell feature-name">JSONB card view</div>
+        <div class="compare-cell val us-col"><span class="check">●</span> built-in</div>
+        <div class="compare-cell val"><span class="miss">○</span> raw text</div>
+        <div class="compare-cell val"><span class="partial">◐</span> plugin</div>
+      </div>
+      <div class="compare-row">
+        <div class="compare-cell feature-name">Account required</div>
+        <div class="compare-cell val us-col"><span class="check">●</span> never</div>
+        <div class="compare-cell val"><span class="miss">○</span> never</div>
+        <div class="compare-cell val"><span class="partial">◐</span> license key</div>
+      </div>
+      <div class="compare-row">
+        <div class="compare-cell feature-name">Telemetry</div>
+        <div class="compare-cell val us-col"><span class="check">●</span> none</div>
+        <div class="compare-cell val"><span class="partial">◐</span> opt-out</div>
+        <div class="compare-cell val"><span class="partial">◐</span> opt-out</div>
+      </div>
+      <div class="compare-row">
+        <div class="compare-cell feature-name">License</div>
+        <div class="compare-cell val us-col"><span class="check">●</span> MIT</div>
+        <div class="compare-cell val">PostgreSQL</div>
+        <div class="compare-cell val">Commercial</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== OPEN SOURCE ====================== -->
+<section class="section" id="open-source" style="padding-top: 32px;">
+  <div class="shell">
+    <div class="section-label"><span class="num">// 04</span> open source, all the way down</div>
+    <h2 class="section-title">Built in the <em>open</em>.<br/>Not in a meeting.</h2>
+    <p class="section-sub">PG Compass is MIT-licensed and developed in public. No paid tier, no “pro” features held hostage, no telemetry pinging home. Fork it, audit it, ship a patch, or just lurk in the issues — all of it is welcome.</p>
+
+    <div class="oss-hero">
+      <div class="oss-hero-left">
+        <h3>One repo. One <em>license</em>.<br/>Zero asterisks.</h3>
+        <p>The whole app — desktop shell, query engine, and every theme — lives at <span style="font-family:var(--mono);color:var(--text);">github.com/waterrmalann/pg-compass</span>. It is the same code we ship and the same code you can read, extend, and rebuild.</p>
+
+        <div style="display:flex; gap:10px; flex-wrap: wrap;">
+          <a class="btn" href="https://github.com/waterrmalann/pg-compass" target="_blank" rel="noopener">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2.16c-3.2.69-3.87-1.36-3.87-1.36-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.69 1.24 3.35.95.1-.74.4-1.24.72-1.53-2.55-.29-5.23-1.27-5.23-5.65 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17a10.93 10.93 0 0 1 5.74 0c2.19-1.48 3.15-1.17 3.15-1.17.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.07 0 4.39-2.69 5.36-5.25 5.64.41.36.78 1.06.78 2.13v3.16c0 .31.21.66.8.55C20.21 21.39 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+            Star on GitHub
+          </a>
+          <a class="btn" href="https://github.com/waterrmalann/pg-compass/releases" target="_blank" rel="noopener">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 2"/></svg>
+            Read releases
+          </a>
+          <a class="btn" href="https://github.com/waterrmalann/pg-compass/compare" target="_blank" rel="noopener">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>
+            Open a PR
+          </a>
         </div>
 
-        <!-- The mock window -->
-        <div class="mock-wrapper">
-          <div class="mock-window">
-
-            <!-- OS title bar -->
-            <div class="mock-titlebar">
-              <div class="flex items-center gap-1.5">
-                <span class="traffic-dot" style="background:#ff5f57"></span>
-                <span class="traffic-dot" style="background:#febc2e"></span>
-                <span class="traffic-dot" style="background:#28c840"></span>
-              </div>
-              <span class="mock-app-title">PG Compass</span>
-              <div style="flex:1"></div>
-              <!-- Settings icon -->
-              <span class="mock-icon-btn" aria-hidden="true">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="3"/>
-                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                </svg>
-              </span>
-            </div>
-
-            <!-- App body: sidebar + main -->
-            <div class="mock-body">
-
-              <!-- Sidebar -->
-              <aside class="mock-sidebar">
-                <div class="mock-sidebar-header">Connections</div>
-
-                <!-- Connection: production -->
-                <div class="mock-conn-row">
-                  <span class="mock-conn-indicator" style="background:#3b82f6"></span>
-                  <span class="mock-chevron">▾</span>
-                  <span class="mock-conn-label">production</span>
-                </div>
-                <div class="mock-schema-row">
-                  <span class="mock-chevron-sm">▾</span>
-                  <span>public</span>
-                </div>
-                <div class="mock-table-row active">
-                  <span class="mock-chevron-sm">▶</span>
-                  <span>users</span>
-                </div>
-                <div class="mock-table-row">
-                  <span class="mock-chevron-sm">▶</span>
-                  <span>posts</span>
-                </div>
-                <div class="mock-table-row">
-                  <span class="mock-chevron-sm">▶</span>
-                  <span>comments</span>
-                </div>
-                <div class="mock-table-row">
-                  <span class="mock-chevron-sm">▶</span>
-                  <span>tags</span>
-                </div>
-                <div class="mock-schema-row collapsed">
-                  <span class="mock-chevron-sm">▸</span>
-                  <span>auth</span>
-                </div>
-
-                <!-- Connection: local_dev -->
-                <div class="mock-conn-row" style="margin-top:6px">
-                  <span class="mock-conn-indicator" style="background:#22c55e"></span>
-                  <span class="mock-chevron">▸</span>
-                  <span class="mock-conn-label">local_dev</span>
-                </div>
-              </aside>
-
-              <!-- Main workspace -->
-              <div class="mock-main">
-
-                <!-- Workspace tab bar -->
-                <div class="mock-tab-bar">
-                  <div class="mock-tab active">
-                    <span class="mock-tab-indicator" style="background:#3b82f6"></span>
-                    users
-                    <span class="mock-tab-x">×</span>
-                  </div>
-                  <div class="mock-tab">
-                    posts
-                    <span class="mock-tab-x">×</span>
-                  </div>
-                </div>
-
-                <!-- Table viewer sub-tabs -->
-                <div class="mock-subtab-bar">
-                  <span class="mock-subtab active">Data</span>
-                  <span class="mock-subtab">Structure</span>
-                  <span class="mock-subtab">Indexes</span>
-                  <span class="mock-subtab">Constraints</span>
-                  <span class="mock-subtab">Query</span>
-                </div>
-
-                <!-- Data table -->
-                <div class="mock-data-area">
-                  <table class="mock-data-table">
-                    <thead>
-                      <tr>
-                        <th>id</th>
-                        <th>username</th>
-                        <th>email</th>
-                        <th class="hide-sm">created_at</th>
-                        <th>role</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr class="is-active">
-                        <td>1</td>
-                        <td>alice</td>
-                        <td>alice@example.com</td>
-                        <td class="hide-sm">2024-01-15 09:00</td>
-                        <td><span class="mock-badge admin">admin</span></td>
-                      </tr>
-                      <tr>
-                        <td>2</td>
-                        <td>bob</td>
-                        <td>bob@example.com</td>
-                        <td class="hide-sm">2024-01-16 11:23</td>
-                        <td><span class="mock-badge">user</span></td>
-                      </tr>
-                      <tr>
-                        <td>3</td>
-                        <td>charlie</td>
-                        <td>charlie@example.com</td>
-                        <td class="hide-sm">2024-01-17 14:05</td>
-                        <td><span class="mock-badge">user</span></td>
-                      </tr>
-                      <tr>
-                        <td>4</td>
-                        <td>dave</td>
-                        <td>dave@example.com</td>
-                        <td class="hide-sm">2024-01-18 08:41</td>
-                        <td><span class="mock-badge">user</span></td>
-                      </tr>
-                      <tr>
-                        <td>5</td>
-                        <td>eve</td>
-                        <td>eve@example.com</td>
-                        <td class="hide-sm">2024-01-19 16:30</td>
-                        <td><span class="mock-badge">user</span></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                <!-- Pagination footer -->
-                <div class="mock-pagination">
-                  <span class="mock-pagination-label">1–25 of 2,847 rows</span>
-                  <div class="mock-pagination-nav">
-                    <button aria-label="Previous page">‹</button>
-                    <span>1 / 114</span>
-                    <button aria-label="Next page">›</button>
-                  </div>
-                </div>
-
-              </div>
-            </div>
+        <div class="oss-stats">
+          <div class="oss-stat">
+            <div class="num" data-repo-stat="stars">—</div>
+            <div class="lbl">stars</div>
+          </div>
+          <div class="oss-stat">
+            <div class="num" data-repo-stat="forks">—</div>
+            <div class="lbl">forks</div>
+          </div>
+          <div class="oss-stat">
+            <div class="num" data-repo-stat="issues">—</div>
+            <div class="lbl">open items</div>
           </div>
         </div>
 
+        <div class="contributors">
+          <div class="avatar-row" data-contributors aria-label="Recent contributors"></div>
+          <span data-contributors-label style="font-family:var(--mono); font-size: 12px; color: var(--text-3);">Loading public contributors…</span>
+        </div>
       </div>
-    </section>
 
-
-    <!-- ============================================================
-         DOWNLOAD CTA
-    ============================================================= -->
-    <section id="download" class="py-24 border-t border-border">
-      <div class="max-w-3xl mx-auto px-6 text-center">
-
-        <h2 class="text-4xl md:text-5xl font-bold tracking-tight mb-4">
-          Ready to explore?
-        </h2>
-        <p class="text-lg text-muted-foreground mb-10">
-          Connect to your first database in under 30 seconds. Free, open source, no account required.
-        </p>
-
-        <div class="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6">
-          <a
-            id="download-section-primary"
-            href={githubLatestReleaseUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            class="btn-primary inline-flex items-center gap-2 px-7 py-3.5 rounded-md font-medium"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            <span id="download-section-primary-label">Download latest release</span>
-          </a>
-          <a href={githubReleasesUrl} target="_blank" rel="noopener noreferrer" class="btn-secondary inline-flex items-center gap-2 px-7 py-3.5 rounded-md font-medium">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/>
-            </svg>
-            All releases
-          </a>
+      <div class="oss-hero-right">
+        <h4>// recent commits to main</h4>
+        <div class="commit-list" data-commits aria-live="polite">
+          <div class="commit"><span class="msg">Loading recent public commits…</span></div>
         </div>
 
-        <div class="download-options text-left" aria-live="polite">
-          <a class="download-option" data-platform-download="windows" href={githubLatestReleaseUrl} target="_blank" rel="noopener noreferrer">
-            <span class="download-platform">Windows</span>
-            <span class="download-meta">Checking latest asset...</span>
-            <span class="download-action">View release</span>
-          </a>
-          <a class="download-option" data-platform-download="macos" href={githubLatestReleaseUrl} target="_blank" rel="noopener noreferrer">
-            <span class="download-platform">macOS</span>
-            <span class="download-meta">Checking latest asset...</span>
-            <span class="download-action">View release</span>
-          </a>
-          <a class="download-option" data-platform-download="linux" href={githubLatestReleaseUrl} target="_blank" rel="noopener noreferrer">
-            <span class="download-platform">Linux</span>
-            <span class="download-meta">Checking latest asset...</span>
-            <span class="download-action">View release</span>
-          </a>
+        <div class="license-card">
+          <div><span class="lic-key">LICENSE</span> &middot; MIT &middot; <span class="lic-q">// do whatever, just keep the notice.</span></div>
+          <div style="margin-top:6px;"><span class="lic-key">TELEMETRY</span> &middot; none &middot; <span class="lic-q">// we don't want your data.</span></div>
+          <div style="margin-top:6px;"><span class="lic-key">ACCOUNTS</span> &middot; never &middot; <span class="lic-q">// log in to what?</span></div>
         </div>
-
-        <p class="text-xs text-muted-foreground">
-          Latest release assets are loaded from GitHub. Free &nbsp;&middot;&nbsp; Open Source &nbsp;&middot;&nbsp; MIT License
-        </p>
-
       </div>
-    </section>
-
-  </main>
-
-
-  <!-- ============================================================
-       FOOTER
-  ============================================================= -->
-  <footer class="border-t border-border py-8">
-    <div class="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-
-      <div class="flex items-center gap-2 text-sm text-muted-foreground">
-        <span class="font-semibold text-foreground">PG Compass</span>
-        <span aria-hidden="true">·</span>
-        <span>MIT License</span>
-        <span aria-hidden="true">·</span>
-        <span>© {currentYear}</span>
-      </div>
-
-      <div class="flex items-center gap-6">
-        <a
-          href="https://github.com/waterrmalann/pg-compass"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/>
-          </svg>
-          GitHub
-        </a>
-        <a href="https://github.com/waterrmalann/pg-compass/releases" target="_blank" rel="noopener noreferrer" class="text-sm text-muted-foreground hover:text-foreground transition-colors">Releases</a>
-        <a href="https://github.com/waterrmalann/pg-compass/issues" target="_blank" rel="noopener noreferrer" class="text-sm text-muted-foreground hover:text-foreground transition-colors">Issues</a>
-      </div>
-
     </div>
-  </footer>
+  </div>
+</section>
 
+<!-- ====================== CTA ====================== -->
+<section class="section" style="padding: 0 0 24px;">
+  <div class="shell">
+    <div class="cta-banner">
+      <h2>Stop wrestling with your <em>database GUI</em>.</h2>
+      <p>Free. Open source. No accounts. Available for Windows and Linux.</p>
+      <div style="display:flex; gap:10px; justify-content:center; flex-wrap: wrap;">
+        <a id="cta-download" class="btn btn-accent" href="https://github.com/waterrmalann/pg-compass/releases/latest" target="_blank" rel="noopener"><span data-download-label>Download latest release</span></a>
+        <a class="btn" href="https://github.com/waterrmalann/pg-compass" target="_blank" rel="noopener">View on GitHub</a>
+      </div>
+      <div style="margin-top: 28px; font-family: var(--mono); font-size: 12px; color: var(--text-3);">
+        Latest release assets loaded directly from GitHub
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== FOOTER ====================== -->
+<footer>
+  <div class="shell">
+    <div class="row">
+      <div>
+        <div class="brand" style="margin-bottom: 14px;">
+          <img src={`${siteBase}assets/logo.png`} alt=""/>
+          <span>pg<span class="dot">/</span>compass</span>
+        </div>
+        <p style="color: var(--text-2); font-size: 13px; line-height: 1.6; max-width: 38ch; margin:0;">
+          A fast, minimal desktop database viewer for PostgreSQL. Built by people who got tired of waiting for the splash screen.
+        </p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#install">Download</a></li>
+          <li><a href="https://github.com/waterrmalann/pg-compass/releases" target="_blank" rel="noopener">Releases</a></li>
+          <li><a href="https://github.com/waterrmalann/pg-compass/milestones" target="_blank" rel="noopener">Roadmap</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="https://github.com/waterrmalann/pg-compass#readme" target="_blank" rel="noopener">Docs</a></li>
+          <li><a href="https://github.com/waterrmalann/pg-compass#readme" target="_blank" rel="noopener">README</a></li>
+          <li><a href="https://github.com/waterrmalann/pg-compass/releases" target="_blank" rel="noopener">Release notes</a></li>
+          <li><a href="https://github.com/waterrmalann/pg-compass/discussions" target="_blank" rel="noopener">Discussions</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Project</h4>
+        <ul>
+          <li><a href="https://github.com/waterrmalann/pg-compass" target="_blank" rel="noopener">GitHub</a></li>
+          <li><a href="https://github.com/waterrmalann/pg-compass/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://github.com/waterrmalann/pg-compass/pulls" target="_blank" rel="noopener">Pull requests</a></li>
+          <li><a href="https://github.com/waterrmalann/pg-compass/blob/main/LICENSE" target="_blank" rel="noopener">License</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="meta">
+      <span>© {currentYear} PG Compass · MIT licensed</span>
+      <span>made on the open seas · v{appVersion}</span>
+    </div>
+  </div>
+</footer>
+
+<!-- tweaks panel mount -->
+<div id="tweaks-root"></div>
 </Layout>
 
-<script is:inline define:vars={{ githubLatestReleaseApiUrl, githubLatestReleaseUrl }}>
+<script is:inline>
+
+  const githubLatestReleaseUrl = 'https://github.com/waterrmalann/pg-compass/releases/latest';
+  const githubLatestReleaseApiUrl = 'https://api.github.com/repos/waterrmalann/pg-compass/releases/latest';
+  const githubRepoUrl = 'https://github.com/waterrmalann/pg-compass';
+  const githubRepoApiUrl = 'https://api.github.com/repos/waterrmalann/pg-compass';
+
   const platformDownloads = [
     {
       key: 'windows',
-      label: 'Windows',
       primaryText: 'Download for Windows',
-      matches: [/setup.*\.exe$/i, /\.msi$/i, /windows|win32|win/i],
+      matches: [/setup.*\.exe$/i, /\.msi$/i, /windows|win32|win64/i],
       excludes: [/\.nupkg$/i],
     },
     {
-      key: 'macos',
-      label: 'macOS',
-      primaryText: 'Download for macOS',
-      matches: [/\.dmg$/i, /macos|darwin|osx|mac/i],
-      excludes: [],
-    },
-    {
       key: 'linux',
-      label: 'Linux',
       primaryText: 'Download for Linux',
       matches: [/\.appimage$/i, /\.deb$/i, /\.rpm$/i, /linux/i],
       excludes: [],
@@ -533,26 +484,8 @@ const features = [
 
   const platformPriority = {
     windows: [/setup.*\.exe$/i, /\.exe$/i, /\.msi$/i],
-    macos: [/\.dmg$/i, /arm64.*\.zip$/i, /\.zip$/i],
     linux: [/\.appimage$/i, /\.deb$/i, /\.rpm$/i],
   };
-
-  function formatAssetSize(bytes) {
-    if (!Number.isFinite(bytes) || bytes <= 0) {
-      return '';
-    }
-
-    const units = ['B', 'KB', 'MB', 'GB'];
-    let size = bytes;
-    let unitIndex = 0;
-
-    while (size >= 1024 && unitIndex < units.length - 1) {
-      size /= 1024;
-      unitIndex += 1;
-    }
-
-    return `${size.toFixed(size >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
-  }
 
   function detectVisitorPlatform() {
     const userAgent = window.navigator.userAgent.toLowerCase();
@@ -560,33 +493,16 @@ const features = [
     const platform = (userAgentData?.platform || '').toLowerCase();
     const source = `${platform} ${userAgent}`;
 
-    if (source.includes('win')) {
-      return 'windows';
-    }
-
-    if (source.includes('mac')) {
-      return 'macos';
-    }
-
-    if (source.includes('linux') || source.includes('x11')) {
-      return 'linux';
-    }
-
+    if (source.includes('win')) return 'windows';
+    if (source.includes('linux') || source.includes('x11')) return 'linux';
     return 'windows';
   }
 
   function assetMatchesPlatform(asset, platform) {
     const name = asset.name || '';
     const config = platformDownloads.find((item) => item.key === platform);
-
-    if (!config) {
-      return false;
-    }
-
-    const excluded = config.excludes.some((pattern) => pattern.test(name));
-    const matched = config.matches.some((pattern) => pattern.test(name));
-
-    return matched && !excluded;
+    if (!config) return false;
+    return config.matches.some((pattern) => pattern.test(name)) && !config.excludes.some((pattern) => pattern.test(name));
   }
 
   function chooseBestAsset(assets, platform) {
@@ -595,560 +511,283 @@ const features = [
 
     for (const pattern of priority) {
       const match = candidates.find((asset) => pattern.test(asset.name || ''));
-      if (match) {
-        return match;
-      }
+      if (match) return match;
     }
 
     return candidates[0] || null;
   }
 
   function setPrimaryDownload(platformConfig, asset) {
-    const primaryLinks = [
-      document.getElementById('primary-download'),
-      document.getElementById('download-section-primary'),
-    ];
-    const primaryLabels = [
-      document.getElementById('primary-download-label'),
-      document.getElementById('download-section-primary-label'),
-    ];
-
     const href = asset?.browser_download_url || githubLatestReleaseUrl;
     const label = asset ? platformConfig.primaryText : 'View latest release';
 
-    primaryLinks.forEach((link) => {
-      if (link instanceof HTMLAnchorElement) {
-        link.href = href;
-      }
+    document.querySelectorAll('#primary-download, #cta-download').forEach((link) => {
+      if (link instanceof HTMLAnchorElement) link.href = href;
     });
 
-    primaryLabels.forEach((labelElement) => {
-      if (labelElement) {
-        labelElement.textContent = label;
+    document.querySelectorAll('[data-download-label]').forEach((labelElement) => {
+      labelElement.textContent = label;
+    });
+  }
+
+  function formatAssetSize(bytes) {
+    if (!Number.isFinite(bytes) || bytes <= 0) return 'latest asset';
+    const megabytes = bytes / (1024 * 1024);
+    return `${megabytes.toFixed(megabytes >= 10 ? 0 : 1)} MB`;
+  }
+
+  function updatePlatformLinks(assets) {
+    platformDownloads.forEach((platformConfig) => {
+      const link = document.querySelector(`[data-platform-download="${platformConfig.key}"]`);
+      const asset = chooseBestAsset(assets, platformConfig.key);
+      if (link instanceof HTMLAnchorElement) {
+        link.href = asset?.browser_download_url || githubLatestReleaseUrl;
+        const detail = link.querySelector('.download-detail');
+        if (detail) detail.textContent = formatAssetSize(asset?.size);
       }
     });
   }
 
-  function updatePlatformRows(assets) {
-    platformDownloads.forEach((platformConfig) => {
-      const row = document.querySelector(`[data-platform-download="${platformConfig.key}"]`);
-      const meta = row?.querySelector('.download-meta');
-      const action = row?.querySelector('.download-action');
-      const asset = chooseBestAsset(assets, platformConfig.key);
+  function updateReleaseMetadata(release) {
+    const releaseName = release.name || release.tag_name || 'Latest release';
+    const publishedAt = release.published_at ? new Date(release.published_at) : null;
+    const releaseDate = publishedAt && !Number.isNaN(publishedAt.valueOf())
+      ? publishedAt.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+      : 'See GitHub for release details';
 
-      if (!(row instanceof HTMLAnchorElement) || !meta || !action) {
-        return;
-      }
-
-      if (!asset) {
-        row.href = githubLatestReleaseUrl;
-        row.classList.add('is-unavailable');
-        meta.textContent = 'No dedicated asset in the latest release';
-        action.textContent = 'View release';
-        return;
-      }
-
-      const size = formatAssetSize(asset.size);
-      row.href = asset.browser_download_url;
-      meta.textContent = size ? `${asset.name} - ${size}` : asset.name;
-      action.textContent = 'Download';
+    document.querySelectorAll('[data-release-name]').forEach((element) => {
+      element.textContent = releaseName;
+    });
+    document.querySelectorAll('[data-release-date]').forEach((element) => {
+      element.textContent = releaseDate;
     });
   }
 
   async function hydrateDownloads() {
     const visitorPlatform = detectVisitorPlatform();
-    const visitorPlatformConfig =
-      platformDownloads.find((item) => item.key === visitorPlatform) || platformDownloads[0];
+    const visitorPlatformConfig = platformDownloads.find((item) => item.key === visitorPlatform) || platformDownloads[0];
 
     try {
       const response = await fetch(githubLatestReleaseApiUrl, {
         headers: { Accept: 'application/vnd.github+json' },
       });
 
-      if (!response.ok) {
-        throw new Error(`GitHub release lookup failed: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`GitHub release lookup failed: ${response.status}`);
 
       const release = await response.json();
       const assets = Array.isArray(release.assets) ? release.assets : [];
-      const primaryAsset = chooseBestAsset(assets, visitorPlatformConfig.key);
-
-      setPrimaryDownload(visitorPlatformConfig, primaryAsset);
-      updatePlatformRows(assets);
+      updateReleaseMetadata(release);
+      setPrimaryDownload(visitorPlatformConfig, chooseBestAsset(assets, visitorPlatformConfig.key));
+      updatePlatformLinks(assets);
     } catch {
       setPrimaryDownload(visitorPlatformConfig, null);
-
-      document.querySelectorAll('.download-meta').forEach((meta) => {
-        meta.textContent = 'Open GitHub to see the latest assets';
-      });
     }
   }
 
   hydrateDownloads();
+
+  function formatCount(value) {
+    return Number.isFinite(value) ? new Intl.NumberFormat().format(value) : '—';
+  }
+
+  async function fetchGitHubJson(url) {
+    const response = await fetch(url, { headers: { Accept: 'application/vnd.github+json' } });
+    if (!response.ok) throw new Error(`GitHub lookup failed: ${response.status}`);
+    return response.json();
+  }
+
+  function renderRepositoryStats(repo) {
+    const values = {
+      stars: repo.stargazers_count,
+      forks: repo.forks_count,
+      issues: repo.open_issues_count,
+    };
+
+    Object.entries(values).forEach(([key, value]) => {
+      document.querySelectorAll(`[data-repo-stat="${key}"]`).forEach((element) => {
+        element.textContent = formatCount(value);
+      });
+    });
+
+    document.querySelectorAll('[data-github-stars]').forEach((element) => {
+      element.textContent = `${formatCount(repo.stargazers_count)} ★`;
+    });
+  }
+
+  function renderContributors(contributors) {
+    const container = document.querySelector('[data-contributors]');
+    const label = document.querySelector('[data-contributors-label]');
+    if (!container) return;
+
+    container.replaceChildren();
+    contributors.slice(0, 6).forEach((contributor) => {
+      const link = document.createElement('a');
+      link.className = 'av';
+      link.href = contributor.html_url || githubRepoUrl;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.title = `@${contributor.login}`;
+      link.textContent = String(contributor.login || '?').slice(0, 1).toUpperCase();
+
+      const avatar = document.createElement('img');
+      avatar.alt = `@${contributor.login}`;
+      avatar.loading = 'lazy';
+      avatar.addEventListener('load', () => link.replaceChildren(avatar), { once: true });
+      avatar.src = contributor.avatar_url;
+      container.append(link);
+    });
+
+    if (label) label.textContent = contributors.length ? 'Recent public contributors · thank you.' : 'Contributors are listed on GitHub.';
+  }
+
+  function renderCommits(commits) {
+    const container = document.querySelector('[data-commits]');
+    if (!container) return;
+    container.replaceChildren();
+
+    commits.slice(0, 5).forEach((commit) => {
+      const link = document.createElement('a');
+      link.className = 'commit';
+      link.href = commit.html_url || `${githubRepoUrl}/commits`;
+      link.target = '_blank';
+      link.rel = 'noopener';
+
+      const sha = document.createElement('span');
+      sha.className = 'sha';
+      sha.textContent = String(commit.sha || '').slice(0, 7);
+
+      const message = document.createElement('span');
+      message.className = 'msg';
+      message.textContent = String(commit.commit?.message || 'Commit').split('\n')[0];
+
+      const author = document.createElement('span');
+      author.className = 'who';
+      author.textContent = commit.author?.login ? `@${commit.author.login}` : (commit.commit?.author?.name || 'contributor');
+
+      link.append(sha, message, author);
+      container.append(link);
+    });
+  }
+
+  async function hydrateRepository() {
+    const [repoResult, contributorsResult, commitsResult] = await Promise.allSettled([
+      fetchGitHubJson(githubRepoApiUrl),
+      fetchGitHubJson(`${githubRepoApiUrl}/contributors?per_page=6`),
+      fetchGitHubJson(`${githubRepoApiUrl}/commits?per_page=5`),
+    ]);
+
+    if (repoResult.status === 'fulfilled') renderRepositoryStats(repoResult.value);
+    if (contributorsResult.status === 'fulfilled' && Array.isArray(contributorsResult.value)) {
+      renderContributors(contributorsResult.value);
+    } else {
+      const label = document.querySelector('[data-contributors-label]');
+      if (label) label.textContent = 'View contributors on GitHub.';
+    }
+    if (commitsResult.status === 'fulfilled' && Array.isArray(commitsResult.value)) {
+      renderCommits(commitsResult.value);
+    } else {
+      const container = document.querySelector('[data-commits]');
+      if (container) {
+        const link = document.createElement('a');
+        link.className = 'commit';
+        link.href = `${githubRepoUrl}/commits`;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = 'View recent commits on GitHub.';
+        container.replaceChildren(link);
+      }
+    }
+  }
+
+  hydrateRepository();
+
+
+// theme toggle
+  (function () {
+    const html = document.documentElement;
+    const stored = localStorage.getItem('pgc-theme');
+    if (stored === 'light') html.classList.add('light');
+    const btn = document.getElementById('themeToggle');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      html.classList.toggle('light');
+      localStorage.setItem('pgc-theme', html.classList.contains('light') ? 'light' : 'dark');
+    });
+  })();
+
+  // before/after compare slider
+  (function () {
+    const el = document.getElementById('compareSlider');
+    if (!el) return;
+    let dragging = false;
+    function setSplit(clientX) {
+      const r = el.getBoundingClientRect();
+      const pct = Math.max(0, Math.min(100, ((clientX - r.left) / r.width) * 100));
+      el.style.setProperty('--split', pct + '%');
+      el.setAttribute('aria-valuenow', String(Math.round(pct)));
+    }
+    function onDown(e) {
+      dragging = true;
+      const x = e.touches ? e.touches[0].clientX : e.clientX;
+      setSplit(x);
+      e.preventDefault();
+    }
+    function onMove(e) {
+      if (!dragging) return;
+      const x = e.touches ? e.touches[0].clientX : e.clientX;
+      setSplit(x);
+    }
+    function onUp() { dragging = false; }
+    el.addEventListener('mousedown', onDown);
+    el.addEventListener('touchstart', onDown, { passive: false });
+    el.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      const current = Number(el.getAttribute('aria-valuenow') || 50);
+      const next = Math.max(0, Math.min(100, current + (event.key === 'ArrowRight' ? 5 : -5)));
+      el.style.setProperty('--split', `${next}%`);
+      el.setAttribute('aria-valuenow', String(next));
+      event.preventDefault();
+    });
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('touchmove', onMove, { passive: true });
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchend', onUp);
+    // gentle attention nudge on first view
+    let bumped = false;
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(en => {
+        if (en.isIntersecting && !bumped) {
+          bumped = true;
+          let p = 50, dir = 1, steps = 0;
+          const id = setInterval(() => {
+            p += dir * 1.2;
+            if (p > 62) dir = -1;
+            if (p < 38) dir = 1;
+            el.style.setProperty('--split', p + '%');
+            steps++;
+            if (steps > 60) { clearInterval(id); el.style.setProperty('--split', '50%'); }
+          }, 16);
+        }
+      });
+    }, { threshold: 0.4 });
+    io.observe(el);
+  })();
+
+  // tabs in the demo section
+  (function () {
+    const tabs = document.querySelectorAll('.product-tabs button');
+    const panels = {
+      browse: document.getElementById('tab-browse'),
+      schema: document.getElementById('tab-schema'),
+      query: document.getElementById('tab-query'),
+    };
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.classList.remove('active'));
+      tabs.forEach(x => x.setAttribute('aria-selected', 'false'));
+      t.classList.add('active');
+      t.setAttribute('aria-selected', 'true');
+      Object.values(panels).forEach(p => p.style.display = 'none');
+      panels[t.dataset.tab].style.display = 'block';
+    }));
+  })();
 </script>
-
-<style>
-  /* ── Buttons ─────────────────────────────────────────────────── */
-  .btn-primary {
-    background-color: var(--accent);
-    color: #fff;
-    transition: background-color 0.15s;
-  }
-  .btn-primary:hover {
-    background-color: var(--accent-hover);
-  }
-
-  .btn-secondary {
-    border: 1px solid var(--border);
-    color: var(--muted-foreground);
-    transition: color 0.15s, border-color 0.15s;
-  }
-  .btn-secondary:hover {
-    color: var(--foreground);
-    border-color: var(--border-strong);
-  }
-
-  /* ── Downloads ─────────────────────────────────────────────────────────── */
-  .download-options {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 8px;
-    margin: 0 auto 16px;
-    max-width: 640px;
-  }
-
-  .download-option {
-    display: grid;
-    grid-template-columns: minmax(78px, 0.7fr) minmax(0, 2fr) auto;
-    align-items: center;
-    gap: 12px;
-    min-height: 48px;
-    padding: 10px 12px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--card);
-    transition: border-color 0.15s, background-color 0.15s;
-  }
-
-  .download-option:hover {
-    border-color: var(--border-strong);
-    background: var(--card-hover);
-  }
-
-  .download-platform {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--foreground);
-  }
-
-  .download-meta {
-    min-width: 0;
-    overflow: hidden;
-    color: var(--muted-foreground);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .download-action {
-    justify-self: end;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--foreground);
-    font-size: 12px;
-    font-weight: 500;
-    padding: 5px 8px;
-    white-space: nowrap;
-  }
-
-  .download-option.is-unavailable .download-action {
-    color: var(--muted-foreground);
-  }
-
-  /* ── Hero ─────────────────────────────────────────────────────── */
-  .hero-grid {
-    background-image: radial-gradient(circle, oklch(1 0 0 / 0.04) 1px, transparent 1px);
-    background-size: 32px 32px;
-  }
-
-  .scroll-dot {
-    animation: scroll-pulse 2.2s ease-in-out infinite;
-  }
-
-  @keyframes scroll-pulse {
-    0%, 100% { transform: translateY(0); opacity: 0.8; }
-    60%       { transform: translateY(14px); opacity: 0.2; }
-  }
-
-  /* ── App Mock Window ─────────────────────────────────────────── */
-  .mock-wrapper {
-    position: relative;
-  }
-
-  /* Accent glow behind the window */
-  .mock-wrapper::before {
-    content: '';
-    position: absolute;
-    inset: -2px;
-    border-radius: 14px;
-    background: linear-gradient(180deg, oklch(0.488 0.243 264.376 / 0.15) 0%, transparent 60%);
-    filter: blur(24px);
-    z-index: -1;
-  }
-
-  .mock-window {
-    width: 100%;
-    border-radius: 10px;
-    border: 1px solid oklch(1 0 0 / 12%);
-    background: var(--background);
-    overflow: hidden;
-    box-shadow:
-      0 0 0 1px oklch(1 0 0 / 4%),
-      0 32px 80px oklch(0 0 0 / 0.55);
-    font-size: 12px;
-    font-family: 'JetBrains Mono', 'Courier New', monospace;
-  }
-
-  /* Title bar */
-  .mock-titlebar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 0 12px;
-    height: 38px;
-    background: var(--card);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-
-  .traffic-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    display: inline-block;
-    flex-shrink: 0;
-  }
-
-  .mock-app-title {
-    font-family: 'Inter', sans-serif;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--muted-foreground);
-    letter-spacing: 0.01em;
-  }
-
-  .mock-icon-btn {
-    color: var(--muted-foreground);
-    padding: 4px;
-    border-radius: 4px;
-    cursor: default;
-    opacity: 0.7;
-  }
-
-  /* App body layout */
-  .mock-body {
-    display: flex;
-    height: 430px;
-  }
-
-  /* ── Sidebar ─────────────────────────────── */
-  .mock-sidebar {
-    width: 188px;
-    min-width: 188px;
-    border-right: 1px solid var(--border);
-    background: var(--card);
-    overflow: hidden;
-    padding: 8px 0;
-    flex-shrink: 0;
-  }
-
-  .mock-sidebar-header {
-    font-family: 'Inter', sans-serif;
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--muted-foreground);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    padding: 4px 12px 8px;
-  }
-
-  .mock-conn-row {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 5px 10px;
-    font-family: 'Inter', sans-serif;
-    font-size: 11.5px;
-    font-weight: 500;
-    color: var(--foreground);
-    cursor: default;
-  }
-
-  .mock-conn-indicator {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  .mock-chevron {
-    font-size: 10px;
-    color: var(--muted-foreground);
-    width: 10px;
-    text-align: center;
-    flex-shrink: 0;
-  }
-
-  .mock-conn-label {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .mock-schema-row {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 10px 3px 22px;
-    font-family: 'Inter', sans-serif;
-    font-size: 11px;
-    color: var(--muted-foreground);
-    cursor: default;
-  }
-
-  .mock-schema-row.collapsed {
-    opacity: 0.5;
-  }
-
-  .mock-chevron-sm {
-    font-size: 9px;
-    width: 10px;
-    text-align: center;
-    flex-shrink: 0;
-  }
-
-  .mock-table-row {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3.5px 10px 3.5px 34px;
-    font-family: 'Inter', sans-serif;
-    font-size: 11px;
-    color: var(--muted-foreground);
-    cursor: default;
-  }
-
-  .mock-table-row.active {
-    background: var(--muted);
-    color: var(--foreground);
-  }
-
-  /* ── Main workspace ──────────────────────── */
-  .mock-main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    background: var(--background);
-    min-width: 0;
-  }
-
-  .mock-tab-bar {
-    display: flex;
-    align-items: flex-end;
-    background: var(--card);
-    border-bottom: 1px solid var(--border);
-    height: 38px;
-    padding: 0 4px;
-    gap: 2px;
-    flex-shrink: 0;
-  }
-
-  .mock-tab {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 5px 10px;
-    border-radius: 5px 5px 0 0;
-    font-family: 'Inter', sans-serif;
-    font-size: 11.5px;
-    color: var(--muted-foreground);
-    cursor: default;
-    height: 30px;
-    border: 1px solid transparent;
-    border-bottom: none;
-  }
-
-  .mock-tab.active {
-    background: var(--background);
-    color: var(--foreground);
-    border-color: var(--border);
-  }
-
-  .mock-tab-indicator {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  .mock-tab-x {
-    font-size: 13px;
-    line-height: 1;
-    color: var(--muted-foreground);
-    opacity: 0.6;
-  }
-
-  .mock-subtab-bar {
-    display: flex;
-    align-items: center;
-    padding: 0 12px;
-    height: 36px;
-    border-bottom: 1px solid var(--border);
-    gap: 0;
-    flex-shrink: 0;
-  }
-
-  .mock-subtab {
-    padding: 0 10px;
-    font-family: 'Inter', sans-serif;
-    font-size: 11px;
-    color: var(--muted-foreground);
-    height: 36px;
-    display: flex;
-    align-items: center;
-    border-bottom: 2px solid transparent;
-    cursor: default;
-  }
-
-  .mock-subtab.active {
-    color: var(--foreground);
-    border-bottom-color: var(--accent);
-  }
-
-  /* Data table */
-  .mock-data-area {
-    flex: 1;
-    overflow: hidden;
-  }
-
-  .mock-data-table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-  }
-
-  .mock-data-table th {
-    text-align: left;
-    padding: 7px 12px;
-    font-family: 'Inter', sans-serif;
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--muted-foreground);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    background: var(--card);
-    border-bottom: 1px solid var(--border);
-    white-space: nowrap;
-    overflow: hidden;
-  }
-
-  .mock-data-table td {
-    padding: 7px 12px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: var(--foreground);
-    border-bottom: 1px solid oklch(1 0 0 / 5%);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .mock-data-table tr.is-active td {
-    background: oklch(0.269 0 0);
-  }
-
-  .mock-badge {
-    font-family: 'Inter', sans-serif;
-    font-size: 10px;
-    padding: 2px 7px;
-    border-radius: 4px;
-    background: var(--muted);
-    color: var(--muted-foreground);
-    border: 1px solid var(--border);
-    white-space: nowrap;
-  }
-
-  .mock-badge.admin {
-    background: oklch(0.488 0.243 264.376 / 0.18);
-    color: oklch(0.65 0.2 264.376);
-    border-color: oklch(0.488 0.243 264.376 / 0.3);
-  }
-
-  /* Pagination */
-  .mock-pagination {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 7px 12px;
-    border-top: 1px solid var(--border);
-    background: var(--card);
-    flex-shrink: 0;
-  }
-
-  .mock-pagination-label {
-    font-family: 'Inter', sans-serif;
-    font-size: 10px;
-    color: var(--muted-foreground);
-  }
-
-  .mock-pagination-nav {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-family: 'Inter', sans-serif;
-    font-size: 10px;
-    color: var(--muted-foreground);
-  }
-
-  .mock-pagination-nav button {
-    background: var(--muted);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    width: 22px;
-    height: 22px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: default;
-    color: var(--muted-foreground);
-    font-size: 13px;
-    line-height: 1;
-  }
-
-  /* Responsive: hide the created_at column on narrow screens */
-  @media (max-width: 640px) {
-    .download-option {
-      grid-template-columns: 1fr auto;
-    }
-
-    .download-meta {
-      grid-column: 1 / -1;
-      grid-row: 2;
-    }
-
-    .mock-sidebar {
-      width: 130px;
-      min-width: 130px;
-    }
-
-    .mock-body {
-      height: 380px;
-    }
-
-    .hide-sm {
-      display: none;
-    }
-  }
-</style>

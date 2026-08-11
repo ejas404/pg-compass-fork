@@ -5,6 +5,6 @@ export default defineConfig({
   vite: {
     plugins: [tailwindcss()],
   },
-  site: "https://waterrmalann.github.io",
-  base: "/pg-compass"
+  site: 'https://waterrmalann.github.io',
+  base: '/pg-compass',
 });

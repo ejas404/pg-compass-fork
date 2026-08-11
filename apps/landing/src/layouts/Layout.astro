@@ -7,8 +7,8 @@ interface Props {
 }
 
 const {
-  title = 'PG Compass — PostgreSQL Database Explorer',
-  description = 'A fast, minimal database explorer for PostgreSQL. Connect, navigate schemas, inspect tables, and run queries — without the overhead of a full IDE.',
+  title = 'PG Compass - a fast, minimal PostgreSQL viewer',
+  description = 'A fast, minimal desktop database viewer for PostgreSQL.',
 } = Astro.props;
 
 const base = import.meta.env.BASE_URL;
@@ -18,23 +18,22 @@ const basePath = base.endsWith('/') ? base : `${base}/`;
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
-    <meta name="theme-color" content="#1a1a1a" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
-    <link rel="icon" type="image/png" sizes="32x32" href={`${basePath}favicon.png`} />
+    <link rel="icon" type="image/png" href={`${basePath}favicon.png`} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;1,400&display=swap"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
   </head>
-  <body class="bg-background text-foreground font-sans">
+  <body>
     <slot />
   </body>
 </html>
