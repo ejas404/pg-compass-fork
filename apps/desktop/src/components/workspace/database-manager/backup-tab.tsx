@@ -244,6 +244,12 @@ export function BackupTab({ onUseForRestore }: Readonly<BackupTabProps>) {
                       <Button
                         variant="outline"
                         size="sm"
+                        disabled={running}
+                        title={
+                          running
+                            ? "Wait for the current backup to finish first"
+                            : undefined
+                        }
                         onClick={() => onUseForRestore(backup.path)}
                       >
                         Restore from this

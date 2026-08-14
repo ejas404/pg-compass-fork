@@ -46,6 +46,7 @@ import type {
   PgTriggerFunction,
   PgTriggerInfo,
   RenameRoleInput,
+  RolesSidebarSummary,
   RolesSnapshot,
   SetDbAccessLevelInput,
   SetTriggerEnabledInput,
@@ -306,6 +307,11 @@ const rolesApi = {
       connectionId,
       targetUser,
     }),
+
+  getSidebarSummary: (
+    connectionId: string,
+  ): Promise<IpcResult<RolesSidebarSummary>> =>
+    ipcRenderer.invoke(RolesChannels.GET_SIDEBAR_SUMMARY, { connectionId }),
 
   createRole: (input: CreateRoleInput): Promise<IpcResult<void>> =>
     ipcRenderer.invoke(RolesChannels.CREATE_ROLE, input),

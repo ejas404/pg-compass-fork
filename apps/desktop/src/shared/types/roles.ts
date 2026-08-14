@@ -40,8 +40,14 @@ export interface PgDatabaseInfo {
   owner: string;
   /** Pretty-printed size (e.g. "12 MB"). */
   size: string | null;
-  /** Number of non-system schemas. */
-  schemaCount: number;
+  /**
+   * Number of non-system schemas, read while actually connected to this
+   * database (schemas are a per-database catalog). Null when the snapshot
+   * couldn't connect to this database (no CONNECT privilege, or the
+   * connection attempt failed) — never a stand-in for another database's
+   * count.
+   */
+  schemaCount: number | null;
   /** Number of roles whose grants include CONNECT on this database. */
   roleCount: number;
   /** Privileges evaluated for the snapshot's `targetUser`. */
@@ -94,6 +100,17 @@ export interface DashboardStats {
   activeConnections: number;
   /** Roles created within the past 7 days, sorted newest-first. */
   recentUsers: Array<{ name: string; createdAt: string }>;
+}
+
+/**
+ * Cheap subset of `RolesSnapshot` for surfaces (e.g. the sidebar) that only
+ * need the role count/list and admin flag — skips the memberships fetch and
+ * the per-database connection scan (`databases`/`stats`) that make the full
+ * snapshot expensive on servers with many databases.
+ */
+export interface RolesSidebarSummary {
+  currentUser: CurrentUser;
+  roles: PgRole[];
 }
 
 export interface RolesSnapshot {
@@ -227,7 +244,15 @@ export interface PgTriggerInfo {
   functionName: string;
   /** Schema the trigger function lives in. */
   functionSchema: string;
+  /** True unless `enabledMode` is "disabled". Kept for the plain on/off toggle. */
   enabled: boolean;
+  /**
+   * Full `pg_trigger.tgenabled` mode: "origin" (normal), "disabled",
+   * "replica" (fires only when `session_replication_role = replica`), or
+   * "always" (fires regardless of `session_replication_role`). The toggle
+   * UI only offers origin/disabled — replica/always are surfaced read-only.
+   */
+  enabledMode: "origin" | "disabled" | "replica" | "always";
   /** "ROW" or "STATEMENT". */
   orientation: string;
 }

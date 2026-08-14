@@ -109,7 +109,7 @@ function DatabaseCard({
         <CardStat
           icon={<Layers className="size-3" />}
           label="Schemas"
-          value={String(db.schemaCount)}
+          value={db.schemaCount === null ? "—" : String(db.schemaCount)}
         />
         <CardStat
           icon={<Users className="size-3" />}

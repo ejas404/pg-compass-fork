@@ -20,7 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useConnections } from "@/hooks/use-connections";
 import { useWorkspace } from "@/hooks/use-workspace";
-import type { PgRole, RolesSnapshot } from "@/shared/types/roles";
+import type { PgRole, RolesSidebarSummary } from "@/shared/types/roles";
 import type { IpcResult } from "@/shared/types/ipc";
 import type { WorkspaceTabView } from "@/shared/types/workspace";
 
@@ -46,13 +46,15 @@ export function SidebarFooter({
     return connections.find((c) => c.id === view.path.connectionId) ?? null;
   }, [tabs, activeTabId, connections]);
 
-  const [snapshot, setSnapshot] = useState<RolesSnapshot | null>(null);
+  const [snapshot, setSnapshot] = useState<RolesSidebarSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(true);
 
   // Re-evaluate roles when the active connection changes. We don't need a
   // hard connection — a successful test on the connection is enough to fetch
-  // roles; the API falls back to the saved connection's pool.
+  // roles; the API falls back to the saved connection's pool. Uses the
+  // lightweight summary (not the full snapshot) so the sidebar doesn't
+  // trigger a connection attempt against every database on the server.
   useEffect(() => {
     let cancelled = false;
     async function run(): Promise<void> {
@@ -63,7 +65,7 @@ export function SidebarFooter({
       setLoading(true);
       try {
         await testConnection(activeConnection.id);
-        const result = await globalThis.window.rolesApi.getSnapshot(
+        const result = await globalThis.window.rolesApi.getSidebarSummary(
           activeConnection.id,
         );
         if (cancelled) return;

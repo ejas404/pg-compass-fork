@@ -20,6 +20,7 @@ import type {
   PgTriggerFunction,
   PgTriggerInfo,
   RenameRoleInput,
+  RolesSidebarSummary,
   RolesSnapshot,
   SetDbAccessLevelInput,
   SetTriggerEnabledInput,
@@ -147,6 +148,9 @@ export interface RolesApi {
     connectionId: string,
     targetUser?: string,
   ): Promise<IpcResult<RolesSnapshot>>;
+  getSidebarSummary(
+    connectionId: string,
+  ): Promise<IpcResult<RolesSidebarSummary>>;
   createRole(input: CreateRoleInput): Promise<IpcResult<void>>;
   alterRole(input: AlterRoleInput): Promise<IpcResult<void>>;
   dropRole(connectionId: string, name: string): Promise<IpcResult<void>>;

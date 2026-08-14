@@ -83,6 +83,9 @@ describe("ConnectionItem", () => {
     });
 
     Object.assign(window, {
+      connectionApi: {
+        getById: vi.fn().mockResolvedValue({ success: true, data: uriConnection }),
+      },
       clipboardApi: {
         writeText: vi.fn().mockResolvedValue({ success: true }),
       },

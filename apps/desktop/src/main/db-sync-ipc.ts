@@ -26,6 +26,8 @@ import {
 } from "./pg-utils";
 import { registerIpcHandler } from "./ipc-security";
 import { logAudit } from "./audit-store";
+import { getSettings } from "./settings-store";
+import { looksLikeProduction } from "../shared/production-guard";
 import { getProdGuardState, setProdGuardEnabled } from "./db-sync-prod-guard";
 import {
   validateDbSyncBackupInput,
@@ -121,6 +123,55 @@ interface ActiveRun {
 
 const activeRuns = new Map<string, ActiveRun>();
 
+// `activeRuns` is keyed by client-generated runId, which the renderer forgets
+// whenever the tab that started a run unmounts (e.g. switching Database
+// Manager tabs) — remounting resets its local `running` state and re-enables
+// the Run button with no memory of the still-in-flight run. Track locked
+// (connectionId, database) pairs separately so a second backup/restore/sync
+// against a database already involved in a running one is rejected
+// server-side, regardless of what the renderer's UI state believes.
+const lockedTargets = new Set<string>();
+
+function targetLockKey(endpoint: DbSyncEndpoint): string {
+  return `${endpoint.connectionId}:${endpoint.database}`;
+}
+
+// The renderer's target pickers hide databases that "look like production"
+// unless the (renderer-only, 5-minute) prod guard is toggled on — but that's
+// display-only filtering. A renderer that calls dbSyncApi.run/restore
+// directly (compromised, or just a UI bug) bypasses it entirely, so the
+// same check must also be the actual authorization boundary here.
+function assertProdGuardAllows(endpoint: DbSyncEndpoint): void {
+  const connection = getConnectionById(endpoint.connectionId);
+  if (looksLikeProduction(connection, endpoint.database) && !getProdGuardState().enabled) {
+    throw new Error(
+      `"${endpoint.database}" looks like a production database. Enable "Show production databases" in Settings > General to proceed.`,
+    );
+  }
+}
+
+function assertNotReadOnly(action: string): void {
+  if (getSettings().general.readOnlyMode) {
+    throw new Error(`Cannot ${action}: read-only mode is enabled.`);
+  }
+}
+
+/** Locks every endpoint for the duration of a run; throws if any is already locked. */
+function lockTargets(...endpoints: DbSyncEndpoint[]): () => void {
+  const keys = endpoints.map(targetLockKey);
+  for (const key of keys) {
+    if (lockedTargets.has(key)) {
+      throw new Error(
+        "Another Database Sync operation is already running against one of these databases. Wait for it to finish first.",
+      );
+    }
+  }
+  for (const key of keys) lockedTargets.add(key);
+  return () => {
+    for (const key of keys) lockedTargets.delete(key);
+  };
+}
+
 function emit(
   sender: WebContents,
   runId: string,
@@ -165,10 +216,16 @@ async function resolveDumpTarget(endpoint: DbSyncEndpoint): Promise<DumpTarget> 
   if (connection.mode === "uri" && connection.uri) {
     const url = new URL(connection.uri);
     url.pathname = `/${endpoint.database}`;
+    // Strip the password out of the URL passed as a `--dbname`/`--file`
+    // sibling CLI argument — process arguments are visible to any local user
+    // via `ps`/`/proc/<pid>/cmdline`. libpq falls back to PGPASSWORD when the
+    // connection string omits a password, so this doesn't change behavior.
+    const password = url.password ? decodeURIComponent(url.password) : "";
+    url.password = "";
     return {
       connArgs: [],
       dbnameArg: url.toString(),
-      env: {},
+      env: password ? { PGPASSWORD: password } : {},
       cleanup: async () => undefined,
     };
   }
@@ -200,9 +257,17 @@ async function resolveDumpTarget(endpoint: DbSyncEndpoint): Promise<DumpTarget> 
       return filePath;
     };
 
-    if (ssl.ca) env.PGSSLROOTCERT = await writePem(ssl.ca, "ca");
-    if (ssl.cert) env.PGSSLCERT = await writePem(ssl.cert, "cert");
-    if (ssl.key) env.PGSSLKEY = await writePem(ssl.key, "key");
+    try {
+      if (ssl.ca) env.PGSSLROOTCERT = await writePem(ssl.ca, "ca");
+      if (ssl.cert) env.PGSSLCERT = await writePem(ssl.cert, "cert");
+      if (ssl.key) env.PGSSLKEY = await writePem(ssl.key, "key");
+    } catch (err) {
+      // A later writePem (e.g. key) throwing must not leak an earlier one
+      // (e.g. ca) that already succeeded — this function never returns its
+      // `cleanup` closure in that case, so nothing else will run these.
+      for (const fn of cleanups) await fn();
+      throw err;
+    }
   }
 
   return {
@@ -229,6 +294,15 @@ function runProcess(
   active: ActiveRun,
 ): Promise<ProcessResult> {
   return new Promise((resolve) => {
+    // A cancel request can land while a caller is still awaiting async setup
+    // (writing SSL PEM temp files, resolving the connection) that runs before
+    // this function is ever called — check right before spawning so that
+    // window can't let a destructive pg_dump/pg_restore start after the user
+    // already cancelled.
+    if (active.cancelled) {
+      resolve({ code: -1, stderr: "" });
+      return;
+    }
     const child = spawn(cmd, args, {
       env: { ...process.env, ...extraEnv },
       shell: false,
@@ -310,10 +384,16 @@ async function runFullOverride(
   active: ActiveRun,
 ): Promise<DbSyncResult> {
   const dumpFilePath = path.join(os.tmpdir(), `db-sync-${input.runId}.dump`);
-  const source = await resolveDumpTarget(input.source);
-  const target = await resolveDumpTarget(input.target);
+  let source: DumpTarget | undefined;
+  let target: DumpTarget | undefined;
 
   try {
+    // Resolved inside the try so that if `target` throws (e.g. SSH not
+    // supported) after `source` already wrote SSL PEM temp files, the
+    // finally block below still cleans them up instead of leaking them.
+    source = await resolveDumpTarget(input.source);
+    target = await resolveDumpTarget(input.target);
+
     emit(sender, input.runId, `Dumping "${input.source.database}"...`);
     const dumpArgs = [
       "--no-owner",
@@ -348,8 +428,8 @@ async function runFullOverride(
     return { status: "ok" };
   } finally {
     await fsp.unlink(dumpFilePath).catch(() => undefined);
-    await source.cleanup();
-    await target.cleanup();
+    await source?.cleanup();
+    await target?.cleanup();
   }
 }
 
@@ -400,8 +480,10 @@ async function backupDatabase(
   const dir = backupsDir();
   await fsp.mkdir(dir, { recursive: true });
   const label = resolveConnectionLabel(endpoint.connectionId).replaceAll(/[^a-zA-Z0-9_-]/g, "_");
+  const database = endpoint.database.replaceAll(/[^a-zA-Z0-9_-]/g, "_");
   const stamp = new Date().toISOString().replaceAll(/[:.]/g, "-");
-  const backupPath = path.join(dir, `${label}-${endpoint.database}-${stamp}.dump`);
+  const backupPath = path.join(dir, `${label}-${database}-${stamp}.dump`);
+  assertWithinDir(dir, path.resolve(backupPath));
 
   const dumpTarget = await resolveDumpTarget(endpoint);
   try {
@@ -421,6 +503,10 @@ async function backupDatabase(
       (line) => emit(sender, runId, line),
       active,
     );
+    if (active.cancelled) {
+      await fsp.unlink(backupPath).catch(() => undefined);
+      return backupPath;
+    }
     if (dumpRun.code !== 0) {
       throw new Error(dumpRun.error ?? `pg_dump exited with code ${dumpRun.code}`);
     }
@@ -459,14 +545,19 @@ async function listBackups(): Promise<BackupFileInfo[]> {
   return infos.sort((a, b) => b.mtimeMs - a.mtimeMs);
 }
 
-/** Resolves `filePath` and throws unless it stays inside the backups directory. */
-function resolveBackupPath(filePath: string): string {
-  const dir = backupsDir();
-  const resolved = path.resolve(filePath);
+/** Throws unless `resolved` stays inside `dir` (blocks `..`/absolute-path escapes). */
+function assertWithinDir(dir: string, resolved: string): void {
   const relative = path.relative(dir, resolved);
   if (relative.startsWith("..") || path.isAbsolute(relative)) {
     throw new Error("Invalid backup path.");
   }
+}
+
+/** Resolves `filePath` and throws unless it stays inside the backups directory. */
+function resolveBackupPath(filePath: string): string {
+  const dir = backupsDir();
+  const resolved = path.resolve(filePath);
+  assertWithinDir(dir, resolved);
   return resolved;
 }
 
@@ -585,6 +676,7 @@ async function runBackup(
   if (activeRuns.has(input.runId)) {
     throw new Error("A backup with this identifier is already running.");
   }
+  const unlockTargets = lockTargets(input.source);
 
   const active: ActiveRun = { cancelled: false };
   activeRuns.set(input.runId, active);
@@ -598,6 +690,7 @@ async function runBackup(
     result = { status: "error", message: (err as Error).message };
   } finally {
     activeRuns.delete(input.runId);
+    unlockTargets();
   }
 
   logAudit({
@@ -620,6 +713,9 @@ async function restoreDatabase(
   if (activeRuns.has(input.runId)) {
     throw new Error("A restore with this identifier is already running.");
   }
+  assertNotReadOnly("restore database");
+  assertProdGuardAllows(input.target);
+  const unlockTargets = lockTargets(input.target);
 
   const active: ActiveRun = { cancelled: false };
   activeRuns.set(input.runId, active);
@@ -661,6 +757,7 @@ async function restoreDatabase(
     result = { status: "error", message: (err as Error).message };
   } finally {
     activeRuns.delete(input.runId);
+    unlockTargets();
   }
 
   logAudit({
@@ -1016,6 +1113,7 @@ async function runRowSync(
 
       const tempNames = new Map<string, string>();
       const skippedDelete = new Set<string>();
+      const failedTables = new Set<string>();
 
       for (const key of order) {
         if (active.cancelled) break;
@@ -1031,6 +1129,7 @@ async function runRowSync(
           emit(sender, runId, `${key}: ${upserted} row(s) synced.`);
         } catch (err) {
           skippedDelete.add(key);
+          failedTables.add(key);
           emit(sender, runId, `${key}: sync failed — ${(err as Error).message}`, "warn");
         }
       }
@@ -1048,6 +1147,7 @@ async function runRowSync(
           const deleted = await deleteMissingRows(targetClient, plan, tempName);
           emit(sender, runId, `${key}: ${deleted} row(s) deleted.`);
         } catch (err) {
+          failedTables.add(key);
           emit(sender, runId, `${key}: delete pass failed — ${(err as Error).message}`, "warn");
         } finally {
           await targetClient.query(`DROP TABLE IF EXISTS "${tempName}"`).catch(() => undefined);
@@ -1056,6 +1156,12 @@ async function runRowSync(
 
       if (active.cancelled) {
         return { status: "cancelled" as const };
+      }
+      if (failedTables.size > 0) {
+        const names = [...failedTables].sort().join(", ");
+        const message = `Row sync completed with failures in ${failedTables.size} of ${order.length} table(s): ${names}.`;
+        emit(sender, runId, message, "error");
+        return { status: "error" as const, message };
       }
       emit(sender, runId, "Row sync complete.");
       return { status: "ok" as const };
@@ -1080,6 +1186,9 @@ export async function runSync(
   ) {
     throw new Error("Source and target must be different databases.");
   }
+  assertNotReadOnly("run database sync");
+  assertProdGuardAllows(input.target);
+  const unlockTargets = lockTargets(input.source, input.target);
 
   const active: ActiveRun = { cancelled: false };
   activeRuns.set(input.runId, active);
@@ -1108,6 +1217,7 @@ export async function runSync(
     result = { status: "error", message: (err as Error).message };
   } finally {
     activeRuns.delete(input.runId);
+    unlockTargets();
   }
 
   logAudit({
