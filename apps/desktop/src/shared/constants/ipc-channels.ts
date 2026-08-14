@@ -57,6 +57,7 @@ export const ClipboardChannels = {
 
 export const RolesChannels = {
   GET_SNAPSHOT: "roles:get-snapshot",
+  GET_SIDEBAR_SUMMARY: "roles:get-sidebar-summary",
   CREATE_ROLE: "roles:create-role",
   ALTER_ROLE: "roles:alter-role",
   DROP_ROLE: "roles:drop-role",

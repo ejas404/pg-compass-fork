@@ -30,7 +30,19 @@ export function DatabaseManagerViewer() {
             <TabsTrigger value="restore">Restore</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="backup" className="mt-0 min-h-0 flex-1 overflow-y-auto">
+          {/*
+            forceMount + data-[state=inactive]:hidden instead of Radix's default
+            unmount-when-inactive: without it, switching sub-tabs mid-run destroys
+            the tab's runId/progress-log state, leaving a pg_dump/pg_restore
+            process running server-side with no Cancel button and no visible
+            progress, and remounting the tab resets its `running` flag so a
+            second run against the same target can be started concurrently.
+          */}
+          <TabsContent
+            value="backup"
+            forceMount
+            className="mt-0 min-h-0 flex-1 overflow-y-auto data-[state=inactive]:hidden"
+          >
             <BackupTab
               onUseForRestore={(path) => {
                 setRestorePrefillPath(path);
@@ -39,7 +51,11 @@ export function DatabaseManagerViewer() {
             />
           </TabsContent>
 
-          <TabsContent value="restore" className="mt-0 min-h-0 flex-1 overflow-y-auto">
+          <TabsContent
+            value="restore"
+            forceMount
+            className="mt-0 min-h-0 flex-1 overflow-y-auto data-[state=inactive]:hidden"
+          >
             <RestoreTab
               prefillPath={restorePrefillPath}
               onConsumePrefill={() => setRestorePrefillPath(null)}

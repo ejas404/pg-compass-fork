@@ -18,12 +18,19 @@ import type {
   PgTriggerFunction,
   PgTriggerInfo,
   RenameRoleInput,
+  RolesSidebarSummary,
   RolesSnapshot,
   SetDbAccessLevelInput,
   SetTriggerEnabledInput,
   TableRestrictionInput,
 } from "../shared/types/roles";
-import { buildPgConfig, withPoolClient, quoteIdent } from "./pg-utils";
+import {
+  buildPgConfig,
+  withPoolClient,
+  quoteIdent,
+  quoteLiteral,
+  extendedQuery,
+} from "./pg-utils";
 import { getConnectionById } from "./connection-store";
 import { registerIpcHandler } from "./ipc-security";
 import {
@@ -104,7 +111,6 @@ interface PgDatabaseExtRow {
   datname: string;
   owner: string;
   size: string | null;
-  schema_count: number;
   role_count: number;
 }
 
@@ -128,7 +134,7 @@ interface PgTriggerRow {
   events: string;
   function_name: string;
   function_schema: string;
-  enabled: boolean;
+  enabled_mode: "origin" | "disabled" | "replica" | "always";
   orientation: string;
 }
 
@@ -287,12 +293,6 @@ async function fetchDatabaseExtensions(
       pg_catalog.pg_get_userbyid(d.datdba) AS owner,
       pg_size_pretty(pg_database_size(d.datname)) AS size,
       (
-        SELECT COUNT(*)
-        FROM information_schema.schemata s
-        WHERE s.schema_name NOT IN ('pg_catalog', 'information_schema')
-          AND s.schema_name NOT LIKE 'pg_toast%'
-      ) AS schema_count,
-      (
         SELECT COUNT(DISTINCT acl.grantee)
         FROM pg_database dp
         CROSS JOIN LATERAL aclexplode(
@@ -353,7 +353,10 @@ async function fetchDatabases(
       name: row.datname,
       owner: extRow?.owner ?? "unknown",
       size: extRow?.size ?? null,
-      schemaCount: Number(extRow?.schema_count ?? 0),
+      // Schemas are per-database catalogs — accurate only once connected to
+      // that specific database. Filled in by computeEffectiveLevels below
+      // for every database it can actually reach; left null otherwise.
+      schemaCount: null,
       roleCount: Number(extRow?.role_count ?? 0),
       isTemplate: row.datistemplate,
       allowConnections: row.datallowconn,
@@ -370,6 +373,8 @@ async function fetchDatabases(
 interface DbAccessEvaluation {
   level: AccessLevel;
   tables: PgTableAccess[];
+  /** Non-system schema count, read while actually connected to `database`. */
+  schemaCount: number;
 }
 
 async function computeDbAccess(
@@ -392,6 +397,11 @@ async function computeDbAccess(
     const usageBySchema = new Map(
       usageResult.rows.map((row) => [row.schema_name, row.has_usage]),
     );
+    // usageResult already lists every non-system schema in *this* database
+    // (has_schema_privilege only gates the has_usage column, not the row
+    // set), so its row count is the accurate per-database schema count —
+    // no extra query needed.
+    const schemaCount = usageResult.rows.length;
 
     // pg_class/pg_namespace (unlike information_schema.tables) list every
     // table's metadata regardless of the connected role's own privileges —
@@ -436,7 +446,7 @@ async function computeDbAccess(
     // The rollup badge now spans every schema, matching the database-level
     // toggle which grants/revokes across all of them (not just `public`).
     if (tables.length === 0) {
-      return { level: "none", tables };
+      return { level: "none", tables, schemaCount };
     }
     const hasAnyWrite = tables.some((t) => t.level === "readwrite");
     const allAccessible = tables.every(
@@ -447,7 +457,7 @@ async function computeDbAccess(
       : allAccessible
         ? "readonly"
         : "none";
-    return { level, tables };
+    return { level, tables, schemaCount };
   });
 }
 
@@ -458,12 +468,24 @@ async function computeEffectiveLevels(
 ): Promise<PgDatabaseInfo[]> {
   const result: PgDatabaseInfo[] = [];
   for (const db of databases) {
-    const { level, tables } = await computeDbAccess(
-      connectionId,
-      db.name,
-      targetUser,
-    );
-    result.push({ ...db, level, tables });
+    // Skip the connection attempt entirely when the privilege check already
+    // says CONNECT is missing — and still isolate failures for the rest
+    // (pg_hba rules, connection limits, a database dropped mid-scan) so one
+    // bad database can't reject the whole snapshot.
+    if (!db.canConnect) {
+      result.push({ ...db, level: "none", tables: [] });
+      continue;
+    }
+    try {
+      const { level, tables, schemaCount } = await computeDbAccess(
+        connectionId,
+        db.name,
+        targetUser,
+      );
+      result.push({ ...db, level, tables, schemaCount });
+    } catch {
+      result.push({ ...db, level: "none", tables: [] });
+    }
   }
   return result;
 }
@@ -522,6 +544,30 @@ async function fetchDashboardStats(
       createdAt: toIso(row.created_at) ?? new Date().toISOString(),
     })),
   };
+}
+
+/** Cheap read for surfaces that only need the role list + admin flag (see `RolesSidebarSummary`). */
+async function buildSidebarSummary(
+  connectionId: string,
+): Promise<RolesSidebarSummary> {
+  return withPoolClient(connectionId, async (client) => {
+    const currentUserRow = await getCurrentUser(client);
+    const isSuperuser = currentUserRow.rolsuper;
+    const roles = await fetchRoles(
+      client,
+      isSuperuser ? undefined : currentUserRow.rolname,
+    );
+    return {
+      currentUser: {
+        name: currentUserRow.rolname,
+        isSuperuser,
+        canLogin: currentUserRow.rolcanlogin,
+        canCreateRole: currentUserRow.rolcreaterole,
+        canCreateDb: currentUserRow.rolcreatedb,
+      },
+      roles,
+    };
+  });
 }
 
 async function buildSnapshot(
@@ -643,7 +689,8 @@ function buildCreateRoleSql(input: {
   createDb?: boolean;
   inherit?: boolean;
   connectionLimit?: number;
-  validUntil?: string;
+  /** Already `quote_literal()`-quoted (including its own surrounding quotes), or undefined for "no expiry given". */
+  validUntilLiteral?: string;
 }): string {
   const options: string[] = [];
   options.push(input.login ? "LOGIN" : "NOLOGIN");
@@ -659,8 +706,8 @@ function buildCreateRoleSql(input: {
   if (input.connectionLimit !== undefined) {
     options.push(`CONNECTION LIMIT ${Number(input.connectionLimit)}`);
   }
-  if (input.validUntil !== undefined && input.validUntil !== "") {
-    options.push(`VALID UNTIL '${input.validUntil.replaceAll("'", "''")}'`);
+  if (input.validUntilLiteral !== undefined) {
+    options.push(`VALID UNTIL ${input.validUntilLiteral}`);
   }
   return `CREATE ROLE ${quoteIdent(input.name)} WITH ${options.join(" ")};`;
 }
@@ -669,6 +716,10 @@ async function createRole(input: CreateRoleInput): Promise<void> {
   return withPoolClient(input.connectionId, async (client) => {
     await requireSuperuser(client);
 
+    const validUntilLiteral =
+      input.validUntil !== undefined && input.validUntil !== ""
+        ? await quoteLiteral(client, input.validUntil)
+        : undefined;
     const createSql = buildCreateRoleSql({
       name: input.name,
       login: input.login,
@@ -676,14 +727,14 @@ async function createRole(input: CreateRoleInput): Promise<void> {
       createDb: input.createDb,
       inherit: input.inherit,
       connectionLimit: input.connectionLimit,
-      validUntil: input.validUntil,
+      validUntilLiteral,
     });
     await client.query(createSql);
 
     if (input.password && input.password.length > 0) {
-      const escaped = input.password.replaceAll("'", "''");
+      const literal = await quoteLiteral(client, input.password);
       await client.query(
-        `ALTER ROLE ${quoteIdent(input.name)} PASSWORD '${escaped}';`,
+        `ALTER ROLE ${quoteIdent(input.name)} PASSWORD ${literal};`,
       );
     }
 
@@ -719,15 +770,14 @@ async function alterRole(input: AlterRoleInput): Promise<void> {
       if (input.validUntil === null || input.validUntil === "") {
         options.push("VALID UNTIL 'infinity'");
       } else {
-        options.push(
-          `VALID UNTIL '${input.validUntil.replaceAll("'", "''")}'`,
-        );
+        const literal = await quoteLiteral(client, input.validUntil);
+        options.push(`VALID UNTIL ${literal}`);
       }
     }
     if (input.password !== undefined && input.password !== null) {
-      const escaped = input.password.replaceAll("'", "''");
+      const literal = await quoteLiteral(client, input.password);
       await client.query(
-        `ALTER ROLE ${quoteIdent(input.name)} PASSWORD '${escaped}';`,
+        `ALTER ROLE ${quoteIdent(input.name)} PASSWORD ${literal};`,
       );
     }
     if (options.length > 0) {
@@ -745,9 +795,9 @@ async function alterRolePasswordInternal(input: {
 }): Promise<void> {
   return withPoolClient(input.connectionId, async (client) => {
     await requireSuperuser(client);
-    const escaped = input.password.replaceAll("'", "''");
+    const literal = await quoteLiteral(client, input.password);
     await client.query(
-      `ALTER ROLE ${quoteIdent(input.name)} PASSWORD '${escaped}';`,
+      `ALTER ROLE ${quoteIdent(input.name)} PASSWORD ${literal};`,
     );
   });
 }
@@ -762,9 +812,9 @@ async function alterRoleCommentInternal(input: {
     if (input.comment === null || input.comment.length === 0) {
       await client.query(`COMMENT ON ROLE ${quoteIdent(input.name)} IS NULL;`);
     } else {
-      const escaped = input.comment.replaceAll("'", "''");
+      const literal = await quoteLiteral(client, input.comment);
       await client.query(
-        `COMMENT ON ROLE ${quoteIdent(input.name)} IS '${escaped}';`,
+        `COMMENT ON ROLE ${quoteIdent(input.name)} IS ${literal};`,
       );
     }
   });
@@ -860,6 +910,8 @@ async function fetchGrantableSchemas(client: Client): Promise<string[]> {
 }
 
 async function setDbAccessLevel(input: SetDbAccessLevelInput): Promise<void> {
+  await withPoolClient(input.connectionId, requireSuperuser);
+
   const targetUser = quoteIdent(input.userName);
   const database = input.databaseName;
 
@@ -971,6 +1023,8 @@ async function setDbAccessLevel(input: SetDbAccessLevelInput): Promise<void> {
 async function setTableRestrictions(
   input: TableRestrictionInput,
 ): Promise<void> {
+  await withPoolClient(input.connectionId, requireSuperuser);
+
   const targetUser = quoteIdent(input.userName);
 
   const bySchema = new Map<
@@ -1083,6 +1137,8 @@ async function grantDbReadonly(input: {
   databaseName: string;
   schema?: string;
 }): Promise<void> {
+  await withPoolClient(input.connectionId, requireSuperuser);
+
   const schema = input.schema && input.schema.length > 0 ? input.schema : "public";
   return runInDatabase(
     input.connectionId,
@@ -1110,6 +1166,8 @@ async function revokeDbReadonly(input: {
   databaseName: string;
   schema?: string;
 }): Promise<void> {
+  await withPoolClient(input.connectionId, requireSuperuser);
+
   const schema = input.schema && input.schema.length > 0 ? input.schema : "public";
   return runInDatabase(
     input.connectionId,
@@ -1136,27 +1194,39 @@ async function listTriggers(
   connectionId: string,
   database: string,
 ): Promise<PgTriggerInfo[]> {
+  await withPoolClient(connectionId, requireSuperuser);
+
   return runInDatabase(connectionId, database, async (client) => {
     const result = await client.query<PgTriggerRow>(`
       SELECT
         n.nspname AS schema_name,
         c.relname AS table_name,
         t.tgname AS trigger_name,
+        -- tgtype bits: ROW=1, BEFORE=2, INSERT=4, DELETE=8, UPDATE=16,
+        -- TRUNCATE=32, INSTEAD=64. BEFORE/INSTEAD are mutually exclusive;
+        -- AFTER is the default when neither is set. INSERT/UPDATE/DELETE/
+        -- TRUNCATE are independent bits a trigger can combine, so they're
+        -- decoded (and joined) separately rather than picked with CASE.
         CASE
+          WHEN (t.tgtype & 64) <> 0 THEN 'INSTEAD OF'
           WHEN (t.tgtype & 2) <> 0 THEN 'BEFORE'
-          WHEN (t.tgtype & 1) <> 0 THEN 'AFTER'
           ELSE 'AFTER'
         END AS timing,
-        CASE
-          WHEN (t.tgtype & 4) <> 0 THEN 'INSERT'
-          WHEN (t.tgtype & 8) <> 0 THEN 'DELETE'
-          WHEN (t.tgtype & 16) <> 0 THEN 'UPDATE'
-          WHEN (t.tgtype & 32) <> 0 THEN 'TRUNCATE'
-          ELSE ''
-        END AS events,
+        concat_ws(',',
+          CASE WHEN (t.tgtype & 4) <> 0 THEN 'INSERT' END,
+          CASE WHEN (t.tgtype & 8) <> 0 THEN 'DELETE' END,
+          CASE WHEN (t.tgtype & 16) <> 0 THEN 'UPDATE' END,
+          CASE WHEN (t.tgtype & 32) <> 0 THEN 'TRUNCATE' END
+        ) AS events,
         p.proname AS function_name,
         pn.nspname AS function_schema,
-        t.tgenabled = 'O' AS enabled,
+        CASE t.tgenabled
+          WHEN 'O' THEN 'origin'
+          WHEN 'D' THEN 'disabled'
+          WHEN 'R' THEN 'replica'
+          WHEN 'A' THEN 'always'
+          ELSE 'origin'
+        END AS enabled_mode,
         CASE WHEN (t.tgtype & 1) <> 0 THEN 'ROW' ELSE 'STATEMENT' END AS orientation
       FROM pg_trigger t
       JOIN pg_class c ON c.oid = t.tgrelid
@@ -1174,13 +1244,16 @@ async function listTriggers(
       events: row.events,
       functionName: row.function_name,
       functionSchema: row.function_schema,
-      enabled: row.enabled,
+      enabled: row.enabled_mode !== "disabled",
+      enabledMode: row.enabled_mode,
       orientation: row.orientation,
     }));
   });
 }
 
 async function createTrigger(input: CreateTriggerInput): Promise<void> {
+  await withPoolClient(input.connectionId, requireSuperuser);
+
   return runInDatabase(
     input.connectionId,
     input.databaseName,
@@ -1191,12 +1264,15 @@ async function createTrigger(input: CreateTriggerInput): Promise<void> {
           input.orientation === "ROW"
             ? input.events.join(" OR ")
             : "TRUNCATE";
+        // Trigger function arguments belong inside the EXECUTE FUNCTION
+        // call's own parentheses — CREATE TRIGGER has no "USING" clause,
+        // so the previous form was a guaranteed syntax error. quoteLiteral
+        // (not manual escaping) since this value is user-authored text
+        // spliced into DDL that can't accept a bound parameter.
         const args = input.functionArgs
-          ? input.functionArgs.length > 0
-            ? ` USING ${input.functionArgs}`
-            : ""
+          ? await quoteLiteral(client, input.functionArgs)
           : "";
-        const sql = `CREATE TRIGGER ${quoteIdent(input.triggerName)} ${input.timing} ${eventClause} ON ${quoteIdent(input.schemaName)}.${quoteIdent(input.tableName)} FOR EACH ${input.orientation} EXECUTE FUNCTION ${quoteIdent(input.functionSchema)}.${quoteIdent(input.functionName)}()${args};`;
+        const sql = `CREATE TRIGGER ${quoteIdent(input.triggerName)} ${input.timing} ${eventClause} ON ${quoteIdent(input.schemaName)}.${quoteIdent(input.tableName)} FOR EACH ${input.orientation} EXECUTE FUNCTION ${quoteIdent(input.functionSchema)}.${quoteIdent(input.functionName)}(${args});`;
         await client.query(sql);
         await client.query("COMMIT");
       } catch (err) {
@@ -1208,6 +1284,8 @@ async function createTrigger(input: CreateTriggerInput): Promise<void> {
 }
 
 async function dropTrigger(input: DropTriggerInput): Promise<void> {
+  await withPoolClient(input.connectionId, requireSuperuser);
+
   return runInDatabase(
     input.connectionId,
     input.databaseName,
@@ -1220,6 +1298,8 @@ async function dropTrigger(input: DropTriggerInput): Promise<void> {
 }
 
 async function setTriggerEnabled(input: SetTriggerEnabledInput): Promise<void> {
+  await withPoolClient(input.connectionId, requireSuperuser);
+
   return runInDatabase(
     input.connectionId,
     input.databaseName,
@@ -1236,6 +1316,8 @@ async function listTriggerFunctions(
   connectionId: string,
   database: string,
 ): Promise<PgTriggerFunction[]> {
+  await withPoolClient(connectionId, requireSuperuser);
+
   return runInDatabase(connectionId, database, async (client) => {
     const result = await client.query<PgTriggerFunctionRow>(`
       SELECT
@@ -1259,11 +1341,16 @@ async function listTriggerFunctions(
 async function createTriggerFunction(
   input: CreateTriggerFunctionInput,
 ): Promise<void> {
+  await withPoolClient(input.connectionId, requireSuperuser);
+
   return runInDatabase(
     input.connectionId,
     input.databaseName,
     async (client) => {
-      await client.query(input.source);
+      // Extended protocol rejects multiple top-level statements in one Parse,
+      // so a renderer-supplied body can't stack extra commands after the
+      // CREATE FUNCTION it's supposed to contain.
+      await client.query(extendedQuery(input.source));
     },
   );
 }
@@ -1277,12 +1364,7 @@ async function getEffectivePermissions(
   user: string,
 ): Promise<EffectivePermissions> {
   return withPoolClient(connectionId, async (client) => {
-    const currentUser = await getCurrentUser(client);
-    if (!currentUser.rolsuper) {
-      throw new Error(
-        "Resolving effective permissions for another principal requires a superuser connection.",
-      );
-    }
+    await requireSuperuser(client);
 
     const dbs = await client.query<{ datname: string }>(`
       SELECT datname FROM pg_database WHERE datallowconn ORDER BY datname
@@ -1392,6 +1474,19 @@ export function registerRolesHandlers(): void {
           input.targetUser,
         );
         return { success: true, data: snapshot };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+  );
+
+  registerIpcHandler(
+    RolesChannels.GET_SIDEBAR_SUMMARY,
+    async (_event, rawInput: unknown) => {
+      try {
+        const input = validateConnectionIdInput(rawInput);
+        const summary = await buildSidebarSummary(input.connectionId);
+        return { success: true, data: summary };
       } catch (err) {
         return { success: false, error: (err as Error).message };
       }

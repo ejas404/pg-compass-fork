@@ -565,7 +565,7 @@ function RoleDetailPane({
   async function handleSetTableRestrictions(
     db: PgDatabaseInfo,
     tables: Array<{ schema: string; name: string; level: AccessLevel }>,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const input: TableRestrictionInput = {
       connectionId,
       userName: activeRole.name,
@@ -574,11 +574,12 @@ function RoleDetailPane({
     };
     setBusy(true);
     const granted = tables.filter((t) => t.level !== "none").length;
-    await onMutation(
+    const ok = await onMutation(
       `Updated ${granted} table grant(s) on "${db.name}" for "${activeRole.name}"`,
       () => globalThis.window.rolesApi.setTableRestrictions(input),
     );
     setBusy(false);
+    return ok;
   }
 
   return (
@@ -659,8 +660,12 @@ function RoleDetailPane({
                 size="icon-sm"
                 aria-label="Rename role"
                 onClick={() => setRenameOpen(true)}
-                disabled={busy}
-                title="Rename role"
+                disabled={busy || isSelf}
+                title={
+                  isSelf
+                    ? "Can't rename the role you're currently connected as"
+                    : "Rename role"
+                }
               >
                 <Pencil className="size-4" />
               </Button>
@@ -1169,7 +1174,7 @@ function DatabaseAccessTab({
   onSetTableRestrictions: (
     db: PgDatabaseInfo,
     tables: Array<{ schema: string; name: string; level: AccessLevel }>,
-  ) => Promise<void>;
+  ) => Promise<boolean>;
 }>) {
   if (databases.length === 0) {
     return (
@@ -1238,7 +1243,7 @@ function DatabaseAccessRow({
   onSetTableRestrictions: (
     db: PgDatabaseInfo,
     tables: Array<{ schema: string; name: string; level: AccessLevel }>,
-  ) => Promise<void>;
+  ) => Promise<boolean>;
 }>) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const grantedCount = db.tables.filter((t) => t.level !== "none").length;
@@ -1293,7 +1298,7 @@ function DatabaseAccessRow({
               db={db}
               roleName={roleName}
               busy={busy}
-              onSave={(tables) => void onSetTableRestrictions(db, tables)}
+              onSave={(tables) => onSetTableRestrictions(db, tables)}
             />
           </>
         ) : (
@@ -1345,7 +1350,7 @@ function TableAccessSheet({
   busy: boolean;
   onSave: (
     tables: Array<{ schema: string; name: string; level: AccessLevel }>,
-  ) => void;
+  ) => Promise<boolean>;
 }>) {
   const schemas = useMemo(() => groupTablesBySchema(db.tables), [db.tables]);
   const [draft, setDraft] = useState<Map<string, AccessLevel>>(new Map());
@@ -1396,15 +1401,14 @@ function TableAccessSheet({
     });
   }
 
-  function handleSave() {
+  async function handleSave() {
     const tables = db.tables.map((table) => ({
       schema: table.schemaName,
       name: table.tableName,
       level:
         draft.get(tableKey(table.schemaName, table.tableName)) ?? "none",
     }));
-    onSave(tables);
-    onOpenChange(false);
+    if (await onSave(tables)) onOpenChange(false);
   }
 
   const totalGranted = Array.from(draft.values()).filter(
@@ -1818,6 +1822,7 @@ function CreateRoleDialog({
     <Dialog
       open={open}
       onOpenChange={(open) => {
+        if (busy) return;
         if (open) reset();
         onOpenChange(open);
       }}
@@ -2101,6 +2106,7 @@ function ResetPasswordDialog({
     <Dialog
       open={open}
       onOpenChange={(open) => {
+        if (busy) return;
         if (open) reset();
         onOpenChange(open);
       }}

@@ -14,6 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ViewerShell } from "@/components/workspace/viewer-shell";
 import { useWorkspace } from "@/hooks/use-workspace";
+import { useLatestRequest } from "@/hooks/use-latest-request";
 import type { RolesSnapshot } from "@/shared/types/roles";
 import type { UsersViewerPath } from "@/shared/types/workspace";
 import { ErrorState, unwrap } from "./rbac/shared";
@@ -49,37 +50,57 @@ export function UsersViewer({ path }: Readonly<UsersViewerProps>) {
     selectedRoleNameRef.current = selectedRoleName;
   }, [selectedRoleName]);
 
+  // The Users tab is now reused (not re-created) when the sidebar's roles
+  // list is clicked for a different role on the same connection — sync the
+  // selection when the tab's `path.selectedRole` changes so that reuse
+  // actually navigates, instead of just re-focusing the tab on whatever
+  // role happened to be selected when it was first opened.
+  useEffect(() => {
+    if (path.selectedRole) setSelectedRoleName(path.selectedRole);
+  }, [path.selectedRole]);
+
+  const runLatestSnapshotRequest = useLatestRequest();
+
   const fetchSnapshot = useCallback(
     async (force: boolean) => {
       if (!force) setLoading(true);
       else setRefreshing(true);
 
-      try {
-        const result = await globalThis.window.rolesApi.getSnapshot(
+      // Two calls can overlap (e.g. a mutation's auto-refresh plus a manual
+      // Refresh click) — without sequencing, a slower older request could
+      // resolve after a faster newer one and clobber it with stale data.
+      const result = await runLatestSnapshotRequest(async () => {
+        const response = await globalThis.window.rolesApi.getSnapshot(
           path.connectionId,
         );
-        const next = unwrap(result);
-        setSnapshot(next);
-        setLastRefreshedAt(new Date());
-        setError(null);
+        return unwrap(response);
+      });
 
-        const roleNames = new Set(next.roles.map((r) => r.name));
-        const desired = next.currentUser.isSuperuser
-          ? (selectedRoleNameRef.current ?? next.roles[0]?.name ?? null)
-          : next.currentUser.name;
-        const resolved =
-          desired && roleNames.has(desired) ? desired : (next.roles[0]?.name ?? null);
-        setSelectedRoleName(resolved);
-      } catch (err) {
-        const message = (err as Error).message;
+      if (result.status === "stale") return;
+      setLoading(false);
+      setRefreshing(false);
+
+      if (result.status === "error") {
+        const message = (result.error as Error).message;
         setError(message);
         toast.error("Failed to load users / roles", { description: message });
-      } finally {
-        setLoading(false);
-        setRefreshing(false);
+        return;
       }
+
+      const next = result.value;
+      setSnapshot(next);
+      setLastRefreshedAt(new Date());
+      setError(null);
+
+      const roleNames = new Set(next.roles.map((r) => r.name));
+      const desired = next.currentUser.isSuperuser
+        ? (selectedRoleNameRef.current ?? next.roles[0]?.name ?? null)
+        : next.currentUser.name;
+      const resolved =
+        desired && roleNames.has(desired) ? desired : (next.roles[0]?.name ?? null);
+      setSelectedRoleName(resolved);
     },
-    [path.connectionId],
+    [path.connectionId, runLatestSnapshotRequest],
   );
 
   useEffect(() => {

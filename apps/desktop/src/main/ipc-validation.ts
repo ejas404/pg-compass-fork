@@ -671,6 +671,16 @@ export function validateUpdateCellParams(value: unknown): UpdateCellParams {
   asString(params.column, "updateCell.column");
   asString(params.pgCast, "updateCell.pgCast");
   asBoolean(params.setNull, "updateCell.setNull");
+  // `pg` treats a JS `undefined` value the same as `null` — without this
+  // check, a caller bug that drops `newValue` (e.g. a race that reads it
+  // before a debounced input finishes) would silently write NULL instead
+  // of failing loudly, since `setNull: false` + `newValue: undefined`
+  // would otherwise sail through unnoticed.
+  if (!params.setNull && params.newValue === undefined) {
+    throw new TypeError(
+      "updateCell.newValue is required when updateCell.setNull is false.",
+    );
+  }
   return value as UpdateCellParams;
 }
 
@@ -696,6 +706,14 @@ export function validateUpdateRowParams(value: unknown): UpdateRowParams {
     asString(record.column, `updateRow.changes[${index}].column`);
     asString(record.pgCast, `updateRow.changes[${index}].pgCast`);
     asBoolean(record.setNull, `updateRow.changes[${index}].setNull`);
+    // See the matching check in validateUpdateCellParams: `pg` treats
+    // `undefined` the same as `null`, so this must be rejected explicitly
+    // rather than silently writing NULL for a value that was never sent.
+    if (!record.setNull && record.newValue === undefined) {
+      throw new TypeError(
+        `updateRow.changes[${index}].newValue is required when setNull is false.`,
+      );
+    }
   });
   return value as UpdateRowParams;
 }

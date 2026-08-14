@@ -188,14 +188,22 @@ export function TriggersPane({
                       {trigger.functionSchema}.{trigger.functionName}
                     </TableCell>
                     <TableCell>
-                      <Switch
-                        checked={trigger.enabled}
-                        disabled={busy}
-                        onCheckedChange={(checked) =>
-                          void handleToggleTrigger(trigger, checked)
-                        }
-                        aria-label={`Toggle trigger ${trigger.triggerName}`}
-                      />
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={trigger.enabled}
+                          disabled={busy}
+                          onCheckedChange={(checked) =>
+                            void handleToggleTrigger(trigger, checked)
+                          }
+                          aria-label={`Toggle trigger ${trigger.triggerName}`}
+                        />
+                        {(trigger.enabledMode === "replica" ||
+                          trigger.enabledMode === "always") && (
+                          <Badge variant="outline" className="uppercase">
+                            {trigger.enabledMode}
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
